@@ -1,0 +1,6 @@
+_backoffice/view/node_modules/
+_backoffice/view/dist/
+_backoffice/view/.vite/
+_backoffice/view/public/core-data.json
+
+.DS_Store

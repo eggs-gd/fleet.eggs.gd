@@ -1,0 +1,11 @@
+---
+description: Canonical Core agent instructions (ground rules, directory contracts, MCP tool usage, _backoffice engineering conventions)
+alwaysApply: true
+---
+
+Read `AGENTS.md` before changing this repository.
+
+`AGENTS.md` is the canonical agent instruction file for Core. Keep durable
+rules there instead of duplicating them in Cursor-specific rules.
+
+@AGENTS.md

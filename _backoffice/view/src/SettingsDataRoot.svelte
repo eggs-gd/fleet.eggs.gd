@@ -1,0 +1,98 @@
+<script>
+  import { onMount } from 'svelte';
+  import SettingsField from './SettingsField.svelte';
+
+  let config = $state(null);
+  let input = $state('');
+  let loading = $state(false);
+  let saving = $state(false);
+  let confirming = $state(false);
+  let error = $state('');
+  let restartRequired = $state(false);
+
+  async function load() {
+    loading = true;
+    try {
+      const response = await fetch('/api/app-config');
+      if (!response.ok) throw new Error(await response.text());
+      config = await response.json();
+      input = config.dataRoot || config.effectiveRoot || '';
+      error = '';
+    } catch (err) {
+      error = err.message || String(err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  function requestMove() {
+    confirming = true;
+  }
+
+  function cancelMove() {
+    confirming = false;
+  }
+
+  async function confirmMove() {
+    if (saving) return;
+    saving = true;
+    try {
+      const response = await fetch('/api/app-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataRoot: input })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      config = await response.json();
+      restartRequired = restartRequired || config.restartRequired;
+      confirming = false;
+      error = '';
+    } catch (err) {
+      error = err.message || String(err);
+    } finally {
+      saving = false;
+    }
+  }
+
+  let changed = $derived(Boolean(config) && input.trim() !== (config?.dataRoot || config?.effectiveRoot || ''));
+
+  onMount(load);
+</script>
+
+<section class="settings-block" aria-label="Data root">
+  <h3>Data root</h3>
+  {#if loading && !config}
+    <p class="settings-hint">Loading…</p>
+  {:else if config}
+    <SettingsField label="Currently serving" value={config.effectiveRoot} mono />
+    <SettingsField label="Source" value={config.source || '—'} hint="flag = --root on the command line, config = ~/.fleet/app.json, default = first-run ~/.fleet/workspace." />
+    <div class="settings-row">
+      <span class="settings-key">Data root path</span>
+      <span class="settings-val">
+        <input class="settings-input" type="text" bind:value={input} disabled={saving} placeholder="~/.fleet/workspace" />
+      </span>
+    </div>
+    <p class="settings-hint">Changing this moves the Data directory on disk to the new path, then updates ~/.fleet/app.json. Requires a server restart to take effect.</p>
+
+    {#if !confirming}
+      <button type="button" class="settings-btn" disabled={!changed || saving} onclick={requestMove}>
+        Move data root…
+      </button>
+    {:else}
+      <div class="settings-savebar">
+        <span>Move Data from {config.effectiveRoot} to {input.trim()}?</span>
+        <button type="button" class="settings-btn" disabled={saving} onclick={cancelMove}>Cancel</button>
+        <button type="button" class="settings-btn is-primary" disabled={saving} onclick={confirmMove}>
+          {saving ? 'Moving…' : 'Confirm move'}
+        </button>
+      </div>
+    {/if}
+
+    {#if restartRequired}
+      <p class="settings-warn">Data was moved. Restart Core to serve from the new path.</p>
+    {/if}
+    {#if error}
+      <p class="settings-error">{error}</p>
+    {/if}
+  {/if}
+</section>
