@@ -1,21 +1,21 @@
 # Agent Instructions — App
 
-This file is the canonical agent instruction file for the **App** tree (the
-Core tool itself: `_backoffice/server` Go backend + `_backoffice/view`
-Svelte frontend). `CLAUDE.md`, `.cursor/rules/agents.mdc`, and
-`.gemini/settings.json` all point here instead of duplicating these rules —
-keep durable rules in this file only.
+This file is the canonical agent instruction file for the **App**
+repository (`fleet.eggs.gd` — the Core tool itself: `server`
+Go backend + `view` Svelte frontend). `CLAUDE.md`,
+`.cursor/rules/agents.mdc`, and `.gemini/settings.json` all point here
+instead of duplicating these rules — keep durable rules in this file only.
 
-> **App vs Data.** This repository is split into two independent trees:
-> `App/` (this one — the product's source code, build tooling, and
-> engineering docs) and `Data/` (the operator's own Inbox/Work/Fleet/Archive
-> content and runtime registry — see `Data/AGENTS.md`). The Go server reads
-> and writes Data through an explicit `--root <path>` flag; it does not
-> assume Data lives at any fixed location relative to App, though today they
-> happen to be sibling directories in one repo (`../Data` from here) as a
-> stepping stone toward two fully separate repositories. Do not hardcode
-> that adjacency into new code — the existing `--root`/`--backoffice-dir`
-> flags are the only sanctioned way App code learns where Data is.
+> **App vs Data.** App and Data are two fully independent repositories
+> with no dependency in either direction — App ships as a built binary to
+> an operator who has never seen this source tree, let alone a `Data/`
+> folder sitting next to it. An operator's own Inbox/Work/Fleet/Archive
+> content lives wherever they configured it — resolved at runtime through
+> `--root <path>` / `~/.fleet/app.json` (see `internal/appconfig` and
+> `README.md`), never a hardcoded relative path. The only place a literal
+> `../Data` shows up is `Makefile`'s dev-only default, for contributors who
+> keep a separate local clone of the Data repo next to this one to test
+> against — that convenience must never leak into application code.
 
 ---
 
@@ -114,10 +114,10 @@ during normal work.
 
 ---
 
-# Task Manager Engineering Conventions (`_backoffice/`)
+# Task Manager Engineering Conventions
 
-These conventions apply to work inside `_backoffice/server` (Go) and
-`_backoffice/view` (Svelte/SvelteKit).
+These conventions apply to work inside `server` (Go) and
+`view` (Svelte/SvelteKit).
 
 ## Project Configuration
 
@@ -462,7 +462,7 @@ The UI is small — don't bring in React-world enterprise patterns:
 - Backend calls go through a thin `api.ts` wrapper over `fetch`, no generated client SDKs.
 - Don't create a component until it's used at least twice OR the parent file exceeds ~150 lines.
 
-## Before handing off a result (`_backoffice` work)
+## Before handing off a result
 
 - [ ] Does a similar function/pattern already exist? (check neighboring files, use go_references/go_package_api before writing new code)
 - [ ] Any interface with a single implementation? → remove

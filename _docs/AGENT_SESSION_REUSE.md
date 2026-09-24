@@ -41,7 +41,7 @@ Core now keeps at most one persistent session per `(project, agent)` pair:
   answers or explicitly releases the session.
 
 No new persistence file was needed: this reuses the existing per-claim
-session records under `_registry/sessions/*.json` (`persistRuntimeSession`),
+session records under `~/.fleet/_registry/sessions/*.json` (`persistRuntimeSession`),
 just with a new project+agent-scoped lookup instead of only a same-task one.
 
 ## Verified Claude resume protocol (2026-09-12, live)

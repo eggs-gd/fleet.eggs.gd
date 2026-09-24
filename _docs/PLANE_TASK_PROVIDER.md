@@ -64,7 +64,7 @@ export PLANE_API_TOKEN=plane_api_...
 make serve
 ```
 
-Loader: `_backoffice/server/internal/providerconfig`.
+Loader: `server/internal/providerconfig`.
 
 ## Metadata placement
 
@@ -107,7 +107,7 @@ webhook (optional) → plane.ObserveWebhook → TaskEvent → same channel
 
 ## Package layout
 
-`_backoffice/server/internal/taskprovider/plane`:
+`server/internal/taskprovider/plane`:
 
 | File | Owns |
 |---|---|

@@ -44,22 +44,19 @@ Expected flow:
 make serve
 ```
 
-The Go runtime serves `_backoffice/view/dist`.
+The Go runtime serves `view/dist`.
 
 The UI reads live state from the Go server at `/api/state`. The runtime does
 not use generated static JSON.
 
-## Bootstrap Scripts
+## Project Scan
 
-Python scripts in `_backoffice/scripts/` are bootstrap tools.
+Repository discovery and workspace cards are part of the Go server.
 
-They were useful for fast discovery while the model was changing. Runtime
-features should move into the Go CLI/runtime when they stabilize.
-
-Current bootstrap scripts:
-
-- `sniff_projects.py`;
-- `generate_workspaces.py`.
+- `make scan` / `core scan` walks the projects tree and rewrites `_registry`.
+- `make workspaces` / `core workspaces` rewrites `Work/<id>/PROJECT.md` from that registry, then rebuilds `Work/INDEX.md`.
+- `core serve` watches every saved scan root and rewrites `_registry` when repositories appear or disappear, then reloads the board. It does not rewrite workspace cards.
+- Settings → Rescan runs that same pass immediately.
 
 ## Entry Point Direction
 

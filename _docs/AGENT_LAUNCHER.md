@@ -20,8 +20,8 @@ status transitions are canonical in `_docs/DOMAIN_MODEL.md`.
 Agent-specific launch logic lives outside the chain/runtime package:
 
 ```text
-_backoffice/server/internal/execution
-_backoffice/server/internal/execution/providers
+server/internal/execution
+server/internal/execution/providers
 ```
 
 These packages own:
@@ -54,14 +54,14 @@ make serve
 Backend-only debugging after the frontend is already built:
 
 ```bash
-cd _backoffice/server
+cd server
 go run ./cmd/core serve --root ../.. --addr 127.0.0.1:8788 --session-timeout 10m
 ```
 
 Dry-run diagnostics:
 
 ```bash
-cd _backoffice/server
+cd server
 go run ./cmd/core serve --root ../.. --dry-run
 ```
 
@@ -101,7 +101,7 @@ Perceptrail, one instance per contour.
 Core vendors a local copy here:
 
 ```text
-_backoffice/server/lib/chain
+server/lib/chain
 ```
 
 Source reference:
@@ -206,8 +206,8 @@ Required prompt content:
 
 - task ref, title, project, workspace, repository, and task card path;
 - the task card body;
-- `../../Data/_docs/CODEX_MANAGER.md`;
-- `../../Data/_docs/OPERATING_MODEL.md`;
+- `_docs/MANAGER.md` in the Data root;
+- `_docs/OPERATING_MODEL.md` in the Data root;
 - `Fleet/ROUTING.md`;
 - `Fleet/LAUNCH_POLICY.md`;
 - completed bot work normally moves to `needs_review`, not `done`;
@@ -219,7 +219,7 @@ Required prompt content:
   for task state (CORE-97) — see "Worker Outcome Protocol" below.
 
 The prompt builder is `internal/execution.BuildPrompt`
-(`_backoffice/server/internal/execution/prompt.go`). Its example result payload
+(`server/internal/execution/prompt.go`). Its example result payload
 deliberately uses a placeholder outcome value
 (`"<completed|failed|needs_input|needs_rework|blocked>"`) rather than a real
 one like `"completed"` — see "Worker Outcome Protocol" below for why a
@@ -325,7 +325,7 @@ do so. Launcher claims and Finalizer transitions both go through
 `TaskService` only.
 
 Once parsed, the same `WorkerResult` is persisted on the runtime session
-record in `_registry/sessions/<claim_id>.json` as `result` (CORE-99). That
+record in `~/.fleet/_registry/sessions/<claim_id>.json` as `result` (CORE-99). That
 field is evidence/history for dashboard/session inspection — it is not a
 second source of task truth. Task status still comes only from Core's
 Finalizer via `TaskService.ReportExecution`. Heartbeat upserts must not wipe an already-captured
@@ -337,7 +337,7 @@ transcript when a still-`doing` session ended offline.
 ## Runtime Logs
 
 Launcher output uses the adopted Perceptrail logger package at
-`_backoffice/server/lib/logger`. The package is copied from
+`server/lib/logger`. The package is copied from
 `/Users/operator/Projects/photo/Perceptrail/perceplib/logger`; the only
 required adjustment is the Core module import path inside the Gontroller
 decorator.
@@ -359,7 +359,7 @@ operator-facing lifecycle blocks.
 
 Routine non-pickup statuses (`backlog`, `doing`, `needs_review`, `done`,
 `archived`) are normal skips. They are appended to
-`_registry/events.ndjson` as `launch_skipped` for auditability, but they are not
+`~/.fleet/_registry/events.ndjson` as `launch_skipped` for auditability, but they are not
 printed to stdout on every daemon scan.
 
 Real-mode launch events:
@@ -423,7 +423,7 @@ Current command builders:
   `visibility_mode`, `last_event`, `last_message`, process id, lifecycle
   `status`, separate `execution_status`, optional result payload, compact
   `tool_usage` evidence (required/used/missing MCP tools; CORE-120), and
-  `_registry/sessions/<claim_id>.log`, all visible through `/api/state` and the
+  `~/.fleet/_registry/sessions/<claim_id>.log`, all visible through `/api/state` and the
   dashboard runtime strip. Dashboard controls call `/api/sessions/control` for
   `continue`, `interrupt`, and `cancel`; `continue`/`resume` submit another
   `turn/start` input on the stored thread, while `interrupt`/`cancel` call
@@ -441,7 +441,7 @@ Current command builders:
   `cursor-agent create-chat`, launches the prompt with
   `cursor-agent --resume <chat-id> --trust --workspace <path> <task-prompt>`,
   persists `cursor_chat_id` plus an operator resume command, captures
-  stdout/stderr in `_registry/sessions/<claim_id>.log`, and detects terminal
+  stdout/stderr in `~/.fleet/_registry/sessions/<claim_id>.log`, and detects terminal
   state from process exit. `--print` remains historical/diagnostic only and is
   never used for normal daemon-launched Cursor tasks.
 
@@ -451,7 +451,7 @@ fail the `agent_live_ready` launch gate instead of silently hanging.
 Agent definition source of truth:
 
 - `Fleet/*.md` documents human-facing role, routing, and capability policy.
-- `_backoffice/server/internal/execution/providers` owns executable launch adapters and
+- `server/internal/execution/providers` owns executable launch adapters and
   prompt construction.
 
 Do not duplicate command templates into Fleet markdown unless Core also grows a
@@ -506,7 +506,7 @@ sidebar history — open Codex Remote on a paired client and match by Core title
 or thread id.
 
 `/api/state` also exposes `session_groups`: every known session for a task
-(live plus persisted history from `_registry/sessions/*.json`), each annotated
+(live plus persisted history from `~/.fleet/_registry/sessions/*.json`), each annotated
 with `role` (`current` / `historical` / `superseded`) and `resumable`. This is
 how the dashboard groups relaunches of the same task ref instead of showing a
 flat, unlabeled list of duplicates — see "Session Reuse On Relaunch" in
@@ -594,7 +594,7 @@ Smoke procedure:
 3. Confirm `/api/state` and the dashboard runtime strip show the Core claim id,
    provider `codex`, process id, host name/id, human `codex_thread_title`,
    `codex_thread_id`, `codex_turn_id`, last event, and session log path.
-4. Confirm `_registry/sessions/<claim_id>.log` contains app-server JSON-RPC
+4. Confirm `~/.fleet/_registry/sessions/<claim_id>.log` contains app-server JSON-RPC
    request/notification lines including `thread/name/set` and a terminal
    `turn/completed`.
 5. Confirm Codex Remote shows the thread under the connected host/project with
@@ -606,7 +606,7 @@ Smoke procedure:
 Manual runtime smoke command:
 
 ```text
-cd _backoffice/server
+cd server
 CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCodexAppServerRuntimeSession -v -timeout 3m
 ```
 
@@ -632,7 +632,7 @@ complete in this worker sandbox because the app-server could not reach
 
 General runtime limits:
 
-- Agent stdout/stderr are written to `_registry/sessions/<claim_id>.log`.
+- Agent stdout/stderr are written to `~/.fleet/_registry/sessions/<claim_id>.log`.
 - Status claim uses `TaskStore.Claim` before process start.
 - Runtime sessions are in-memory and intentionally separate from append-only
   event history.
@@ -640,8 +640,9 @@ General runtime limits:
   exposed through `/api/state` and requeued when the blocking session exits.
 - Startup detects orphaned `doing` tasks and exposes them through `/api/state`;
   it does not auto-recover them.
-- Runtime events are appended to git-ignored `_registry/events.ndjson`.
-- Runtime session logs are written under git-ignored `_registry/sessions/`.
+- Runtime events are appended to `~/.fleet/_registry/events.ndjson` — App's
+  own runtime home, outside any Data root and outside any git repo.
+- Runtime session logs are written under `~/.fleet/_registry/sessions/`.
 - Event volume can grow once real retry loops become busy; add rotation or
   pruning before enabling high-frequency automatic retries.
 - No agent-launch status changes in dry-run.
@@ -694,7 +695,7 @@ runtime session behavior applies:
 - start Cursor with `--resume <chat-id>` and without `--print`;
 - persist `cursor_chat_id`, `operator_command`, visibility mode
   `cli_visible`, provider capability flags, and process id;
-- write stdout/stderr to `_registry/sessions/<claim_id>.log`;
+- write stdout/stderr to `~/.fleet/_registry/sessions/<claim_id>.log`;
 - move failed manual-smoke launches to `blocked` with the session log path;
 - leave successful task completion/writeback to the Cursor worker prompt.
 
@@ -725,7 +726,7 @@ Required local setup:
 Manual visible smoke:
 
 ```text
-cd _backoffice/server
+cd server
 CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCursorAgentProcessSession -v -timeout 3m
 ```
 
@@ -753,7 +754,7 @@ but could not complete authenticated model work:
   exited with `EPERM` while creating `~/.cursor/projects/...`.
 - After Alex reinstalled Cursor Agent, the Core manual smoke command started a
   real process through `Runtime.startLaunchCandidate`, captured stdout/stderr in
-  `_registry/sessions/<claim_id>.log`, observed exit code 1, and moved the
+  `~/.fleet/_registry/sessions/<claim_id>.log`, observed exit code 1, and moved the
   temporary smoke task to `blocked`. The captured session log showed the same
   environment restriction:
   `EPERM: operation not permitted, mkdir '/Users/operator/.cursor/projects/...'`.
@@ -849,6 +850,6 @@ work.
 - confirm startup logs show `Launch mode: live`;
 - open the dashboard and watch `CORE-52` claim into `doing`;
 - confirm `/api/state` exposes the runtime session and `log_path`;
-- inspect `_registry/sessions/<claim_id>.log`;
+- inspect `~/.fleet/_registry/sessions/<claim_id>.log`;
 - confirm the task either reaches `needs_review` or records a clear timeout or
   start failure.

@@ -2,13 +2,9 @@ SHELL := /bin/sh
 
 APP_ROOT := $(CURDIR)
 DATA_ROOT ?= $(abspath $(APP_ROOT)/../Data)
-PROJECTS_ROOT ?= $(HOME)/Projects
-REGISTRY_DIR := $(DATA_ROOT)/_registry
-WORK_DIR := $(DATA_ROOT)/Work
-VIEW_DIR := _backoffice/view
-SERVER_DIR := _backoffice/server
+VIEW_DIR := view
+SERVER_DIR := server
 GO_CACHE ?= /tmp/core-eggs-gocache
-PY_CACHE ?= /tmp/core-eggs-pycache
 ADDR ?= 127.0.0.1:8787
 SESSION_TIMEOUT ?= 10m
 
@@ -17,26 +13,27 @@ SESSION_TIMEOUT ?= 10m
 help:
 	@printf '%s\n' 'Core service entry points:'
 	@printf '%s\n' ''
-	@printf '%s\n' '  make scan        Scan $(PROJECTS_ROOT) and refresh Data/_registry'
+	@printf '%s\n' '  make scan        Scan PROJECTS_ROOTS and refresh Data/_registry'
 	@printf '%s\n' '  make workspaces  Generate Data/Work/* project cards from _registry'
 	@printf '%s\n' '  make rebuild-index Rebuild Data/Work/INDEX.md from Work source files'
 	@printf '%s\n' '  make build       Build the Svelte backoffice'
-	@printf '%s\n' '  make test        Compile scripts and run Go tests'
+	@printf '%s\n' '  make test        Run Go tests'
 	@printf '%s\n' '  make check       Run build and tests'
 	@printf '%s\n' '  make serve       Serve built backoffice at http://$(ADDR)/'
 	@printf '%s\n' '  make version     Print Core runtime version'
 	@printf '%s\n' ''
 	@printf '%s\n' 'Variables:'
 	@printf '%s\n' '  DATA_ROOT=/path      Override the Data tree (default: ../Data next to App)'
-	@printf '%s\n' '  PROJECTS_ROOT=/path  Override scan root'
+	@printf '%s\n' '  PROJECTS_ROOTS="a b" Directories to scan (required for make scan)'
 	@printf '%s\n' '  ADDR=host:port       Override serve address'
 	@printf '%s\n' '  SESSION_TIMEOUT=10m  Override live agent session timeout'
 
 scan:
-	python3 _backoffice/scripts/sniff_projects.py --root "$(PROJECTS_ROOT)" --registry-dir "$(REGISTRY_DIR)"
+	@test -n "$(PROJECTS_ROOTS)" || { printf '%s\n' 'PROJECTS_ROOTS is required'; exit 1; }
+	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core scan --root "$(DATA_ROOT)" $(foreach root,$(PROJECTS_ROOTS),--projects "$(root)")
 
 workspaces:
-	python3 _backoffice/scripts/generate_workspaces.py --registry-dir "$(REGISTRY_DIR)" --work-dir "$(WORK_DIR)"
+	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core workspaces --root "$(DATA_ROOT)"
 
 rebuild-index:
 	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core rebuild-index --root "$(DATA_ROOT)"
@@ -45,7 +42,6 @@ build:
 	cd "$(VIEW_DIR)" && npm run build
 
 test:
-	PYTHONPYCACHEPREFIX="$(PY_CACHE)" python3 -m py_compile _backoffice/scripts/sniff_projects.py _backoffice/scripts/generate_workspaces.py
 	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go test ./...
 
 check: build test

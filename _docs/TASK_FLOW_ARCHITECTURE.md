@@ -19,7 +19,7 @@ Related durable contracts:
 - `_docs/TASK_FLOW_CONTOURS.md` — independent contours; no single
   FsWalker→agent chain (`CORE-108`…).
 - `_docs/DOMAIN_MODEL.md` — task schema and status state machine.
-- `../../Data/_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
+- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
 - `_docs/CORE_MANAGER_API.md` — Manager capture surface.
 - `_docs/AGENT_LAUNCHER.md` — launch eligibility and worker prompt shape.
 - Go package `internal/taskflow` — compile-checked target contract types.
@@ -476,7 +476,7 @@ Do not serialize all reads behind the mutation queue.
 
 ## 4. Canonical contracts
 
-Go types are finalized in `_backoffice/server/internal/taskflow`. Summary:
+Go types are finalized in `server/internal/taskflow`. Summary:
 
 ### 4.1 Task
 
@@ -605,7 +605,7 @@ Each of `CORE-101`–`CORE-107` must treat this file as architectural truth.
 Physical artifacts for this architecture pass:
 
 - `_docs/TASK_FLOW_ARCHITECTURE.md` (this file);
-- `_backoffice/server/internal/taskflow` contract types;
+- `server/internal/taskflow` contract types;
 - follow-up task cards pointing here.
 
 ---

@@ -31,7 +31,7 @@ Each `RuntimeSession` may include `tool_usage`:
 Constraints:
 
 - Evidence is compact (capped call list + short summaries).
-- Full transcripts stay in `_registry/sessions/<claim_id>.log` only.
+- Full transcripts stay in `~/.fleet/_registry/sessions/<claim_id>.log` only.
 - Worker JSON `outcome` / `tests` prose is **not** accepted as sole evidence.
 
 ## How required tools are selected
@@ -41,8 +41,8 @@ Profiles are chosen deterministically from task type + path/content signals
 
 | Profile | When selected | Required tools |
 |---|---|---|
-| `go` | `.go`, `_backoffice/server`, `go test` / `go.mod` signals; Core-tree coding tasks default here when unclear | `go_diagnostics` |
-| `svelte` | `.svelte`, `_backoffice/view`, SvelteKit signals | `svelte-autofixer` |
+| `go` | `.go`, `server`, `go test` / `go.mod` signals; Core-tree coding tasks default here when unclear | `go_diagnostics` |
+| `svelte` | `.svelte`, `view`, SvelteKit signals | `svelte-autofixer` |
 | `architecture` | `research` / review-ish tasks, or refactor/architecture/boundary wording | `find_patterns` |
 | `mcp_docs` | Svelte work or explicit MCP/docs-tool wording | `list-sections` |
 
@@ -66,7 +66,7 @@ Observation sources (provider streams / logs):
    with MCP/tool item types.
 2. **Claude background** — transcript text scanned for `tool_use` /
    `CallMcpTool`-style invocations.
-3. **Cursor CLI stdout log** — `_registry/sessions/<claim_id>.log` scanned for
+3. **Cursor CLI stdout log** — `~/.fleet/_registry/sessions/<claim_id>.log` scanned for
    the same structured patterns. Important: `cursor-agent` usually prints only
    the final assistant text + worker JSON to stdout, **not** per-tool events.
 4. **Cursor agent transcript (CORE-140)** — when `cursor_chat_id` is known, Core
@@ -104,7 +104,7 @@ Two separate issues stacked:
 4. **Over-broad Go default (narrowed)** — Coding tasks outside the Core tree
    previously defaulted to requiring `go_diagnostics` with no Go signals
    (career-wizard Python bugs showed the same warning). Default Go now applies
-   only when the task/repo context looks like Core / `_backoffice`.
+   only when the task/repo context looks like Core.
 
 ## Dashboard / review surfacing
 
@@ -121,9 +121,9 @@ Two separate issues stacked:
 
 | Area | Path |
 |---|---|
-| Model + extract + requirements | `_backoffice/server/internal/executionapi/tool_*.go` |
-| Cursor transcript discovery | `_backoffice/server/internal/executionapi/cursor_transcript.go` |
-| Session wiring | `_backoffice/server/internal/execution/tool_usage.go` |
-| Provider observation | `_backoffice/server/internal/execution/providers/runtime.go` |
-| Finalizer soft warning | `_backoffice/server/internal/execution/execution_result.go`, `host_finalize.go` |
-| Dashboard | `_backoffice/view/src/RuntimeSessions.svelte`, `ExecutionHistory.svelte`, `TaskModal.svelte` |
+| Model + extract + requirements | `server/internal/executionapi/tool_*.go` |
+| Cursor transcript discovery | `server/internal/executionapi/cursor_transcript.go` |
+| Session wiring | `server/internal/execution/tool_usage.go` |
+| Provider observation | `server/internal/execution/providers/runtime.go` |
+| Finalizer soft warning | `server/internal/execution/execution_result.go`, `host_finalize.go` |
+| Dashboard | `view/src/RuntimeSessions.svelte`, `ExecutionHistory.svelte`, `TaskModal.svelte` |

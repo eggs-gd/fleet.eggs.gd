@@ -1,0 +1,145 @@
+<script>
+  import SettingsField from './SettingsField.svelte';
+
+  export let projects = {};
+  export let scanRoots = [];
+  export let scanDirty = false;
+  export let onScanRoots = () => {};
+  export let onRescan = () => {};
+
+  const reachable = (root) => (root.reachable ? 'reachable' : 'missing');
+  $: scan = projects.scan || {};
+  $: scanning = scan.state === 'scanning';
+
+  function editRoot(index, value) {
+    const next = scanRoots.slice();
+    next[index] = value;
+    onScanRoots(next);
+  }
+
+  function removeRoot(index) {
+    onScanRoots(scanRoots.filter((_, i) => i !== index));
+  }
+
+  function addRoot() {
+    onScanRoots([...scanRoots, '']);
+  }
+</script>
+
+<section class="settings-block" aria-label="Project scan roots">
+  <h3>Project scan roots</h3>
+  <p class="settings-lede">
+    Each path is a directory of git checkouts. Save, then the running server watches all of them and refreshes the registry when repositories appear or disappear.
+    Rescan runs a pass now. Recheck is for agents, not this tree.
+    Per-project repositories and PROJECT.md are on the selected project's Settings tab.
+  </p>
+  {#each scanRoots as root, index (index)}
+    <div class="settings-row">
+      <span class="settings-key">Root {index + 1}</span>
+      <span class="settings-val">
+        <input
+          class="settings-input is-mono"
+          type="text"
+          value={root}
+          on:input={(event) => editRoot(index, event.currentTarget.value)}
+        />
+        <button type="button" class="settings-btn" on:click={() => removeRoot(index)}>Remove</button>
+      </span>
+    </div>
+  {/each}
+  <div class="settings-row">
+    <span class="settings-key">Add</span>
+    <span class="settings-val">
+      <button type="button" class="settings-btn" on:click={addRoot}>Add root</button>
+    </span>
+  </div>
+  {#if projects.scan_roots_source}
+    <p class="settings-hint">{projects.scan_roots_source}</p>
+  {/if}
+  <div class="settings-row">
+    <span class="settings-key">Rescan</span>
+    <span class="settings-val">
+      <button type="button" class="settings-btn" disabled={scanning || scanDirty} on:click={onRescan}>
+        {scanning ? 'Scanning…' : 'Rescan'}
+      </button>
+      <span class="settings-item-meta">{scan.state || 'idle'}{scan.finished_at ? ` · ${scan.finished_at}` : ''}</span>
+    </span>
+  </div>
+  {#if scanDirty}
+    <p class="settings-hint">Save the scan roots before Rescan.</p>
+  {/if}
+  {#if scan.error}
+    <p class="settings-warn">{scan.error}</p>
+  {/if}
+</section>
+
+<section class="settings-block" aria-label="Project roots">
+  <h3>Observed roots</h3>
+  {#each projects.roots || [] as root (root.kind + root.path)}
+    <article class="settings-item">
+      <div class="settings-item-head">
+        <span class={`status-dot-inline is-${root.reachable ? 'ok' : 'warn'}`}></span>
+        <strong>{root.kind}</strong>
+        <span class="settings-pill">{reachable(root)}</span>
+      </div>
+      <code class="settings-path">{root.path}</code>
+      <SettingsField label="Source" value={root.source} />
+      {#if root.repository_count != null}
+        <SettingsField label="Repositories" value={String(root.repository_count)} />
+      {/if}
+      {#if root.workspace_count}
+        <SettingsField label="Workspaces" value={String(root.workspace_count)} />
+      {/if}
+      {#if root.project_count}
+        <SettingsField label="Projects" value={String(root.project_count)} />
+      {/if}
+      {#if root.last_scan}
+        <SettingsField label="Last scan" value={root.last_scan} />
+      {/if}
+      {#if root.notes}
+        <p class="settings-hint">{root.notes}</p>
+      {/if}
+    </article>
+  {/each}
+</section>
+
+<section class="settings-block" aria-label="Core data">
+  <h3>Core data</h3>
+  {#each projects.data_paths || [] as path (path.name)}
+    <article class="settings-item">
+      <div class="settings-item-head">
+        <span class={`status-dot-inline is-${path.exists && path.writable ? 'ok' : path.exists ? 'warn' : 'fail'}`}></span>
+        <strong>{path.name}</strong>
+        <span class="settings-pill">{path.exists ? (path.writable ? 'writable' : 'not writable') : 'missing'}</span>
+      </div>
+      <code class="settings-path">{path.path}</code>
+      <p class="settings-hint">{path.role}</p>
+    </article>
+  {/each}
+</section>
+
+<section class="settings-block" aria-label="Task backend">
+  <h3>Task backend</h3>
+  <SettingsField label="Active" value={projects.task_backend?.active || '—'} />
+  <SettingsField label="Config file" value={projects.task_backend?.config_file || '—'} mono />
+  <SettingsField label="Exists" value={projects.task_backend?.config_file_exists ? 'yes' : 'no'} />
+  <SettingsField label="Implementations in code" value={(projects.task_backend?.implementations || []).join(', ')} />
+  {#if projects.task_backend?.plane}
+    <p class="settings-lede">Plane (declared in config, not a fake selector)</p>
+    <SettingsField label="Active" value={projects.task_backend.plane.active ? 'yes' : 'no'} />
+    <SettingsField label="Workspace" value={projects.task_backend.plane.workspace || '—'} />
+    <SettingsField label="Base URL" value={projects.task_backend.plane.base_url || '—'} mono />
+    <SettingsField label="Token env" value={projects.task_backend.plane.token_env || '—'} />
+    <SettingsField label="Token env set" value={projects.task_backend.plane.token_env_set ? 'yes' : 'no'} />
+    <SettingsField label="Core project" value={projects.task_backend.plane.core_project || '—'} />
+    {#if projects.task_backend.plane.notes}
+      <p class="settings-hint">{projects.task_backend.plane.notes}</p>
+    {/if}
+  {/if}
+</section>
+
+{#if projects.notes?.length}
+  <ul class="settings-notes">
+    {#each projects.notes as note}<li>{note}</li>{/each}
+  </ul>
+{/if}

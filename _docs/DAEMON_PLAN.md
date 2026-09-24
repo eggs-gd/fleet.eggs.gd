@@ -17,7 +17,7 @@ orchestrator.
 
 It can:
 
-- serve the built backoffice UI from `_backoffice/view/dist`;
+- serve the built backoffice UI from `view/dist`;
 - expose `/api/health`;
 - expose `/api/state` from the shared in-memory runtime state;
 - bootstrap Core state before opening the HTTP listener;
@@ -27,10 +27,10 @@ It can:
 - validate launch readiness for changed tasks;
 - build agent launch plans;
 - launch live agent processes from normal pickup statuses during `core serve`;
-- write per-session stdout/stderr logs to `_registry/sessions/`;
+- write per-session stdout/stderr logs to `~/.fleet/_registry/sessions/`;
 - stop live sessions after a configured timeout;
 - update task cards through the API;
-- write runtime events to `_registry/events.ndjson`.
+- write runtime events to `~/.fleet/_registry/events.ndjson`.
 
 It does not yet:
 
@@ -129,7 +129,7 @@ Status: partially implemented.
 Expected behavior:
 
 - `make serve` builds and runs the server;
-- server serves `_backoffice/view/dist`;
+- server serves `view/dist`;
 - server exposes health and state endpoints.
 - server performs a synchronous Core bootstrap before listening for HTTP,
   avoiding misleading partial first `/api/state` responses.
@@ -247,7 +247,7 @@ make serve
 Dry-run diagnostics are explicit:
 
 ```bash
-cd _backoffice/server
+cd server
 go run ./cmd/core serve --root ../.. --dry-run
 ```
 
@@ -258,8 +258,8 @@ Current behavior:
 - rebuild `Work/INDEX.md` for explicit recovery commands, API task mutations,
   and created/modified canonical task or workspace files;
 - return runtime state from `/api/state`;
-- append structured runtime events to `_registry/events.ndjson`;
-- append per-session process logs to `_registry/sessions/<claim_id>.log` in
+- append structured runtime events to `~/.fleet/_registry/events.ndjson`;
+- append per-session process logs to `~/.fleet/_registry/sessions/<claim_id>.log` in
   live mode;
 - log daemon/runtime messages through the adopted Perceptrail logger package;
 - log launch planning as candidate, skipped, not ready, or waiting.
@@ -381,7 +381,7 @@ Write append-only events for daemon actions.
 Possible path:
 
 ```text
-_registry/events.ndjson
+~/.fleet/_registry/events.ndjson
 ```
 
 Decision: `events.ndjson` is local runtime telemetry and is git-ignored. Core

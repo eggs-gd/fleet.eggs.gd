@@ -249,10 +249,10 @@ flow. Phone/shortcut clients can call the same HTTP endpoints.
 ## Migration Notes
 
 1. Prefer Manager API for new voice/text board work.
-2. Keep `../../Data/_docs/CODEX_MANAGER.md` as the durable **rules** for Markdown shape,
+2. Keep `_docs/MANAGER.md` in the Data root as the durable **rules** for Markdown shape,
    refs, and Definition Of Done — the Manager API implements those rules in
    code.
-3. Update `../../Data/_docs/OPERATING_MODEL.md` roles: Core Manager API replaces Codex
+3. Update `_docs/OPERATING_MODEL.md` in the Data root: Core Manager API replaces Codex
    Manager as the default capture path.
 4. Fleet workers remain execution-only per `Fleet/ROUTING.md` and
    `Fleet/LAUNCH_POLICY.md`.
@@ -262,7 +262,7 @@ flow. Phone/shortcut clients can call the same HTTP endpoints.
 | Area | Location |
 |---|---|
 | Design (this doc) | `_docs/CORE_MANAGER_API.md` |
-| Package | `_backoffice/server/internal/manager/` |
-| HTTP routes | `_backoffice/server/internal/server/server.go` |
-| Dashboard panel | `_backoffice/view/src/ManagerPanel.svelte` |
+| Package | `server/internal/manager/` |
+| HTTP routes | `server/internal/server/server.go` |
+| Dashboard panel | `view/src/ManagerPanel.svelte` |
 | Canonical writes | `internal/corechain` `CreateTask` / `PatchTask` |

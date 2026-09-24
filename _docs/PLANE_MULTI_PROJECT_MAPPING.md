@@ -7,7 +7,7 @@ Status: design note only. No code changed by this document.
 `_docs/PLANE_TASK_PROVIDER.md` documents the current, shipped behavior: one
 Plane adapter instance, configured with exactly one Plane project UUID
 (`taskProvider.project`) mapped to exactly one Core project
-(`taskProvider.coreProject`) — for the *entire* `_backoffice/server` daemon.
+(`taskProvider.coreProject`) — for the *entire* `server` daemon.
 
 That daemon is not scoped to one repository. It is Core itself: one process
 serving every `Work/<project-id>/` workspace across every tracked
@@ -21,7 +21,7 @@ Plane project, under one Plane workspace, through one running daemon.
 The current schema and code cannot express that:
 
 - `providerconfig.PlaneSettings` has singular `ProjectID` and `CoreProject`
-  fields (`_backoffice/server/internal/providerconfig/providerconfig.go`).
+  fields (`server/internal/providerconfig/providerconfig.go`).
 - `plane.Client` bakes `projectID` into the struct at construction and uses
   it in every request URL (`client.go:62,76,84` —
   `.../projects/{projectID}/...`).
@@ -68,9 +68,8 @@ statusMap:
   # ... shared across all projects unless a project needs its own override
 ```
 
-Sync step (where the auto-add lives): extend `make scan` /
-`_backoffice/scripts/sniff_projects.py` (or `generate_workspaces.py` —
-whichever already runs at the point a new project first gets a
+Sync step (where the auto-add lives): extend `core scan`
+(or `core workspaces` — the command that first creates
 `Work/<project-id>/`) to also ensure `core.config.yaml`'s
 `taskProvider.projects` has a key for every known Core project. Rules:
 
@@ -195,7 +194,7 @@ Option 1 is closer to "one adapter, N projects" and avoids N redundant
 Plane's documented limit is 60 requests/minute **per API key** — shared
 across every project polled through that key, not per project. The
 existing 45s poll floor
-(`_backoffice/server/internal/taskprovider/open/open.go:18`,
+(`server/internal/taskprovider/open/open.go:18`,
 `planePollMinInterval`) was sized for one project. At ~50 projects, naive
 "poll every project every 45s" blows the budget by roughly 50x.
 

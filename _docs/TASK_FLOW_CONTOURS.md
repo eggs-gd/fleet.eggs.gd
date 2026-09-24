@@ -14,7 +14,7 @@ Related durable contracts:
   providers, status rules) from `CORE-100`…`CORE-107`. Contours **supersede**
   that document’s single vertical pipeline diagram; shared contracts remain.
 - `_docs/DOMAIN_MODEL.md` — task schema and status state machine.
-- `../../Data/_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
+- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
 - `_docs/CORE_MANAGER_API.md` — Manager capture surface.
 - `_docs/AGENT_LAUNCHER.md` — launch eligibility and worker prompt shape.
 - Go package `internal/taskflow` — compile-checked contract types (migrate
@@ -405,7 +405,7 @@ It does **not**:
 
 ### 7.1 Final wiring (CORE-114)
 
-Implemented in `_backoffice/server`:
+Implemented in `server`:
 
 | REST | Boundary | Implementation |
 |---|---|---|

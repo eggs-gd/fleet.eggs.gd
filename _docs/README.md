@@ -1,9 +1,9 @@
 # Docs (App)
 
 Architecture notes, decisions, and plans for the Core tool itself
-(`_backoffice/server` + `_backoffice/view`). Operator-facing docs about
-Inbox/Work/Fleet/Archive conventions live in `../../Data/_docs/` instead —
-see `Data/AGENTS.md`.
+(`server` + `view`). Operator-facing docs about
+Inbox/Work/Fleet/Archive conventions live in the configured Data root's
+`_docs/`, not in this repository.
 
 Use this directory for explanations that are too detailed for the root
 README but still important for future humans and agents.
@@ -12,6 +12,10 @@ README but still important for future humans and agents.
 
 - `CORE_MANAGER_API.md` — Core Manager API for voice/text ingestion; replaces
   Codex-as-manager for non-coding capture. Workers stay execution-only.
+- `MANAGER_MCP.md` — the Manager API mounted as MCP tools at `/mcp` on
+  `core serve` itself (`manager_schema`/`manager_vocabulary`/
+  `manager_command`) so an agent acting as Manager doesn't hand-parse task
+  Markdown/registry files.
 - `DOMAIN_MODEL.md` — canonical workspace/project/repository terms, task
   schema, and task state transitions.
 - `TASK_FLOW_ARCHITECTURE.md` — TaskService / TaskProvider contracts for the
