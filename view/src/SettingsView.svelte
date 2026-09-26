@@ -10,7 +10,6 @@
   import SettingsGeneral from './SettingsGeneral.svelte';
   import SettingsIntegrations from './SettingsIntegrations.svelte';
   import SettingsManager from './SettingsManager.svelte';
-  import SettingsProjects from './SettingsProjects.svelte';
   import SettingsWorkflow from './SettingsWorkflow.svelte';
 
   export let section = 'general';
@@ -143,10 +142,6 @@
     };
   }
 
-  function updateManager(patch) {
-    draft = { ...draft, manager: { ...draft.manager, ...patch } };
-  }
-
   onMount(() => {
     loadSettings();
     const timer = window.setInterval(loadSettings, 5000);
@@ -186,19 +181,21 @@
     <p class="settings-hint">Loading Core configuration…</p>
   {:else if snapshot && draft}
     {#if section === 'general'}
-      <SettingsGeneral general={snapshot.general} {themePref} {onThemeChange} {refreshMs} {onRefreshChange} />
-    {:else if section === 'projects'}
-      <SettingsProjects
+      <SettingsGeneral
+        general={snapshot.general}
         projects={snapshot.projects}
         scanRoots={draft.scanRoots}
         scanDirty={JSON.stringify(draft.scanRoots) !== JSON.stringify(baseline.scanRoots)}
         onScanRoots={(value) => (draft = { ...draft, scanRoots: value })}
         onRescan={rescan}
+        {themePref}
+        {onThemeChange}
+        {refreshMs}
+        {onRefreshChange}
       />
     {:else if section === 'agents'}
+      <SettingsManager manager={snapshot.manager} onReload={loadSettings} />
       <SettingsAgents agents={snapshot.agents} {draft} onUpdate={updateAgent} onRecheck={recheck} {dirty} />
-    {:else if section === 'manager'}
-      <SettingsManager manager={snapshot.manager} draft={draft.manager} onUpdate={updateManager} />
     {:else if section === 'workflow'}
       <SettingsWorkflow workflow={snapshot.workflow} />
     {:else if section === 'integrations'}

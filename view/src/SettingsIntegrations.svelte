@@ -4,8 +4,24 @@
   export let integrations = {};
 </script>
 
+<section class="settings-block" aria-label="Fleet MCP">
+  <h3>Fleet MCP</h3>
+  {#if integrations.fleet_mcp?.provider}
+    <SettingsField label="Provider" value={integrations.fleet_mcp.provider} />
+    <SettingsField label="File" value={integrations.fleet_mcp.path || '—'} mono />
+    <SettingsField label="URL" value={integrations.fleet_mcp.url || 'not written'} mono />
+    <SettingsField label="Matches this process" value={integrations.fleet_mcp.matches ? 'yes' : 'no'} />
+    {#if integrations.fleet_mcp.trusted != null}
+      <SettingsField label="Codex trust" value={integrations.fleet_mcp.trusted ? 'trusted' : 'not trusted'} />
+      <p class="settings-hint">Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP server.</p>
+    {/if}
+  {:else}
+    <p class="settings-hint">No Manager session is recorded, so Fleet MCP is not checked against a provider file.</p>
+  {/if}
+</section>
+
 <section class="settings-block" aria-label="MCP servers">
-  <h3>MCP servers</h3>
+  <h3>Data root .mcp.json</h3>
   <SettingsField label="Source file" value={integrations.source_file || '—'} mono />
   <p class="settings-hint">{integrations.source_role || ''}</p>
   {#each integrations.mcp || [] as server (server.name)}

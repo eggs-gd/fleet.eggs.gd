@@ -36,12 +36,11 @@ func (s *Service) ReconcilePersistedSessions(tasks []Task) error {
 
 		switch {
 		case decision.AttachAsSession:
-			session.Status = firstNonEmpty(decision.Status, session.Status, "resumable")
-			session.ExecutionStatus = firstNonEmpty(decision.ExecutionStatus, "resumable")
-			session.LastEvent = firstNonEmpty(decision.LastEvent, session.LastEvent, "recovered_after_restart")
-			session.ErrorMessage = ""
-			session.ProviderError = nil
+			session, question, waiting := applyAttachedRecovery(session, decision)
 			s.upsertSession(session)
+			if waiting {
+				s.notifyOperatorAttention(task, question)
+			}
 			s.emitTaskEvent("runtime_session_recovered", task, "Runtime session recovered from persisted session registry", map[string]any{
 				"claim_id":         session.ClaimID,
 				"backend":          session.Backend,
@@ -138,10 +137,10 @@ func (s *Service) applyFailedSessionRecovery(task Task, session RuntimeSession, 
 	s.recordOrphan(task, session, session.ExecutionStatus, decision.Reason)
 }
 
-// recordUnresolvedPersistedSession classifies a leftover registry session after
-// the task already left doing. A still-running process is ignored (the task
-// already moved on). A dead/unresumable leftover becomes an orphan for the
-// operator list. The task itself is not mutated.
+// recordUnresolvedPersistedSession closes a leftover registry session after the
+// task already left doing. A still-running process is left alone. A dead
+// process, even one with a resume id, is marked exited so the next restart
+// does not put it back on the board. The task itself is not mutated.
 func (s *Service) recordUnresolvedPersistedSession(task Task, session RuntimeSession, decision sessionRecoveryDecision) {
 	if decision.WorkerResult != nil {
 		session.Result = decision.WorkerResult
@@ -157,22 +156,15 @@ func (s *Service) recordUnresolvedPersistedSession(task Task, session RuntimeSes
 	if decision.AttachAsSession {
 		return
 	}
-	session.Status = firstNonEmpty(decision.Status, "orphaned")
-	session.ExecutionStatus = firstNonEmpty(decision.ExecutionStatus, "orphaned")
-	session.ErrorMessage = decision.Reason
-	session.LastEvent = firstNonEmpty(decision.LastEvent, "provider_reconciliation_failed")
-	session.ProviderError = decision.ProviderError
+	session.Status = "exited"
+	session.ExecutionStatus = "exited"
+	session.ErrorMessage = ""
+	session.ProviderError = nil
+	session.LastEvent = "closed_after_task_left_doing"
+	if session.ExitedAt == "" {
+		session.ExitedAt = time.Now().Format(time.RFC3339)
+	}
 	_ = persistRuntimeSession(s.cfg.RuntimeRoot, session)
-	s.recordOrphan(task, session, session.ExecutionStatus, firstNonEmpty(decision.Reason, "runtime session is not active"))
-	s.emitTaskEvent("runtime_orphan_detected", task, firstNonEmpty(decision.Reason, "runtime session is not active"), map[string]any{
-		"claim_id":         session.ClaimID,
-		"backend":          session.Backend,
-		"execution_status": session.ExecutionStatus,
-		"process_id":       session.ProcessID,
-		"log_path":         session.LogPath,
-		"recovery_state":   session.ExecutionStatus,
-		"task_status":      task.Status,
-	})
 }
 
 // DetectStartupOrphans records doing tasks with no recoverable session.
@@ -200,10 +192,11 @@ func (s *Service) DetectStartupOrphans(tasks []Task) {
 			session.Capabilities = ProviderCapabilityFlags(firstNonEmpty(session.Agent, task.Assignee), session.Backend)
 			session.VisibilityMode = VisibilityModeForSession(session)
 			if decision.AttachAsSession {
-				session.Status = firstNonEmpty(decision.Status, "resumable")
-				session.ExecutionStatus = firstNonEmpty(decision.ExecutionStatus, "resumable")
-				session.LastEvent = firstNonEmpty(decision.LastEvent, "recovered_after_restart")
+				session, question, waiting := applyAttachedRecovery(session, decision)
 				s.upsertSession(session)
+				if waiting {
+					s.notifyOperatorAttention(task, question)
+				}
 				continue
 			}
 			s.applyFailedSessionRecovery(task, session, decision)
@@ -235,4 +228,77 @@ func (s *Service) DetectStartupOrphans(tasks []Task) {
 	if count > 0 && s.logger != nil {
 		s.logger.Warn("orphaned doing tasks detected", l.Int("tasks", count))
 	}
+}
+
+// AnnounceOpenPauses delivers a still-unanswered worker question that survived
+// in the task comments. A live waiting session was already announced when it
+// was recovered.
+func (s *Service) AnnounceOpenPauses(tasks []Task) {
+	if s == nil {
+		return
+	}
+	for _, task := range tasks {
+		if session, ok := s.activeSessionForTask(task); ok && sessionWasWaiting(session) {
+			continue
+		}
+		question, ok := openOperatorQuestion(task)
+		if !ok {
+			continue
+		}
+		s.notifyOperatorAttention(task, question)
+	}
+}
+
+func applyAttachedRecovery(session RuntimeSession, decision sessionRecoveryDecision) (RuntimeSession, string, bool) {
+	if sessionWasWaiting(session) {
+		question := strings.TrimSpace(session.BlockingReason)
+		session.Status = "waiting_input"
+		session.ExecutionStatus = "waiting_input"
+		session.LastEvent = "waiting_operator_input"
+		session.ErrorMessage = ""
+		session.ProviderError = nil
+		if question == "" {
+			question = "Waiting on operator input."
+			session.BlockingReason = question
+		}
+		return session, question, true
+	}
+	session.Status = firstNonEmpty(decision.Status, session.Status, "resumable")
+	session.ExecutionStatus = firstNonEmpty(decision.ExecutionStatus, "resumable")
+	session.LastEvent = firstNonEmpty(decision.LastEvent, session.LastEvent, "recovered_after_restart")
+	session.ErrorMessage = ""
+	session.ProviderError = nil
+	return session, "", false
+}
+
+func sessionWasWaiting(session RuntimeSession) bool {
+	switch firstNonEmpty(session.ExecutionStatus, session.Status) {
+	case "waiting_input", "operator_attention", "stalled":
+		return true
+	default:
+		return session.LastEvent == "waiting_operator_input"
+	}
+}
+
+func openOperatorQuestion(task Task) (string, bool) {
+	if task.Status != "doing" || len(task.Comments) == 0 {
+		return "", false
+	}
+	text := strings.TrimSpace(task.Comments[len(task.Comments)-1].Text)
+	if !strings.Contains(strings.ToLower(text), "waiting on operator input") {
+		return "", false
+	}
+	const marker = "Question:"
+	if i := strings.Index(text, marker); i >= 0 {
+		question := strings.TrimSpace(text[i+len(marker):])
+		for _, stop := range []string{"Artifacts:", "Session log:", "Tests/checks:"} {
+			if j := strings.Index(question, stop); j >= 0 {
+				question = strings.TrimSpace(question[:j])
+			}
+		}
+		if question != "" {
+			return question, true
+		}
+	}
+	return text, true
 }

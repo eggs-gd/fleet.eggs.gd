@@ -47,6 +47,9 @@ func EncodeOverlay(overlay Overlay) []byte {
 		if strings.TrimSpace(overlay.Manager.ThreadID) != "" {
 			fmt.Fprintf(&b, "  threadId: %s\n", yamlQuote(overlay.Manager.ThreadID))
 		}
+		if strings.TrimSpace(overlay.Manager.Workspace) != "" {
+			fmt.Fprintf(&b, "  workspace: %s\n", yamlQuote(overlay.Manager.Workspace))
+		}
 		if strings.TrimSpace(overlay.Manager.BoundAt) != "" {
 			fmt.Fprintf(&b, "  boundAt: %s\n", yamlQuote(overlay.Manager.BoundAt))
 		}
@@ -144,6 +147,8 @@ func ParseOverlay(data []byte) (Overlay, error) {
 				out.Manager.Agent = unquoteYAML(raw)
 			case "threadId":
 				out.Manager.ThreadID = unquoteYAML(raw)
+			case "workspace":
+				out.Manager.Workspace = unquoteYAML(raw)
 			case "boundAt":
 				out.Manager.BoundAt = unquoteYAML(raw)
 			default:
@@ -198,7 +203,7 @@ func agentEmpty(agent AgentOverlay) bool {
 }
 
 func managerEmpty(manager ManagerOverlay) bool {
-	return strings.TrimSpace(manager.Agent) == "" && strings.TrimSpace(manager.ThreadID) == "" && strings.TrimSpace(manager.BoundAt) == ""
+	return strings.TrimSpace(manager.Agent) == "" && strings.TrimSpace(manager.ThreadID) == "" && strings.TrimSpace(manager.Workspace) == "" && strings.TrimSpace(manager.BoundAt) == ""
 }
 
 func leadingSpaces(line string) int {

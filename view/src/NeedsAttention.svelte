@@ -1,5 +1,5 @@
 <script>
-  import { blockedReason, launchReason, priorityLabel, timeAgo, agentColorClass, assigneeLabel } from './lib/taskDisplay.js';
+  import { blockedReason, launchReason, operatorPause, priorityLabel, timeAgo, agentColorClass, assigneeLabel } from './lib/taskDisplay.js';
   import { taskKey } from './lib/dashboardState.js';
   import Icon from './Icon.svelte';
   import StatusActions from './StatusActions.svelte';
@@ -14,8 +14,9 @@
   export let onTransitionTask = null;
 
   $: items = [...tasks].sort((a, b) => {
-    if (a.status === 'blocked' && b.status !== 'blocked') return -1;
-    if (b.status === 'blocked' && a.status !== 'blocked') return 1;
+    const rank = (task) => (operatorPause(task).waiting ? 0 : task.status === 'blocked' ? 1 : 2);
+    const diff = rank(a) - rank(b);
+    if (diff) return diff;
     return (b.updated_at || '').localeCompare(a.updated_at || '');
   });
 </script>
@@ -31,16 +32,22 @@
   {#if open}
     <div class="attention-list">
       {#each items as task (taskKey(task))}
-        {@const summary = blockedReason(task) || launchReason(task) || task.summary}
+        {@const pause = operatorPause(task)}
+        {@const summary = (pause.waiting && pause.question) || blockedReason(task) || launchReason(task) || task.summary}
         <div
           class="attention-item"
+          class:attention-item--waiting={pause.waiting}
           class:attention-item--blocked={task.status === 'blocked'}
           class:attention-item--review={task.status === 'needs_review'}
         >
           <button type="button" class="attention-item-open" on:click={() => onOpenTask(task)}>
             <div class="attention-item-head">
               <strong class="attention-item-title">
-                {#if task.status === 'blocked'}
+                {#if pause.waiting}
+                  <span class="attention-mark is-waiting" aria-hidden="true">
+                    <Icon name="help-circle" size={14} />
+                  </span>
+                {:else if task.status === 'blocked'}
                   <span class="attention-mark is-blocked" aria-hidden="true">
                     <Icon name="x-circle" size={14} />
                   </span>

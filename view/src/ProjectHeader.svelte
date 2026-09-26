@@ -1,4 +1,5 @@
 <script>
+  import { favoriteIds, toggleFavorite } from './lib/favorites.js';
   import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings.js';
   import { hasTechnology, itemTechnologyView, repoWebUrl, techRepositories } from './lib/technologyDisplay.js';
   import TechnologyTags from './TechnologyTags.svelte';
@@ -14,41 +15,13 @@
 
   $: views = [
     { id: 'board', label: 'Tasks' },
-    { id: 'archive', label: 'Archive' },
-    ...(project ? [{ id: PROJECT_SETTINGS_VIEW, label: 'Settings' }] : [])
+    { id: 'archive', label: 'Archive' }
   ];
 
   $: primaryRemote = project ? techRepositories(project).map((repo) => repo.remote).find(Boolean) || '' : '';
   $: primaryRemoteUrl = repoWebUrl(primaryRemote);
 
-  const FAVORITES_KEY = 'core.favoriteProjects';
-
-  function readFavorites() {
-    try {
-      return new Set(JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'));
-    } catch {
-      return new Set();
-    }
-  }
-
-  let favorites = readFavorites();
-  $: isFavorite = Boolean(project) && favorites.has(project.id);
-
-  function toggleFavorite() {
-    if (!project) return;
-    const next = new Set(favorites);
-    if (next.has(project.id)) {
-      next.delete(project.id);
-    } else {
-      next.add(project.id);
-    }
-    favorites = next;
-    try {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...next]));
-    } catch {
-      // Best-effort only; favorites are a per-browser convenience, not a source of truth.
-    }
-  }
+  $: isFavorite = Boolean(project) && $favoriteIds.includes(project.id);
 </script>
 
 <header class="project-header">
@@ -63,9 +36,18 @@
           class="project-header-favorite"
           class:is-favorite={isFavorite}
           title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          on:click={toggleFavorite}
+          on:click={() => toggleFavorite(project.id)}
         >
           <Icon name="star" size={17} filled={isFavorite} />
+        </button>
+        <button
+          type="button"
+          class="project-header-favorite"
+          class:is-active={activeView === PROJECT_SETTINGS_VIEW}
+          title="Project settings"
+          on:click={() => onChangeView(PROJECT_SETTINGS_VIEW)}
+        >
+          <Icon name="gear" size={16} />
         </button>
         <h2>{project.title || project.id}</h2>
         {#if project.relative_path || project.path}

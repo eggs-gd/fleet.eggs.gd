@@ -136,6 +136,7 @@ func (d *Dashboard) Bootstrap() error {
 			return err
 		}
 		d.exec.DetectStartupOrphans(tasks)
+		d.exec.AnnounceOpenPauses(tasks)
 	}
 	if rebuilder, ok := d.taskStore.(interface{ RebuildDerivedViews() error }); ok {
 		if err := rebuilder.RebuildDerivedViews(); err != nil {

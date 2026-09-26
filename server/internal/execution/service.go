@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,11 @@ type Service struct {
 	// applyResult is an optional synchronous Contour 3 hand-off used while
 	// composition still double-writes channel + Apply (idempotent).
 	applyResult func(taskflow.ExecutionResult) error
+	// onAttention delivers a worker question that paused the session.
+	// Status stays doing; this does not report an execution outcome.
+	onAttention func(taskRef, question string)
+	attentionMu sync.Mutex
+	announced   map[string]struct{}
 
 	controlsMu sync.Mutex
 	controls   map[string]chan SessionControlRequest
@@ -113,6 +119,32 @@ func NewService(opts ServiceOptions) *Service {
 		return tasklifecycle.Task{}, false
 	})
 	return s
+}
+
+// NotifyOperatorAttention receives a worker question when a session pauses
+// for the operator. The task status is unchanged.
+func (s *Service) NotifyOperatorAttention(fn func(taskRef, question string)) {
+	s.onAttention = fn
+}
+
+func (s *Service) notifyOperatorAttention(task Task, question string) {
+	if s == nil || s.onAttention == nil {
+		return
+	}
+	ref := firstNonEmpty(task.Ref, task.RelativePath, task.Path, task.ID)
+	question = strings.TrimSpace(question)
+	key := ref + "\n" + question
+	s.attentionMu.Lock()
+	if s.announced == nil {
+		s.announced = map[string]struct{}{}
+	}
+	if _, seen := s.announced[key]; seen {
+		s.attentionMu.Unlock()
+		return
+	}
+	s.announced[key] = struct{}{}
+	s.attentionMu.Unlock()
+	s.onAttention(ref, question)
 }
 
 // Process runs launch admission and the package-owned launched-task consumer.

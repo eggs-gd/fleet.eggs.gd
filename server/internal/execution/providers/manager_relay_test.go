@@ -46,6 +46,22 @@ func TestParseCodexThreadListResultRejectsInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestParseCodexThreadListResultSkipsEventThreads(t *testing.T) {
+	raw := json.RawMessage(`{
+		"data": [
+			{"id": "bound", "name": "Manager", "preview": "hello", "updatedAt": 10},
+			{"id": "junk", "name": "", "preview": "Fleet event\nchannel: task\ntype: task.needs_review", "updatedAt": 11}
+		]
+	}`)
+	threads, err := parseCodexThreadListResult(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(threads) != 1 || threads[0].ID != "bound" {
+		t.Fatalf("threads = %#v", threads)
+	}
+}
+
 func TestParseCodexThreadListResultEmpty(t *testing.T) {
 	threads, err := parseCodexThreadListResult(json.RawMessage(`{"data": []}`))
 	if err != nil {

@@ -9,6 +9,10 @@
   let confirming = $state(false);
   let error = $state('');
   let restartRequired = $state(false);
+  let previousBinding = $state(null);
+  let recreateOffer = $state(false);
+  let recreating = $state(false);
+  let recreateError = $state('');
 
   async function load() {
     loading = true;
@@ -37,6 +41,8 @@
     if (saving) return;
     saving = true;
     try {
+      const bindingResponse = await fetch('/api/manager/binding', { cache: 'no-store' });
+      previousBinding = bindingResponse.ok ? await bindingResponse.json() : null;
       const response = await fetch('/api/app-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -47,10 +53,35 @@
       restartRequired = restartRequired || config.restartRequired;
       confirming = false;
       error = '';
+      recreateOffer = Boolean(previousBinding?.bound);
     } catch (err) {
       error = err.message || String(err);
     } finally {
       saving = false;
+    }
+  }
+
+  function dismissRecreate() {
+    recreateOffer = false;
+    recreateError = '';
+  }
+
+  async function recreateManager() {
+    if (recreating || !previousBinding?.agent) return;
+    recreating = true;
+    recreateError = '';
+    try {
+      const response = await fetch('/api/manager/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agent: previousBinding.agent, workspace: input.trim() })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      recreateOffer = false;
+    } catch (err) {
+      recreateError = err.message || String(err);
+    } finally {
+      recreating = false;
     }
   }
 
@@ -90,6 +121,24 @@
 
     {#if restartRequired}
       <p class="settings-warn">Data was moved. Restart Core to serve from the new path.</p>
+    {/if}
+    {#if recreateOffer}
+      <div class="settings-savebar">
+        <span>
+          The Manager session still uses the old folder. Fleet cannot change its root.
+          Recreate it in the new folder? The old session stays until you confirm.
+          {#if previousBinding?.agent === 'codex'}
+            Trusting the new folder also allows Codex hooks and exec policy, not only the manager MCP server.
+          {/if}
+        </span>
+        <button type="button" class="settings-btn" disabled={recreating} onclick={dismissRecreate}>Leave it</button>
+        <button type="button" class="settings-btn is-primary" disabled={recreating} onclick={recreateManager}>
+          {recreating ? 'Recreating…' : 'Recreate'}
+        </button>
+      </div>
+      {#if recreateError}
+        <p class="settings-error">{recreateError}</p>
+      {/if}
     {/if}
     {#if error}
       <p class="settings-error">{error}</p>

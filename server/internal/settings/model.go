@@ -166,6 +166,7 @@ type ManagerSession struct {
 	ID        string `json:"id"`
 	Status    string `json:"status"`
 	StartedAt string `json:"started_at,omitempty"`
+	Workspace string `json:"workspace,omitempty"`
 }
 
 type Workflow struct {
@@ -201,10 +202,11 @@ type HITLContract struct {
 }
 
 type Integrations struct {
-	SourceFile string      `json:"source_file"`
-	SourceRole string      `json:"source_role"`
-	MCP        []MCPServer `json:"mcp"`
-	Notes      []string    `json:"notes"`
+	SourceFile string         `json:"source_file"`
+	SourceRole string         `json:"source_role"`
+	MCP        []MCPServer    `json:"mcp"`
+	FleetMCP   FleetMCPStatus `json:"fleet_mcp"`
+	Notes      []string       `json:"notes"`
 }
 
 type MCPServer struct {

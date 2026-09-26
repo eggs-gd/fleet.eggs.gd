@@ -211,3 +211,38 @@ func TestTasksDependingOnFindsPickupDependents(t *testing.T) {
 		t.Fatalf("TasksDependingOn = %#v, want CORE-147 only", got)
 	}
 }
+
+func TestEvaluateLaunchUsesRegistryCheckoutPath(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Fleet", "cursor.md"), "# Cursor\n")
+	checkout := filepath.Join(t.TempDir(), "book-forge")
+	registry := `{
+  "repositories": [
+    {
+      "path": "` + checkout + `",
+      "relative_path": "eGGs.gd/book-forge"
+    },
+    {
+      "path": "` + filepath.Join(checkout, "nested") + `",
+      "relative_path": "eGGs.gd/book-forge/var/content-repos/nested"
+    }
+  ]
+}`
+	writeTestFile(t, filepath.Join(root, "_registry", "repositories.json"), registry)
+
+	task := &Task{
+		Ref:          "CORE-152",
+		Status:       "todo",
+		Assignee:     "cursor",
+		Repositories: []string{"eGGs.gd/book-forge"},
+	}
+	EvaluateLaunch(task, root, nil)
+
+	if task.LaunchEvaluation.WorkingDir != checkout {
+		t.Fatalf("WorkingDir = %q, want registry path %q", task.LaunchEvaluation.WorkingDir, checkout)
+	}
+	guess := filepath.Join(root, "..", "eGGs.gd/book-forge")
+	if task.LaunchEvaluation.WorkingDir == guess {
+		t.Fatal("WorkingDir used the parent-of-data-root guess")
+	}
+}

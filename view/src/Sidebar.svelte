@@ -1,7 +1,9 @@
 <script>
   import { isAccordionOpen, updateAccordionOpen, workspaceAccordionKey } from './lib/dashboardState.js';
-  import { AGENTS_TABS, SETTINGS_SECTIONS } from './lib/settingsNav.js';
-  import { buildSidebarTree, projectColor, projectInitial } from './lib/projectTree.js';
+  import { SETTINGS_SECTIONS } from './lib/settingsNav.js';
+  import { favoriteIds } from './lib/favorites.js';
+  import { buildSidebarTree, projectColor, projectInitial, projectOpenCount } from './lib/projectTree.js';
+  import { operatorPause } from './lib/taskDisplay.js';
   import Icon from './Icon.svelte';
   import SidebarBranch from './SidebarBranch.svelte';
   import ThemeSwitch from './ThemeSwitch.svelte';
@@ -15,14 +17,12 @@
   export let accordionOpen = {};
   export let globalNav = 'work';
   export let settingsSection = 'general';
-  export let agentsSection = 'agents';
   export let onSelectProject = () => {};
   export let onSelectWorkspace = () => {};
   export let onSelectAll = () => {};
   export let onSelectView = () => {};
   export let onSelectNav = () => {};
   export let onSelectSettingsSection = () => {};
-  export let onSelectAgentsSection = () => {};
   export let onTreeScroll = () => {};
   export let onScrollEl = () => {};
   export let themePref = 'system';
@@ -32,6 +32,9 @@
   let treeEl;
 
   $: tree = buildSidebarTree(workspaces, projects, tasks);
+  $: bookmarks = $favoriteIds
+    .map((id) => projects.find((project) => project.id === id))
+    .filter(Boolean);
   $: views = [
     { id: 'all', label: 'All tasks', icon: 'folder', count: tasks.length },
     {
@@ -44,7 +47,7 @@
       id: 'attention',
       label: 'Needs attention',
       icon: 'help-circle',
-      count: tasks.filter((task) => task.status === 'blocked' || task.status === 'needs_review').length
+      count: tasks.filter((task) => task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting).length
     },
     { id: 'blocked', label: 'Blocked', icon: 'x-circle', count: tasks.filter((task) => task.status === 'blocked').length },
     {
@@ -95,9 +98,6 @@
     <button type="button" class="sidebar-rail-item" class:active={globalNav === 'work'} on:click={() => onSelectNav('work')}>
       <Icon name="home" size={16} /> Work
     </button>
-    <button type="button" class="sidebar-rail-item" class:active={globalNav === 'agents'} on:click={() => onSelectNav('agents')}>
-      <Icon name="users" size={16} /> Agents
-    </button>
     <button type="button" class="sidebar-rail-item" class:active={globalNav === 'settings'} on:click={() => onSelectNav('settings')}>
       <Icon name="gear" size={16} /> Settings
     </button>
@@ -121,24 +121,6 @@
         {/each}
       </ul>
     </div>
-  {:else if globalNav === 'agents'}
-    <div class="sidebar-section">
-      <p class="sidebar-section-title">Agents</p>
-      <ul class="sidebar-views">
-        {#each AGENTS_TABS as item (item.id)}
-          <li>
-            <button
-              type="button"
-              class="sidebar-view"
-              class:active={agentsSection === item.id}
-              on:click={() => onSelectAgentsSection(item.id)}
-            >
-              <span class="sidebar-view-title">{item.label}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
-    </div>
   {:else if globalNav === 'work'}
     <div class="sidebar-section sidebar-section--projects">
       <p class="sidebar-section-title">Projects</p>
@@ -146,6 +128,21 @@
         <span>All projects</span>
         <span class="sidebar-view-count">{projects.length}</span>
       </button>
+      {#if bookmarks.length}
+        <p class="sidebar-section-title">Bookmarks</p>
+        {#each bookmarks as project (project.id)}
+          <button
+            type="button"
+            class="sidebar-project sidebar-project--root"
+            class:active={selectedProjectId === project.id}
+            on:click={() => onSelectProject(project.id)}
+          >
+            <span class="project-mark project-mark--project" style="background: {projectColor(project.id)}">{projectInitial(project.title, project.id)}</span>
+            <span class="sidebar-project-title">{project.title || project.id}</span>
+            <span class="sidebar-project-count">{projectOpenCount(tasks, project.id)}</span>
+          </button>
+        {/each}
+      {/if}
       <div
         bind:this={treeEl}
         class="sidebar-workspaces"
@@ -230,8 +227,6 @@
   <p class="sidebar-footer">
     {#if globalNav === 'settings'}
       Settings
-    {:else if globalNav === 'agents'}
-      Agents
     {:else}
       {workspaces.length} workspaces &middot; {projects.length} projects
     {/if}

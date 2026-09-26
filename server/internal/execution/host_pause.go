@@ -70,6 +70,7 @@ func (s *Service) pauseSessionForOperatorInput(session *RuntimeSession, task Tas
 	if already {
 		return
 	}
+	s.notifyOperatorAttention(task, session.BlockingReason)
 	comment := tasklifecycle.OperatorAttentionComment(session.BlockingReason, session.LogPath)
 	if session.Result != nil {
 		_, comment = tasklifecycle.FinalizeSucceededExecution(session.Result, session.LogPath)

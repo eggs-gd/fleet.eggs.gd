@@ -44,6 +44,7 @@ func Build(in Input) Snapshot {
 	agents := inspectAgents(in.CoreRoot, overlay, in.RuntimeSessions)
 	manager := inspectManager(in.CoreRoot, overlay)
 	integrations := loadMCP(in.CoreRoot)
+	integrations.FleetMCP = InspectManagerMCP(in.CoreRoot, overlay.Manager.Agent, in.Addr)
 	sessions := classifySessions(in.RuntimeSessions, in.SessionGroups, in.OrphanedTasks)
 	flow := workflowSnapshot()
 	snap := Snapshot{
@@ -220,8 +221,7 @@ func inspectManager(root string, overlay Overlay) Manager {
 	provider := "none (HTTP Manager API)"
 	var session *ManagerSession
 	notes := []string{
-		"manager.NewService wires UnconfiguredTranscriber and UnconfiguredClassifier.",
-		"Manager Bar posts text to /api/manager/text.",
+		"Manager is a provider session whose working directory is the data root. Conversation stays in that provider's app.",
 	}
 	if overlay.Manager.Agent != "" && overlay.Manager.ThreadID != "" {
 		provider = overlay.Manager.Agent
@@ -229,14 +229,15 @@ func inspectManager(root string, overlay Overlay) Manager {
 			ID:        overlay.Manager.ThreadID,
 			Status:    "bound",
 			StartedAt: overlay.Manager.BoundAt,
+			Workspace: overlay.Manager.Workspace,
 		}
-		notes = append(notes, "Manager Bar messages route directly into this bound session instead of fast-path command parsing.")
+		notes = append(notes, "Fleet remembers this session. It does not send chat into it.")
 	} else {
-		notes = append(notes, "No manager session is bound; Manager Bar text goes through fast-path command parsing only.")
+		notes = append(notes, "No manager session is recorded.")
 	}
 	notes = append(notes, "Project-level managers are not implemented; this is not modeled as a hard singleton in the task domain.")
 	return Manager{
-		Role:               "Local command interpreter for the Manager Bar (not an executor provider)",
+		Role:               "Provider session for this data root. Conversation stays in the provider app.",
 		Provider:           provider,
 		Session:            session,
 		STT:                "unconfigured",

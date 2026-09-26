@@ -24,11 +24,10 @@ func loadMCP(root string) Integrations {
 	path := filepath.Join(root, ".mcp.json")
 	out := Integrations{
 		SourceFile: path,
-		SourceRole: "Cursor project MCP config (.mcp.json). Core daemon does not currently inject these servers into Claude/Codex/Cursor launches.",
+		SourceRole: "Claude reads .mcp.json from the data root. Fleet writes the manager server there when Claude is the Manager. This is not a project-wide integration registry.",
 		Notes: []string{
-			"Agents and MCP are separate. This list is file-configured, not a Core-owned integration registry.",
-			"Reachable is unknown: Phase 2 does not probe MCP endpoints or spend provider quota.",
-			"No Install action: Core has no deterministic MCP installer.",
+			"Fleet MCP for the current Manager provider is the fleet_mcp block. The list below is only Data/.mcp.json.",
+			"HTTP entries are not probed.",
 		},
 	}
 	data, err := os.ReadFile(path)
@@ -54,7 +53,13 @@ func loadMCP(root string) Integrations {
 			Reachable:    "unknown",
 			InstallKnown: false,
 		}
-		server.Detected, server.Expected, server.Error = detectMCP(entry)
+		if strings.TrimSpace(entry.URL) != "" && strings.TrimSpace(entry.Command) == "" {
+			server.Detected = true
+			server.Expected = entry.URL
+			server.Reachable = "not probed"
+		} else {
+			server.Detected, server.Expected, server.Error = detectMCP(entry)
+		}
 		out.MCP = append(out.MCP, server)
 	}
 	sort.Slice(out.MCP, func(i, j int) bool { return out.MCP[i].Name < out.MCP[j].Name })

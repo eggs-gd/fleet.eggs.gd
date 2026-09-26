@@ -2,9 +2,15 @@
   import ThemeSwitch from './ThemeSwitch.svelte';
   import SettingsField from './SettingsField.svelte';
   import SettingsDataRoot from './SettingsDataRoot.svelte';
+  import SettingsProjects from './SettingsProjects.svelte';
   import { AUTO_REFRESH_MS } from './lib/layoutPrefs.js';
 
   export let general = {};
+  export let projects = {};
+  export let scanRoots = [];
+  export let scanDirty = false;
+  export let onScanRoots = () => {};
+  export let onRescan = () => {};
   export let themePref = 'system';
   export let onThemeChange = () => {};
   export let refreshMs = 5000;
@@ -27,6 +33,8 @@
 </section>
 
 <SettingsDataRoot />
+
+<SettingsProjects {projects} {scanRoots} {scanDirty} {onScanRoots} {onRescan} />
 
 <section class="settings-block" aria-label="Browser preferences">
   <h3>Browser preferences</h3>

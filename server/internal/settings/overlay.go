@@ -27,15 +27,13 @@ type AgentOverlay struct {
 	RoutingInstructions string
 }
 
-// ManagerOverlay binds the Manager Bar to an existing agent thread/session
-// (see internal/execution/providers/manager_relay.go) so text/audio input
-// routes there instead of going through fast-path command parsing. It is
-// project-less by design: binding a manager does not claim a project/agent
-// concurrency slot.
+// ManagerOverlay remembers the provider session that is the Manager.
+// Conversation stays in that provider's app. Fleet does not send chat into it.
 type ManagerOverlay struct {
-	Agent    string
-	ThreadID string
-	BoundAt  string
+	Agent     string
+	ThreadID  string
+	Workspace string
+	BoundAt   string
 }
 
 func OverlayPath(root string) string {

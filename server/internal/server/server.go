@@ -25,8 +25,9 @@ type Config struct {
 	BackofficeDir  string
 	DryRun         bool
 	SessionTimeout time.Duration
-	Version        string
-	StartedAt      time.Time
+	Version          string
+	StartedAt        time.Time
+	DataRootCreated  bool
 }
 
 func Serve(cfg Config) error {
@@ -73,7 +74,11 @@ func Serve(cfg Config) error {
 	registerDashboardRoutes(mux, dashboard)
 	settingsRT := newSettingsRuntime(cfg, coreRuntime)
 	registerSettingsRoutes(mux, settingsRT)
-	registerManagerRoutes(mux, managerService, cfg.CoreRoot, cfg.RuntimeRoot)
+	registerManagerRoutes(mux, managerService, cfg)
+	registerManagerProvisionRoutes(mux, cfg)
+	if bound := managerBindingStatus(cfg.CoreRoot); bound.Bound {
+		_, _ = settings.EnsureManagerMCP(cfg.CoreRoot, bound.Agent, cfg.Addr)
+	}
 	registerManagerMCPRoute(mux, managerService)
 	registerAppConfigRoutes(mux, cfg)
 
@@ -110,7 +115,9 @@ func Serve(cfg Config) error {
 	return http.Serve(listener, mux)
 }
 
-func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, coreRoot, runtimeRoot string) {
+func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Config) {
+	coreRoot := cfg.CoreRoot
+	runtimeRoot := cfg.RuntimeRoot
 	mux.HandleFunc("/api/manager/schema", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -152,6 +159,9 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, coreRoo
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
+		if cwd := strings.TrimSpace(r.URL.Query().Get("cwd")); cwd != "" {
+			threads = filterThreadsByCwd(threads, cwd)
+		}
 		writeJSON(w, threads)
 	})
 	mux.HandleFunc("/api/manager/text", func(w http.ResponseWriter, r *http.Request) {
@@ -162,10 +172,6 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, coreRoo
 		var req manager.TextRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		if response, handled := routeManagerText(r.Context(), coreRoot, runtimeRoot, req.Text); handled {
-			writeManagerResponse(w, response)
 			return
 		}
 		writeManagerResponse(w, service.SubmitText(r.Context(), req))

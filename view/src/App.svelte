@@ -17,7 +17,9 @@
     assigneeLabel,
     dependsOnDraft,
     parseDependsOnDraft,
+    operatorPause,
     priorityValue,
+    taskInBacklog,
     taskPickupCompare,
     taskProjectId,
     taskUpdatedCompare
@@ -44,7 +46,7 @@
   import ArchiveView from './ArchiveView.svelte';
   import CreateTaskModal from './CreateTaskModal.svelte';
   import FiltersBar from './FiltersBar.svelte';
-  import ManagerBar from './ManagerBar.svelte';
+  import ManagerSetup from './ManagerSetup.svelte';
   import NeedsAttention from './NeedsAttention.svelte';
   import ProjectHeader from './ProjectHeader.svelte';
   import ProjectSettings from './ProjectSettings.svelte';
@@ -73,7 +75,6 @@
   let activeView = 'board';
   let globalNav = 'work';
   let settingsSection = 'general';
-  let agentsSection = 'agents';
   let quickFilter = 'all';
   let taskSort = 'updated';
   let query = '';
@@ -99,8 +100,6 @@
   let themePref = loadThemePref();
   let refreshMs = loadAutoRefreshMs();
   let refreshTimer = null;
-  let managerBinding = null;
-
   $: refreshStatus = refreshStatusPresentation({
     refreshing: refreshBusy,
     refreshError,
@@ -122,16 +121,6 @@
     if (refreshBusyTimer == null) return;
     window.clearTimeout(refreshBusyTimer);
     refreshBusyTimer = null;
-  }
-
-  async function loadManagerBinding() {
-    try {
-      const response = await fetch('/api/manager/binding', { cache: 'no-store' });
-      if (!response.ok) return;
-      managerBinding = await response.json();
-    } catch {
-      // best-effort status only; ManagerBar falls back to "unknown" silently
-    }
   }
 
   async function loadData({ manual = false } = {}) {
@@ -163,7 +152,6 @@
       refreshError = '';
       actionError = '';
       lastRefreshAt = new Date().toISOString();
-      loadManagerBinding();
       await tick();
       if (sidebarScrollEl) sidebarScrollEl.scrollTop = sidebarScrollTop;
     } catch (err) {
@@ -312,6 +300,7 @@
     selectedProjectId = projectId;
     selectedWorkspaceId = '';
     if (globalNav !== 'work') globalNav = 'work';
+    activeView = 'board';
   }
 
   function selectWorkspace(workspaceId) {
@@ -353,7 +342,12 @@
   }
 
   function selectNav(nav) {
-    if (nav === 'agents' || nav === 'settings') {
+    if (nav === 'agents') {
+      settingsSection = 'agents';
+      globalNav = 'settings';
+      return;
+    }
+    if (nav === 'settings') {
       globalNav = nav;
       return;
     }
@@ -394,22 +388,6 @@
   }
 
   $: saveAccordionOpen(accordionOpen);
-
-  async function onManagerApplied(payload) {
-    await loadData();
-    const detail = payload?.result?.detail;
-    if (detail && typeof detail === 'object' && (detail.ref || detail.path || detail.relative_path)) {
-      const match = (data?.tasks ?? []).find(
-        (task) =>
-          (detail.ref && task.ref === detail.ref) ||
-          (detail.path && (task.path === detail.path || task.relative_path === detail.path)) ||
-          (detail.relative_path && task.relative_path === detail.relative_path)
-      );
-      if (match) {
-        openTask(match);
-      }
-    }
-  }
 
   function closeTask() {
     selectedTask = null;
@@ -504,9 +482,23 @@
     refreshTimer = window.setInterval(() => loadData(), refreshMs);
   }
 
+  let managerSetupNeeded = false;
+
+  async function loadManagerSetup() {
+    try {
+      const response = await fetch('/api/manager/setup', { cache: 'no-store' });
+      if (!response.ok) return;
+      const body = await response.json();
+      managerSetupNeeded = Boolean(body?.needed);
+    } catch {
+      managerSetupNeeded = false;
+    }
+  }
+
   onMount(() => {
     applyTheme(themePref);
     loadData();
+    loadManagerSetup();
     restartRefresh();
     const stopWatchingTheme = watchSystemTheme(() => {
       if (loadThemePref() === 'system') applyTheme('system');
@@ -527,7 +519,8 @@
   $: closedSessions = flattenClosedSessions(sessionGroups, tasks);
   $: blockedTasks = tasks.filter((task) => task.status === 'blocked');
   $: reviewTasks = tasks.filter((task) => task.status === 'needs_review');
-  $: attentionTasks = [...blockedTasks, ...reviewTasks];
+  $: waitingTasks = tasks.filter((task) => operatorPause(task).waiting);
+  $: attentionTasks = [...waitingTasks, ...blockedTasks, ...reviewTasks];
   $: selectedProject =
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
@@ -543,14 +536,16 @@
   }).sort(taskSort === 'priority' ? taskPickupCompare : taskUpdatedCompare);
   $: activeTasks = visibleTasks.filter((task) => !isArchivedStatus(task.status));
   $: archivedTasks = visibleTasks.filter((task) => isArchivedStatus(task.status));
+  $: liveSessions = [...runtimeSessions, ...orphanedTasks];
+  $: backlogTasks = visibleTasks.filter((task) => taskInBacklog(task, liveSessions));
   $: fixedChips = [
-    { id: 'all', label: 'All', count: activeTasks.length },
-    { id: 'open', label: 'Open', count: activeTasks.filter((task) => task.status !== 'done').length },
-    { id: 'rework', label: 'Rework', count: activeTasks.filter((task) => task.status === 'needs_rework').length },
-    { id: 'mine', label: 'Mine', count: activeTasks.filter((task) => task.assignee === CURRENT_USER).length },
-    { id: 'high', label: 'High', count: activeTasks.filter((task) => priorityValue(task) <= 2).length },
-    { id: 'bug', label: 'Bug', count: activeTasks.filter((task) => task.type === 'bug').length },
-    { id: 'feature', label: 'Feature', count: activeTasks.filter((task) => task.type === 'feature').length }
+    { id: 'all', label: 'All', count: backlogTasks.length },
+    { id: 'open', label: 'Open', count: backlogTasks.filter((task) => task.status !== 'done').length },
+    { id: 'rework', label: 'Rework', count: backlogTasks.filter((task) => task.status === 'needs_rework').length },
+    { id: 'mine', label: 'Mine', count: backlogTasks.filter((task) => task.assignee === CURRENT_USER).length },
+    { id: 'high', label: 'High', count: backlogTasks.filter((task) => priorityValue(task) <= 2).length },
+    { id: 'bug', label: 'Bug', count: backlogTasks.filter((task) => task.type === 'bug').length },
+    { id: 'feature', label: 'Feature', count: backlogTasks.filter((task) => task.type === 'feature').length }
   ];
   // The Sidebar's Views list can set quickFilter to a value with no matching
   // toolbar chip (blocked/review/done/attention) — without this, the chip row
@@ -559,7 +554,8 @@
   $: chips = sidebarOnlyChipLabel
     ? [...fixedChips, { id: quickFilter, label: sidebarOnlyChipLabel, count: filteredActiveTasks.length }]
     : fixedChips;
-  $: filteredActiveTasks = activeTasks.filter((task) => {
+  $: listTasks = ['blocked', 'review', 'done', 'attention'].includes(quickFilter) ? activeTasks : backlogTasks;
+  $: filteredActiveTasks = listTasks.filter((task) => {
     switch (quickFilter) {
       case 'open':
         return task.status !== 'done';
@@ -580,7 +576,7 @@
       case 'done':
         return task.status === 'done';
       case 'attention':
-        return task.status === 'blocked' || task.status === 'needs_review';
+        return task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting;
       default:
         return true;
     }
@@ -590,6 +586,10 @@
 <svelte:head>
   <title>Core Backoffice</title>
 </svelte:head>
+
+{#if managerSetupNeeded}
+  <ManagerSetup onDone={() => (managerSetupNeeded = false)} />
+{/if}
 
 <main class="shell">
   {#if error}
@@ -612,7 +612,6 @@
         {selectedWorkspaceId}
         {globalNav}
         {settingsSection}
-        {agentsSection}
         {themePref}
         quickView={activeView === 'archive' ? 'archived' : quickFilter}
         bind:accordionOpen
@@ -622,23 +621,13 @@
         onSelectView={selectQuickView}
         onSelectNav={selectNav}
         onSelectSettingsSection={selectSettingsSection}
-        onSelectAgentsSection={(id) => (agentsSection = id)}
         onTreeScroll={persistSidebarScroll}
         onScrollEl={(el) => (sidebarScrollEl = el)}
         onThemeChange={setThemePref}
       />
       <SplitGutter axis="x" onDrag={dragLeft} />
 
-      {#if globalNav === 'agents'}
-        <SettingsView
-          section={agentsSection}
-          title="Agents"
-          {themePref}
-          onThemeChange={setThemePref}
-          {refreshMs}
-          onRefreshChange={setRefreshMs}
-        />
-      {:else if isSettingsNav(globalNav)}
+      {#if isSettingsNav(globalNav)}
         <SettingsView
           section={settingsSection}
           {themePref}
@@ -723,15 +712,6 @@
             </div>
           </div>
 
-          <ManagerBar
-            {projects}
-            binding={managerBinding}
-            onApplied={onManagerApplied}
-            onOpenBinding={() => {
-              agentsSection = 'manager';
-              globalNav = 'agents';
-            }}
-          />
         </div>
 
         <SplitGutter axis="x" onDrag={dragRight} />

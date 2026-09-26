@@ -23,14 +23,10 @@ type RelayManagerResult struct {
 	ReplyText string
 }
 
-// RelayCodexManagerMessage forwards a single Manager Bar message into an
-// existing (or brand-new, if threadID is empty) Codex thread and returns the
-// agent's final reply text for that turn. It reuses the same JSON-RPC
-// sequence RunCodexAppServerSession uses (initialize -> thread/resume or
-// thread/start -> turn/start -> wait for turn/completed), just without the
-// session/task bookkeeping around it, and always tears the process down —
-// on success, on error, and on the timeout context — so a bad handshake
-// cannot leak a codex app-server process.
+// RelayCodexManagerMessage forwards one message into the already bound Codex
+// thread and returns that turn's final text. Resume failure stays a failure:
+// a busy or missing binding must not start a second unnamed thread. The
+// process is torn down on success, on error, and on timeout.
 func RelayCodexManagerMessage(ctx context.Context, workingDir, threadID, prompt string, timeout time.Duration, logFile io.Writer) (RelayManagerResult, error) {
 	if strings.TrimSpace(prompt) == "" {
 		return RelayManagerResult{}, errors.New("prompt is required")
@@ -115,37 +111,21 @@ func RelayCodexManagerMessage(ctx context.Context, workingDir, threadID, prompt 
 	}
 
 	resolvedThreadID := strings.TrimSpace(threadID)
-	if resolvedThreadID != "" {
-		resumeTarget := RuntimeSession{WorkingDir: workingDir}
-		resumeTarget.CodexThreadID = resolvedThreadID
-		id, err = client.request("thread/resume", codexThreadResumeParams(resumeTarget))
-		if err != nil {
-			return RelayManagerResult{}, err
-		}
-		response, resumeErr := waitForID(id)
-		if resumeErr == nil {
-			if fresh := CodexThreadID(response.Result); fresh != "" {
-				resolvedThreadID = fresh
-			}
-		} else {
-			// Resume failed (thread gone/expired) — fall through and start a
-			// fresh thread instead of failing the whole manager message.
-			resolvedThreadID = ""
-		}
-	}
 	if resolvedThreadID == "" {
-		id, err = client.request("thread/start", codexThreadStartParams(RuntimeSession{WorkingDir: workingDir}))
-		if err != nil {
-			return RelayManagerResult{}, err
-		}
-		response, err := waitForID(id)
-		if err != nil {
-			return RelayManagerResult{}, err
-		}
-		resolvedThreadID = CodexThreadID(response.Result)
-		if resolvedThreadID == "" {
-			return RelayManagerResult{}, errors.New("codex app-server thread/start response did not include thread.id")
-		}
+		return RelayManagerResult{}, errors.New("manager session is not bound")
+	}
+	resumeTarget := RuntimeSession{WorkingDir: workingDir}
+	resumeTarget.CodexThreadID = resolvedThreadID
+	id, err = client.request("thread/resume", codexThreadResumeParams(resumeTarget))
+	if err != nil {
+		return RelayManagerResult{}, err
+	}
+	response, err := waitForID(id)
+	if err != nil {
+		return RelayManagerResult{}, fmt.Errorf("bound manager session %s: %w", resolvedThreadID, err)
+	}
+	if fresh := CodexThreadID(response.Result); fresh != "" && fresh != resolvedThreadID {
+		return RelayManagerResult{}, fmt.Errorf("bound manager session %s resumed as %s", resolvedThreadID, fresh)
 	}
 
 	id, err = client.request("turn/start", codexTurnStartParams(resolvedThreadID, prompt))
@@ -303,6 +283,7 @@ func parseCodexThreadListResult(raw json.RawMessage) ([]CodexThreadSummary, erro
 			ID        string `json:"id"`
 			Name      string `json:"name"`
 			Cwd       string `json:"cwd"`
+			Preview   string `json:"preview"`
 			UpdatedAt int64  `json:"updatedAt"`
 		} `json:"data"`
 	}
@@ -314,6 +295,9 @@ func parseCodexThreadListResult(raw json.RawMessage) ([]CodexThreadSummary, erro
 	threads := make([]CodexThreadSummary, 0, len(parsed.Data))
 	for _, item := range parsed.Data {
 		if seen[item.ID] {
+			continue
+		}
+		if strings.HasPrefix(strings.TrimSpace(item.Preview), "Fleet event") {
 			continue
 		}
 		seen[item.ID] = true

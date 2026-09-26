@@ -172,7 +172,8 @@ func serve(args []string) {
 		BackofficeDir:  staticDir,
 		DryRun:         *dryRun,
 		SessionTimeout: *sessionTimeout,
-		Version:        version,
+		Version:         version,
+		DataRootCreated: created,
 	}
 	if err := server.Serve(cfg); err != nil {
 		log.Fatal(err)

@@ -383,7 +383,7 @@ repositories:
 	}
 }
 
-func TestRuntimeBootstrapSurfacesLeftoverRunningSessionOnArchivedTaskAsOrphan(t *testing.T) {
+func TestRuntimeBootstrapClosesLeftoverSessionAfterTaskLeftDoing(t *testing.T) {
 	root := t.TempDir()
 	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-79.md")
 	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), `---
@@ -432,23 +432,23 @@ repositories:
 	}
 	state := app.State()
 	if len(state.RuntimeSessions) != 0 {
-		t.Fatalf("runtime sessions = %#v, want leftover zombie off the live strip", state.RuntimeSessions)
+		t.Fatalf("runtime sessions = %#v, want leftover off the live strip", state.RuntimeSessions)
 	}
-	if len(state.OrphanedTasks) != 1 {
-		t.Fatalf("orphans = %#v, want leftover session on the orphaned list", state.OrphanedTasks)
-	}
-	orphan := state.OrphanedTasks[0]
-	if orphan.ExecutionState != "resumable" || orphan.ClaimID != "core-79-leftover" {
-		t.Fatalf("orphan = %#v, want resumable leftover with original claim id", orphan)
-	}
-	if orphan.TaskRef != "CORE-79" {
-		t.Fatalf("orphan task = %q, want CORE-79", orphan.TaskRef)
+	if len(state.OrphanedTasks) != 0 {
+		t.Fatalf("orphans = %#v, want none after the task left doing", state.OrphanedTasks)
 	}
 	if len(state.Tasks) != 1 || state.Tasks[0].Status != "archived" {
 		t.Fatalf("task = %#v, want archived task left unchanged", state.Tasks)
 	}
 	if state.Tasks[0].Execution.State != "none" {
-		t.Fatalf("archived task execution = %#v, want none (orphan is not a current doing execution)", state.Tasks[0].Execution)
+		t.Fatalf("archived task execution = %#v, want none", state.Tasks[0].Execution)
+	}
+	records, err := execution.LoadRuntimeSessionRecords(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 || records[0].IsActive() || records[0].ExecutionStatus != "exited" {
+		t.Fatalf("persisted session = %#v, want closed so the next restart does not list it", records)
 	}
 }
 

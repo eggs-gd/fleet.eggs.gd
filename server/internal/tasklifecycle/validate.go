@@ -1,6 +1,7 @@
 package tasklifecycle
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -105,8 +106,51 @@ func resolveRepository(task *Task, coreRoot string) {
 	}
 
 	task.LaunchEvaluation.Repository = task.Repositories[0]
-	task.LaunchEvaluation.WorkingDir = filepath.Join(coreRoot, "..", task.LaunchEvaluation.Repository)
+	task.LaunchEvaluation.WorkingDir = workingDirForRepository(coreRoot, task.LaunchEvaluation.Repository)
 	task.Pass("repository")
+}
+
+// workingDirForRepository prefers the checkout path the project scan wrote
+// into _registry/repositories.json. The one-level-up guess is only for a
+// repository the scan has not recorded: Data lives inside the Fleet tree,
+// so ".." from that root is not the projects folder.
+func workingDirForRepository(coreRoot, repo string) string {
+	if dir := registryCheckout(coreRoot, repo); dir != "" {
+		return dir
+	}
+	return filepath.Join(coreRoot, "..", repo)
+}
+
+func registryCheckout(coreRoot, repo string) string {
+	repo = strings.TrimSpace(repo)
+	if repo == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(coreRoot, "_registry", "repositories.json"))
+	if err != nil {
+		return ""
+	}
+	var payload struct {
+		Repositories []struct {
+			Path         string `json:"path"`
+			RelativePath string `json:"relative_path"`
+		} `json:"repositories"`
+	}
+	if json.Unmarshal(data, &payload) != nil {
+		return ""
+	}
+	want := filepath.ToSlash(repo)
+	for _, record := range payload.Repositories {
+		abs := strings.TrimSpace(record.Path)
+		rel := filepath.ToSlash(strings.TrimSpace(record.RelativePath))
+		if abs == "" {
+			continue
+		}
+		if rel == want || filepath.ToSlash(abs) == want {
+			return abs
+		}
+	}
+	return ""
 }
 
 // DependencySatisfied reports whether status unblocks a depends_on gate.

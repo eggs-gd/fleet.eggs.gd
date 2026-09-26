@@ -8,10 +8,22 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 	"github.com/eggs-gd/fleet.eggs.gd/lib/chain"
 )
+
+const (
+	eventTaskNeedsReview    = "task.needs_review"
+	eventTaskNeedsAttention = "task.needs_attention"
+)
+
+// Publisher accepts events after a task status is already durable.
+// Publish errors must not roll that status back.
+type Publisher interface {
+	Publish(eventbus.Event) error
+}
 
 // Task is the lifecycle projection refreshed after finalization.
 type Task = tasklifecycle.Task
@@ -30,11 +42,12 @@ type OnFail func(locator string, result taskflow.ExecutionResult, err error)
 
 // Finalizer applies ExecutionResult outcomes through TaskService only.
 type Finalizer struct {
-	service taskflow.TaskService
-	reload  Reload
-	upsert  Upsert
-	onSkip  OnSkip
-	onFail  OnFail
+	service   taskflow.TaskService
+	reload    Reload
+	upsert    Upsert
+	onSkip    OnSkip
+	onFail    OnFail
+	publisher Publisher
 }
 
 // New builds a Finalizer. reload/upsert/onSkip/onFail may be nil.
@@ -46,6 +59,12 @@ func New(service taskflow.TaskService, reload Reload, upsert Upsert) *Finalizer 
 func (f *Finalizer) WithHooks(onSkip OnSkip, onFail OnFail) *Finalizer {
 	f.onSkip = onSkip
 	f.onFail = onFail
+	return f
+}
+
+// WithPublisher attaches the event bus. Nil leaves finalization silent.
+func (f *Finalizer) WithPublisher(publisher Publisher) *Finalizer {
+	f.publisher = publisher
 	return f
 }
 
@@ -86,9 +105,10 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 		return loaded, nil
 	}
 
-	err = f.service.ReportExecution(ctx, result)
+	applied := result
+	err = f.service.ReportExecution(ctx, applied)
 	if errors.Is(err, taskflow.ErrUnknownOutcome) {
-		fallback := taskflow.ExecutionResult{
+		applied = taskflow.ExecutionResult{
 			TaskID:      locator,
 			ExecutionID: result.ExecutionID,
 			Agent:       result.Agent,
@@ -96,7 +116,7 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 			Summary:     "Agent execution succeeded but returned invalid result outcome `" + strings.TrimSpace(string(result.Outcome)) + "`.",
 			Error:       "invalid execution outcome",
 		}
-		err = f.service.ReportExecution(ctx, fallback)
+		err = f.service.ReportExecution(ctx, applied)
 	}
 	if err != nil {
 		if f.onFail != nil {
@@ -104,6 +124,7 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 		}
 		return Task{}, err
 	}
+	f.publish(applied)
 
 	updated, err := f.load(locator)
 	if err != nil {
@@ -113,6 +134,77 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 		f.upsert(updated)
 	}
 	return updated, nil
+}
+
+func (f *Finalizer) publish(result taskflow.ExecutionResult) {
+	if f.publisher == nil {
+		return
+	}
+	event, ok := taskEvent(result)
+	if !ok {
+		return
+	}
+	_ = f.publisher.Publish(event)
+}
+
+func taskEvent(result taskflow.ExecutionResult) (eventbus.Event, bool) {
+	taskID := strings.TrimSpace(result.TaskID)
+	fields := map[string]string{}
+	if taskID != "" {
+		fields["task_id"] = taskID
+	}
+	switch result.Outcome {
+	case taskflow.ExecutionCompleted:
+		return eventbus.Event{
+			Channel: eventbus.ChannelTask,
+			Type:    eventTaskNeedsReview,
+			Text:    taskNotice(taskID, "is ready for review", result.Summary),
+			Fields:  fields,
+		}, true
+	case taskflow.ExecutionNeedsInput, taskflow.ExecutionFailed, taskflow.ExecutionBlocked,
+		taskflow.ExecutionTimedOut, taskflow.ExecutionCancelled, taskflow.ExecutionOrphaned:
+		what := "is blocked"
+		if result.Outcome == taskflow.ExecutionNeedsInput {
+			what = "needs a decision before continuing"
+		}
+		return eventbus.Event{
+			Channel: eventbus.ChannelTask,
+			Type:    eventTaskNeedsAttention,
+			Text:    taskNotice(taskID, what, attentionDetail(result)),
+			Fields:  fields,
+		}, true
+	default:
+		return eventbus.Event{}, false
+	}
+}
+
+func attentionDetail(result taskflow.ExecutionResult) string {
+	var parts []string
+	for _, part := range []string{result.Question, result.Summary, result.Error} {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if len(parts) > 0 && parts[len(parts)-1] == part {
+			continue
+		}
+		parts = append(parts, part)
+	}
+	return strings.Join(parts, "\n")
+}
+
+func taskNotice(taskID, what, detail string) string {
+	subject := taskID
+	if subject == "" {
+		subject = "A task"
+	} else {
+		subject = "Task " + subject
+	}
+	text := subject + " " + what + "."
+	if detail = strings.TrimSpace(detail); detail != "" {
+		text += "\n" + detail
+	}
+	return text
 }
 
 func (f *Finalizer) load(locator string) (Task, error) {

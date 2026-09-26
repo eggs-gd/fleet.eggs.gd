@@ -1,5 +1,5 @@
 <script>
-  import { agentColorClass, assigneeLabel, launchOutcome, priorityLabel, showLaunchSignal, taskAgent, timeAgo } from './lib/taskDisplay.js';
+  import { agentColorClass, assigneeLabel, cardStatusLabel, launchOutcome, operatorPause, priorityLabel, showLaunchSignal, taskAgent, timeAgo } from './lib/taskDisplay.js';
   import { pillClass } from './lib/taskTags.js';
   import { actionsForStatus } from './lib/statusTransitions.js';
   import Icon from './Icon.svelte';
@@ -15,6 +15,8 @@
   $: done = task.status === 'done' || task.status === 'archived';
   $: agent = taskAgent(task);
   $: actions = typeof onTransition === 'function' ? actionsForStatus(task.status, transitions) : [];
+  $: pause = operatorPause(task);
+  $: statusLabel = cardStatusLabel(task);
 </script>
 
 <div class="task-row-shell" class:is-selected={selected} class:is-done={done}>
@@ -34,11 +36,14 @@
       </span>
     </div>
     <span class="task-row-summary">{task.summary || 'No summary yet.'}</span>
+    {#if pause.waiting && pause.question}
+      <span class="task-row-summary">{pause.question}</span>
+    {/if}
   </button>
   <div class="task-row-footer">
     <button type="button" class="task-row-tags" on:click={() => onOpen(task)}>
-      {#if task.status === 'needs_rework'}
-        <span class={pillClass('amber')}>rework</span>
+      {#if statusLabel}
+        <span class={pillClass(pause.waiting || task.status === 'needs_rework' ? 'amber' : 'slate')}>{statusLabel}</span>
       {/if}
       <TypePill type={task.type} />
       <code class="task-row-ref">{task.ref}</code>

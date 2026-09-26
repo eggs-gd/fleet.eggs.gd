@@ -17,12 +17,12 @@ func inventoryCatalog() []InventoryEntry {
 		entry("agent enabled", OverlayFileName+" agents.*.enabled; disable does not kill live sessions", true, false, true, "agents", true),
 		entry("agent routing/preferences", OverlayFileName+" routingInstructions overlaying Fleet/<agent>.md Best At", true, false, true, "agents", true),
 		entry("manager STT/LLM", "manager.NewService wires UnconfiguredTranscriber + UnconfiguredClassifier", false, false, true, "manager", false),
-		entry("manager session", "none; Manager Bar posts /api/manager/text (fast-path commands)", false, false, true, "manager", false),
+		entry("manager session", "core.local.yaml manager identity; conversation stays in the provider app", false, false, true, "manager", false),
 		entry("concurrency 1-1-1", "Fleet/LAUNCH_POLICY.md + execution session hub locks", false, false, true, "workflow", false),
 		entry("operator status transitions", "tasklifecycle.StatusTransitionMap", false, false, true, "workflow", false),
 		entry("HITL pause", "execution/host_pause.go; task stays doing, session waiting_input, slot held", false, false, true, "workflow", false),
 		entry("finalizer outcome map", "taskflow.MapExecutionOutcomeToStatus (needs_input→blocked if published)", false, false, true, "workflow", false),
-		entry("MCP servers", "Core root .mcp.json (Cursor project file)", false, false, true, "integrations", false),
+		entry("MCP servers", "Fleet MCP written into the Manager provider file at the data root", false, false, true, "integrations", false),
 		entry("session/orphan classification", "execution.Status + RuntimeSession.IsActive (same Work Sessions source)", false, false, true, "diagnostics", false),
 	}
 }

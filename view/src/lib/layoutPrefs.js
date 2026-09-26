@@ -7,7 +7,7 @@ const SCROLL_KEY = 'core.sidebarScroll';
 const RIGHT_PANELS_KEY = 'core.rightPanels';
 const THEME_KEY = 'core.theme';
 
-export const LEFT_WIDTH = { min: 180, max: 420, fallback: 240 };
+export const LEFT_WIDTH = { min: 260, max: 420, fallback: 260 };
 export const RIGHT_WIDTH = { min: 240, max: 480, fallback: 300 };
 
 const readJson = (key, fallback) => {

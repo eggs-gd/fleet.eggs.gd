@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/audit"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/executionfinalizer"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
@@ -96,6 +98,8 @@ func Compose(cfg ComposeConfig) *App {
 		}
 		return execution.TaskFromFlow(flowTask), nil
 	}, store.UpsertTask)
+	events := eventbus.New()
+	finalizer.WithPublisher(events)
 
 	exec := execution.NewService(execution.ServiceOptions{
 		Config: execution.Config{
@@ -123,6 +127,18 @@ func Compose(cfg ComposeConfig) *App {
 			_, err := finalizer.Apply(result)
 			return err
 		},
+	})
+	exec.NotifyOperatorAttention(func(taskRef, question string) {
+		text := "Task " + taskRef + " needs a decision before continuing."
+		if detail := strings.TrimSpace(question); detail != "" {
+			text += "\n" + detail
+		}
+		_ = events.Publish(eventbus.Event{
+			Channel: eventbus.ChannelTask,
+			Type:    "task.needs_attention",
+			Text:    text,
+			Fields:  map[string]string{"task_id": taskRef},
+		})
 	})
 
 	listener := taskprovider.NewListenerService(taskStore, interval, taskprovider.ListenerHooks{

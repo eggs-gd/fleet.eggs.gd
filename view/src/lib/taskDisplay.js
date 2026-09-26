@@ -89,6 +89,55 @@ export const showExecutionSignal = (task) => task.status === 'doing' || executio
 
 export const executionReason = (task) => execution(task).blocking_reason || execution(task).terminal_reason || '';
 
+const pauseStates = ['waiting_input', 'operator_attention', 'stalled'];
+
+export const latestCommentText = (task) => {
+  const comments = task?.comments || [];
+  for (let i = comments.length - 1; i >= 0; i -= 1) {
+    const text = String(comments[i]?.text || '').trim();
+    if (text) return text;
+  }
+  return '';
+};
+
+export const operatorPause = (task) => {
+  const state = executionState(task);
+  if (pauseStates.includes(state)) {
+    return { waiting: true, question: executionReason(task) };
+  }
+  if (task?.status !== 'doing') return { waiting: false, question: '' };
+  const text = latestCommentText(task);
+  if (!/waiting on operator input/i.test(text)) return { waiting: false, question: '' };
+  const match = text.match(/Question:\s*([\s\S]*?)(?=\s+Artifacts:|\s+Session log:|\s+Tests\/checks:|$)/);
+  return { waiting: true, question: (match?.[1] || text).trim() };
+};
+
+export const cardStatusLabel = (task) => {
+  if (operatorPause(task).waiting) return 'waiting for a decision';
+  return String(task?.status || '').replaceAll('_', ' ');
+};
+
+export const sessionCoversTask = (session, task) => {
+  if (!session || !task) return false;
+  return (
+    (session.task_path && (task.path === session.task_path || task.relative_path === session.task_path)) ||
+    (session.task_id && task.id === session.task_id) ||
+    (session.task_ref && task.ref === session.task_ref)
+  );
+};
+
+export const taskShownOnRight = (task) =>
+  task?.status === 'done' ||
+  task?.status === 'blocked' ||
+  task?.status === 'needs_review' ||
+  operatorPause(task).waiting;
+
+export const taskInBacklog = (task, liveSessions = []) => {
+  if (!task || task.status === 'archived') return false;
+  if (taskShownOnRight(task)) return false;
+  return !liveSessions.some((session) => sessionCoversTask(session, task));
+};
+
 export const providerErrorReason = (record) => record?.provider_error?.reason || '';
 
 export const providerErrorDetail = (record) => record?.provider_error?.detail || '';

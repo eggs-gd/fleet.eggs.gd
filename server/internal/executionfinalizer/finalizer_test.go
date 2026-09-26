@@ -2,11 +2,13 @@ package executionfinalizer_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/executionfinalizer"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
@@ -74,6 +76,162 @@ func TestFinalizerMapsOutcomesThroughTaskService(t *testing.T) {
 			}
 			_ = context.Background()
 		})
+	}
+}
+
+type recordingPublisher struct {
+	events []eventbus.Event
+	err    error
+}
+
+func (p *recordingPublisher) Publish(event eventbus.Event) error {
+	if p.err != nil {
+		return p.err
+	}
+	p.events = append(p.events, event)
+	return nil
+}
+
+func TestFinalizerPublishesTaskEvents(t *testing.T) {
+	cases := []struct {
+		outcome  taskflow.ExecutionOutcome
+		wantType string
+		wantText string
+	}{
+		{taskflow.ExecutionCompleted, "task.needs_review", "is ready for review"},
+		{taskflow.ExecutionNeedsInput, "task.needs_attention", "needs a decision before continuing"},
+	}
+	for _, tc := range cases {
+		t.Run(string(tc.outcome), func(t *testing.T) {
+			root := t.TempDir()
+			taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-publish-"+string(tc.outcome)+".md")
+			writeDoingTask(t, root, taskPath)
+			provider := markdown.New(root, markdown.Hooks{})
+			service := taskflow.NewService(provider.Flow())
+			defer service.Close()
+
+			pub := &recordingPublisher{}
+			finalizer := executionfinalizer.New(service, provider.Load, nil).WithPublisher(pub)
+			locator := relPath(root, taskPath)
+			updated, err := finalizer.Apply(taskflow.ExecutionResult{
+				TaskID:   locator,
+				Outcome:  tc.outcome,
+				Summary:  "worker summary",
+				Question: "Which API?",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(pub.events) != 1 {
+				t.Fatalf("events = %#v, want one", pub.events)
+			}
+			event := pub.events[0]
+			if event.Channel != eventbus.ChannelTask || event.Type != tc.wantType {
+				t.Fatalf("event = %#v", event)
+			}
+			if event.Fields["task_id"] != locator {
+				t.Fatalf("task_id = %q", event.Fields["task_id"])
+			}
+			if !strings.Contains(event.Text, tc.wantText) || !strings.Contains(event.Text, locator) {
+				t.Fatalf("text = %q", event.Text)
+			}
+			if tc.outcome == taskflow.ExecutionNeedsInput && !strings.Contains(event.Text, "Which API?") {
+				t.Fatalf("text = %q, want the question", event.Text)
+			}
+			if updated.Status == "" {
+				t.Fatal("status was not written")
+			}
+		})
+	}
+}
+
+func TestFinalizerPublishesBlockedOutcomes(t *testing.T) {
+	for _, outcome := range []taskflow.ExecutionOutcome{
+		taskflow.ExecutionFailed,
+		taskflow.ExecutionTimedOut,
+		taskflow.ExecutionCancelled,
+		taskflow.ExecutionOrphaned,
+		taskflow.ExecutionBlocked,
+	} {
+		t.Run(string(outcome), func(t *testing.T) {
+			root := t.TempDir()
+			taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-blocked-"+string(outcome)+".md")
+			writeDoingTask(t, root, taskPath)
+			provider := markdown.New(root, markdown.Hooks{})
+			service := taskflow.NewService(provider.Flow())
+			defer service.Close()
+
+			pub := &recordingPublisher{}
+			finalizer := executionfinalizer.New(service, provider.Load, nil).WithPublisher(pub)
+			locator := relPath(root, taskPath)
+			updated, err := finalizer.Apply(taskflow.ExecutionResult{
+				TaskID:  locator,
+				Outcome: outcome,
+				Summary: "startup failed",
+				Error:   "chdir missing",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if updated.Status != "blocked" {
+				t.Fatalf("status = %q, want blocked", updated.Status)
+			}
+			if len(pub.events) != 1 {
+				t.Fatalf("events = %#v, want one", pub.events)
+			}
+			event := pub.events[0]
+			if event.Channel != eventbus.ChannelTask || event.Type != "task.needs_attention" {
+				t.Fatalf("event = %#v", event)
+			}
+			if !strings.Contains(event.Text, "is blocked") || !strings.Contains(event.Text, "chdir missing") {
+				t.Fatalf("text = %q", event.Text)
+			}
+		})
+	}
+}
+
+func TestFinalizerDoesNotPublishNeedsRework(t *testing.T) {
+	root := t.TempDir()
+	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-quiet-needs-rework.md")
+	writeDoingTask(t, root, taskPath)
+	provider := markdown.New(root, markdown.Hooks{})
+	service := taskflow.NewService(provider.Flow())
+	defer service.Close()
+
+	pub := &recordingPublisher{}
+	finalizer := executionfinalizer.New(service, provider.Load, nil).WithPublisher(pub)
+	if _, err := finalizer.Apply(taskflow.ExecutionResult{
+		TaskID:  relPath(root, taskPath),
+		Outcome: taskflow.ExecutionNeedsRework,
+		Summary: "still on the board",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(pub.events) != 0 {
+		t.Fatalf("events = %#v, want none", pub.events)
+	}
+}
+
+func TestFinalizerKeepsStatusWhenPublishFails(t *testing.T) {
+	root := t.TempDir()
+	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-publish-error.md")
+	writeDoingTask(t, root, taskPath)
+	provider := markdown.New(root, markdown.Hooks{})
+	service := taskflow.NewService(provider.Flow())
+	defer service.Close()
+
+	pub := &recordingPublisher{err: errors.New("bus down")}
+	finalizer := executionfinalizer.New(service, provider.Load, nil).WithPublisher(pub)
+	updated, err := finalizer.Apply(taskflow.ExecutionResult{
+		TaskID:  relPath(root, taskPath),
+		Outcome: taskflow.ExecutionCompleted,
+		Summary: "shipped",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != "needs_review" {
+		t.Fatalf("status = %q, want needs_review despite publish error", updated.Status)
 	}
 }
 

@@ -31,7 +31,7 @@
   <p class="settings-lede">
     Each path is a directory of git checkouts. Save, then the running server watches all of them and refreshes the registry when repositories appear or disappear.
     Rescan runs a pass now. Recheck is for agents, not this tree.
-    Per-project repositories and PROJECT.md are on the selected project's Settings tab.
+    Per-project repositories and PROJECT.md open from the tools icon on that project's header.
   </p>
   {#each scanRoots as root, index (index)}
     <div class="settings-row">
