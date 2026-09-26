@@ -64,19 +64,17 @@ Blocked і Needs Attention не є завершенням. Зупинена се
 
 ## Manager: skills, код і MCP
 
-**немає.** Спека: [manager-skills](../specs/manager-skills.md).
+**готово.** Skills, MCP-інструменти і розкладання `MANAGER.md`. Спека: [manager-skills](../specs/manager-skills.md).
 
-Код тримає одну правильну відповідь (ID, слаги, статуси, дедуп, валідація). MCP віддає компактні факти і приймає атомарні записи. Skill тримає лише судження: коли питати, як різати задачу, що вважати готовим. Не більше семи skills: `intake`, `shape-task`, `resolve-project`, `route`, `triage-attention`, `review`, `briefing`. Джерело живе в App; provisioning пише їх разом із MCP-конфігами.
+Канон skills — `.agents/skills/<name>/SKILL.md` у data root. Текст зашитий в App. Provisioning пише його на старті `serve` і разом із Fleet MCP. Файл, що відрізняється від зашитого, замінюється без копій. Збій запису зупиняє `serve` при старті: Manager без skills не має сенсу. Fail fast, не fail safe. Під час роботи збій не вбиває процес, а потрапляє в `/api/health` як `degraded`. Claude, Codex і Gemini отримують у своїй теці stub із вказівкою на канон (одне джерело), Cursor — правило. Cursor: `.cursor/rules/manager-<name>.mdc`, `alwaysApply: false`. MCP prompts із тими самими іменами читають канонічний файл. `AGENTS.md` для Manager лишає три речі плюс шлях до skills. `MANAGER.md` у шаблоні скорочений до довідки на кілька десятків рядків: що кому належить і де лежать файли. Правила статусів, Definition Of Done і порядку вибору перенесені в `TASK_LIFECYCLE.md`, який тепер читають і worker-и.
 
-Зараз Manager на старті читає великі документи data root і може відкрити `Work/INDEX.md` або `_registry/repositories.json`. Більшість тих правил уже виконує код.
+Події в сесію не пушаться. `manager_events(since)` читає рядки `task.*` з audit за id. Подія на каналі `task` пишеться в audit там, де публікується, і до шини. Збій запису не скасовує зміну задачі, але видно в `degraded` і в `warnings` `manager_events`. Сканер (`Scanner.Watch`) сам створює й лагодить картки проєктів та лічильники, а не інструменти Manager.
 
-Події в сесію не пушаться. `manager_events` лише читає шину за курсором.
-
-1. **немає.** `manager_board`, `manager_task` і skill `intake`.
-2. **немає.** Поля `depends_on`, `repositories`, `acceptance_criteria` в `Intent` і `manager_validate`.
-3. **немає.** `manager_resolve_project`, `manager_similar`, `manager_route`. Маршрут стає конфігом, не прозою `ROUTING.md`.
-4. **немає.** `manager_inbox`, `manager_project`.
-5. **немає.** `manager_answer`, `manager_review`, `manager_decompose` і skills `triage-attention`, `review`.
+1. **готово.** `manager_board`, `manager_task` і skill `intake`.
+2. **готово.** Поля `depends_on`, `repositories`, `acceptance_criteria`, `source_inbox` в `Intent` і `manager_validate`. Однина `repository` лишається. Default priority (5) і допустимі статуси описані в JSON Schema.
+3. **готово.** `manager_resolve_project`, `manager_similar`, `manager_route`. Правило маршруту в коді: явна вказівка, `default_assignee` в `PROJECT.md`, Claude, вільний backup. `Fleet/ROUTING.md` лишається довідкою для людини.
+4. **готово.** `manager_inbox`, `manager_project`, `manager_workers`.
+5. **готово.** `manager_answer`, `manager_review`, `manager_update` (зміна існуючої задачі), пагінація дошки з `detail=summary`, повний опис у `manager_task` і решта skills. Декомпозицію в один крок не закладено: після research зазвичай виходить багато задач. Цикл research → декомпозиція → створення — окремий крок.
 
 Захист порту для цих записів уже є, див. крок 1 нижче.
 
@@ -90,6 +88,6 @@ Blocked і Needs Attention не є завершенням. Зупинена се
 
 ## Відоме, не в цьому випуску
 
-**частково.** Запис Fleet MCP: невідомі ключі й чужі сервери зберігаються, битий JSON не перезаписується (помилка), перша копія файлу лишається як `*.fleet-bak`. Секцію TOML для Codex Fleet замінює власним редактором, а не парсером.
+**частково.** Запис Fleet MCP: невідомі ключі й чужі сервери зберігаються, битий JSON не перезаписується (помилка). Секцію TOML для Codex Fleet замінює власним редактором, а не парсером.
 
 **немає.** Тести пакета `internal/server` не проходять з `-count>1`: кілька тестів запуску чекають до 5 с і падають на другому проході, тож між ітераціями лишається спільний стан. Один прохід зелений. У повному `go test ./...` під навантаженням один такий тест раз упав.

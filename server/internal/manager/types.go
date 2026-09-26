@@ -39,22 +39,26 @@ const (
 
 // Intent is the structured Manager output validated against IntentJSONSchema.
 type Intent struct {
-	Kind          string `json:"kind"`
-	Project       string `json:"project,omitempty"`
-	Repository    string `json:"repository,omitempty"`
-	Title         string `json:"title,omitempty"`
-	Description   string `json:"description,omitempty"`
-	Priority      *int   `json:"priority,omitempty"`
-	Status        string `json:"status,omitempty"`
-	Type          string `json:"type,omitempty"`
-	Assignee      string `json:"assignee,omitempty"`
-	Ref           string `json:"ref,omitempty"`
-	Comment       string `json:"comment,omitempty"`
-	CommentAuthor string `json:"comment_author,omitempty"`
-	BoardAction   string `json:"board_action,omitempty"`
-	Query         string `json:"query,omitempty"`
-	Confirm       bool   `json:"confirm,omitempty"`
-	RawTranscript string `json:"raw_transcript,omitempty"`
+	Kind          string   `json:"kind"`
+	Project       string   `json:"project,omitempty"`
+	Repository    string   `json:"repository,omitempty"`
+	Repositories  []string `json:"repositories,omitempty"`
+	DependsOn     []string `json:"depends_on,omitempty"`
+	Title         string   `json:"title,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Acceptance    string   `json:"acceptance_criteria,omitempty"`
+	SourceInbox   string   `json:"source_inbox,omitempty"`
+	Priority      *int     `json:"priority,omitempty"`
+	Status        string   `json:"status,omitempty"`
+	Type          string   `json:"type,omitempty"`
+	Assignee      string   `json:"assignee,omitempty"`
+	Ref           string   `json:"ref,omitempty"`
+	Comment       string   `json:"comment,omitempty"`
+	CommentAuthor string   `json:"comment_author,omitempty"`
+	BoardAction   string   `json:"board_action,omitempty"`
+	Query         string   `json:"query,omitempty"`
+	Confirm       bool     `json:"confirm,omitempty"`
+	RawTranscript string   `json:"raw_transcript,omitempty"`
 }
 
 // TextRequest is the body for POST /api/manager/text.
@@ -71,8 +75,9 @@ type CommandRequest struct {
 
 // Failure describes a typed Manager failure.
 type Failure struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code        string   `json:"code"`
+	Message     string   `json:"message"`
+	Suggestions []string `json:"suggestions,omitempty"`
 }
 
 func (f Failure) Error() string {
@@ -89,6 +94,9 @@ type Result struct {
 	Path   string `json:"path,omitempty"`
 	Status string `json:"status,omitempty"`
 	Detail any    `json:"detail,omitempty"`
+	// Warnings are problems the caller should tell the person about even
+	// though the operation itself worked.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Response is the unified Manager API response.

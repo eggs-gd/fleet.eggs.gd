@@ -24,12 +24,17 @@ const IntentJSONSchema = `{
       ]
     },
     "project": { "type": "string" },
-    "repository": { "type": "string" },
+    "repository": { "type": "string", "description": "Single repository. Use repositories when a task touches more than one." },
+    "repositories": { "type": "array", "items": { "type": "string" } },
+    "depends_on": { "type": "array", "items": { "type": "string" }, "description": "Prerequisite task refs. The task cannot start until each one is done." },
     "title": { "type": "string" },
     "description": { "type": "string" },
-    "priority": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "acceptance_criteria": { "type": "string", "description": "Required before a task leaves backlog. Empty criteria fail manager_validate." },
+    "source_inbox": { "type": "string", "description": "INBOX ref this task was promoted from." },
+    "priority": { "type": "integer", "minimum": 1, "maximum": 5, "description": "1 is highest, 5 is lowest. Defaults to 5 when omitted." },
     "status": {
       "type": "string",
+      "description": "Allowed: backlog, needs_rework, todo, doing, blocked, needs_review, done, archived. Defaults to backlog.",
       "enum": ["backlog", "needs_rework", "todo", "doing", "blocked", "needs_review", "done", "archived"]
     },
     "type": {

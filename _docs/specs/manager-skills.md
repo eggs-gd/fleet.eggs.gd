@@ -2,26 +2,24 @@
 
 Належить App. Роадмап: [app](../roadmaps/app.md).
 
-**немає.** Цього в репозиторії ще немає. Нижче — що робити, не поточний стан.
+**готово.** Skills, MCP-інструменти, prompts і розкладання `MANAGER.md`. Одна копія кожного skill лежить у data root `.agents/skills/<name>/SKILL.md`. Решта провайдерів лише вказують на неї. MCP prompts читають цю копію.
 
 Принцип: код робить те, що має одну правильну відповідь (ID, слаги, статуси, дедуп, валідація). MCP віддає компактні факти і приймає атомарні записи. Skill тримає лише судження, яке не звести до правил: коли питати, як різати задачу, що вважати готовим.
 
 Захист локального API (Host, Origin, токен, не-JSON) уже стоїть. Нові писальні інструменти нижче йдуть на той самий захищений порт.
 
-## Де зараз горять токени
+## Було
 
-Manager читає `_docs/MANAGER.md`, `TASK_LIFECYCLE.md`, `OPERATING_MODEL.md` і `Fleet/ROUTING.md` у data root. Разом близько 46 КБ, приблизно 12k токенів на холодний старт. `Work/INDEX.md` — ще близько 36 КБ. Якщо він зазирає в `_registry/repositories.json`, це сотні кілобайт. `manager_vocabulary` уже дає компактну проєкцію, але інструкції все одно кажуть читати файли.
-
-Більшість правил у `MANAGER.md` уже виконує код. Manager читає їх як інструкції, а не як контракт: ref-и, слаги, шаблон картки, priority за замовчуванням, `needs_rework` перед `todo`.
+Manager при старті читав `_docs/MANAGER.md`, `TASK_LIFECYCLE.md`, `OPERATING_MODEL.md` і `Fleet/ROUTING.md` (близько 46 КБ, 12k токенів), а `Work/INDEX.md` і `_registry/repositories.json` ще на сотні кілобайт. Більшість правил з `MANAGER.md` (ref-и, слаги, шаблон картки, priority, `needs_rework` перед `todo`) виконував код, а Manager читав їх як інструкції, а не як контракт. Тепер це в інструментах, схемі й трьох документах-довідках, а Manager при старті читає лише skills.
 
 ## Skills
 
 Кожен skill — самодостатня інструкція до приблизно 80 рядків: рішення, приклади, точні виклики інструментів. Без посилань на документи. Не більше цих семи.
 
-Формат: рідні skills провайдера (Claude Code `.claude/skills`, Codex skills) плюс запасний варіант через MCP `prompts`. Один джерельний текст живе в App і версіонується з ним. Provisioning уже пише MCP-конфіги; файли skills пишуться тим самим кроком.
+Формат: один текст у `.agents/skills/<name>/SKILL.md`. Claude (`.claude/skills`), Codex (`.codex/skills`) і Gemini (`.gemini/skills`) мають короткий stub з `name`, `description` і вказівкою прочитати канон. Тіло skill в одному місці. Cursor — `.cursor/rules/manager-<name>.mdc` з `alwaysApply: false` і `@.agents/skills/<name>/SKILL.md`. Симлінків немає. Файл пишеться атомарно. Файл, що відрізняється від зашитого, замінюється без копій. Актуальні файли не переписуються. MCP prompts тих самих імен віддають тіло канонічного файлу. Джерело зашите в App; текст пишуть на старті `serve` і разом із MCP-конфігами.
 
 1. **intake** — сирий ввід (голос, чат) стає одним із п'яти результатів: задача, Inbox, оновлення проєкту, архів, нічого. Поріг: коли це вже задача, а коли питати. Сирий текст завжди зберігається. Закінчується одним викликом MCP.
-2. **shape-task** — з наміру зробити ціль, критерії приймання, тип, пріоритет. Коли створювати research-задачу, яка блокує імплементацію, а не вигадувати специфікацію.
+2. **shape-task** — з наміру зробити ціль, критерії приймання, тип, пріоритет. Якщо задача не готова, створити одну research-задачу, а не вигадувати специфікацію й не плодити задачі наперед. Як прибрати задачі, що не відповідають новій концепції: пройти дошку з `detail=summary`, виправити через `manager_update`, скасувати з `confirm`, перелічити зміни.
 3. **resolve-project** — як читати `manager_resolve_project`: `confident`, `ambiguous`, `none`. Коли ставити `backlog` і `unassigned` і питати людину. Коли зберігати аліас.
 4. **route** — коли `manager_route` віддав низьку впевненість або конфлікт: до кого і чому, що записати в handoff.
 5. **triage-attention** — реакція на `needs_attention` і `needs_review`: стисло переказати питання людині, прийняти відповідь, передати її worker-у, не розростатись.
@@ -32,10 +30,10 @@ Manager читає `_docs/MANAGER.md`, `TASK_LIFECYCLE.md`, `OPERATING_MODEL.md`
 
 Компактні факти замість файлів.
 
-- `manager_board(view)` — `needs_attention`, `blocked`, `in_review`, черги по репозиторіях, хто тримає ownership. Замінює читання `INDEX.md`.
-- `manager_task(ref)` — картка, залежності, блокери, стан сесії, хвіст activity log.
+- `manager_board(view, project, status, detail, limit, offset)` — `needs_attention`, `blocked`, `in_review`, `all`, черги по репозиторіях, хто тримає ownership. `detail=summary` додає початок опису кожної задачі. Відповідь посторінкова: `total` і `next_offset`. Замінює читання `INDEX.md` і дає змогу пройти всі задачі.
+- `manager_task(ref)` — картка, повний опис, залежності, блокери, стан сесії, хвіст activity log.
 - `manager_workers()` — які агенти доступні, чиї ownership, що вільне. Discovery агентів уже є в коді.
-- `manager_events(since)` — poll подій `task.*` за курсором. У сесію Manager їх ніхто не пушить.
+- `manager_events(since)` — poll подій `task.*` за id рядка audit. У сесію Manager їх ніхто не пушить. Подія на каналі `task` пишеться в audit там, де публікується, і до шини. Якщо запис не вдався, у відповіді є `warnings`.
 
 ## Рішення з відповідальністю
 
@@ -43,34 +41,44 @@ Manager читає `_docs/MANAGER.md`, `TASK_LIFECYCLE.md`, `OPERATING_MODEL.md`
 
 - `manager_resolve_project(phrase)` — ранжовані кандидати, оцінка і вердикт `confident`, `ambiguous` або `none`. Кодифікує правила резолву проєкту.
 - `manager_similar(text)` — дублікати і суміжні задачі перед створенням.
-- `manager_route(draft)` — виконавець за пріоритетом: явна вказівка, override проєкту, категорія з маршрутизації, доступність worker-а. `ROUTING.md` стає конфігом, не прозою.
-- `manager_validate(draft)` — dry-run: схема, Definition of Done, відсутні репозиторії, цикли `depends_on`. Повертає список виправлень.
+- `manager_route(draft)` — виконавець за пріоритетом: явна вказівка (агент або людина з `Fleet/<ім’я>.md`), `default_assignee` з frontmatter `PROJECT.md`, Claude, вільний worker. Невідомий `default_assignee` не валить виклик: відповідь стає неупевненою, а в `warnings` стоїть, що виправити в картці. Правило в коді. `Fleet/ROUTING.md` лишається довідкою для людини.
+- `manager_validate(draft)` — dry-run: схема, Definition of Done, відсутні репозиторії, `depends_on` на відсутній ref і цикли. Якщо дошку не вдалось прочитати, це теж пункт списку, а решта перевірок виконується. Повертає список виправлень.
 
 ## Запис
 
 Одна атомарна дія замість послідовності.
 
-- Розширити `manager_command`. У `Intent` зараз є однина `repository`, і немає `depends_on`, `repositories`, `acceptance_criteria`, `source_inbox`. Без них Manager править картку руками.
-- `manager_inbox(capture | promote | list)` — INBOX-ref-и, промоція в CORE-задачу з `source_inbox` і `promoted_to`. Зараз цього немає.
-- `manager_project(alias | note | decision)` — ідемпотентно, без дублів, із записом в activity log. Замінює ручне редагування `PROJECT.md`.
-- `manager_answer(ref, text)` — коментар, перехід статусу і продовження worker-а однією дією.
-- `manager_review(ref, verdict, comment)` — accept веде в done і звільняє ownership; rework веде в `needs_rework` з коментарем у стандартній секції.
-- `manager_decompose(parent, subtasks)` — research і implementation з `depends_on` атомарно, у правильному порядку.
+- `Intent` має `depends_on`, `repositories`, `acceptance_criteria`, `source_inbox`, тож Manager не править картку руками. Однина `repository` лишається.
+- `manager_inbox(capture | promote | list)` — INBOX-ref-и з `_registry/counters.json`, файл `Inbox/items/<дата>-<slug>.md` зі `status: untriaged`. Промоція створює CORE-задачу з `source_inbox`, ставить `status: promoted` і `promoted_to`, додає рядок в Activity Log.
+- `manager_project(alias | note | decision)` — ідемпотентно, без дублів. Alias іде у frontmatter `aliases` картки, і `manager_resolve_project` його читає. Кожен запис додає рядок з часом в Activity Log. Проєкт без картки — помилка з поясненням: картки створює і лагодить сканер, а не інструмент. Замінює ручне редагування `PROJECT.md`.
+- `manager_answer(ref, text)` — коментар і перехід статусу однією дією: `blocked` або `needs_rework` стає `todo`. Worker їде далі, коли слухач задач бачить `todo`.
+- `manager_review(ref, verdict, comment)` — accept веде в done (ownership обчислюється зі статусу, тож звільняється); rework веде в `needs_rework` з коментарем у стандартній секції.
+- `manager_update(ref, project, repository, depends_on, body)` — змінює існуючу задачу. Змінюються лише задані поля, кожне перевіряється на дошці (проєкт — одне впевнене співпадіння, репозиторій відомий, `depends_on` без відсутніх ref і циклів). Назву й тип `TaskService` змінити не вміє.
 
 Правила полів (default priority, допустимі статуси) живуть у `description` полів JSON Schema. Інструмент навчає сам, окремий документ для цього не потрібен.
+
+Декомпозицію в інструмент не закладено. Після research зазвичай виходить не одна, а багато менших задач, і саме research має сказати, як різати. Manager створює лише research-задачу, а наступні задачі створюються за його результатом. Повний цикл з research, декомпозицією і створенням будується окремо.
 
 Помилки — `fail-with-fix`: типізована помилка з підказкою («project не знайдено, найближчі: …»), щоб модель не ганяла петлі.
 
 ## Що забрати з документів data root
 
-- `MANAGER.md` розкласти: правила ID, слагів, refs, priority і шаблону картки стають кодом і схемою; судження йдуть у skills; решта зникає.
-- `TASK_LIFECYCLE.md` і `OPERATING_MODEL.md` лишити короткими довідками для людини, не інструкціями Manager.
-- В `AGENTS.md` data root для Manager лишити три речі: ти Manager, працюй тільки через MCP, до файлів не торкайся.
+- **готово.** `MANAGER.md` розкладений: refs, ID, слаги, priority, Inbox і резолв проєкту в коді; судження в skills; правила статусів і Definition Of Done в `TASK_LIFECYCLE.md`. У шаблоні лишилась довідка: що кому належить і де лежать файли. Промпт worker-а тепер веде на `TASK_LIFECYCLE.md`.
+- **готово.** `TASK_LIFECYCLE.md` і `OPERATING_MODEL.md` не є інструкціями Manager. `TASK_LIFECYCLE.md` — контракт для worker-ів і людини.
+- **готово.** В `AGENTS.md` шаблону для Manager: ти Manager, працюй тільки через MCP, до файлів не торкайся, skills у `.agents/skills`.
 
 ## Порядок
 
-1. `manager_board` і `manager_task` плюс skill `intake`. Найбільша економія токенів і найнижчий ризик.
-2. Розширити `Intent` (`depends_on`, `repositories`, `acceptance_criteria`) і додати `manager_validate`.
-3. `manager_resolve_project`, `manager_similar`, `manager_route`. Правила маршруту — у конфігу.
-4. `manager_inbox`, `manager_project`.
-5. `manager_answer`, `manager_review`, `manager_decompose` разом зі skills `triage-attention` і `review`.
+1. **готово.** `manager_board` і `manager_task` плюс skill `intake`.
+2. **готово.** `Intent` (`depends_on`, `repositories`, `acceptance_criteria`, `source_inbox`) і `manager_validate`.
+3. **готово.** `manager_resolve_project`, `manager_similar`, `manager_route`.
+4. **готово.** `manager_inbox`, `manager_project`, `manager_workers`, `manager_events`.
+5. **готово.** `manager_answer`, `manager_review`, `manager_update`, пагінація дошки і решта skills.
+
+## Збої
+
+Збій запису на диск чи в базу — це проблема системи, а не окремої функції. Обробка одна.
+
+1. **Перевірка на старті.** Перед запуском сервер збирає всі проблеми разом і відмовляється стартувати, якщо вони є: data root недоступний для запису, runtime DB не приймає запис, не розкладаються skills, `counters.json` не відновити (пошкоджений JSON). Залежні перевірки пропускаються, якщо data root недоступний, і сервер не створює data root, якого не було.
+2. **Під час роботи процес не падає.** Помилка запису повертається тому, хто її викликав, і потрапляє в спільний стан `health` (компонент, причина, час). `/api/health` віддає їх у полі `degraded`, а перший же успішний запис компонента його знімає. Подія `task.*` пишеться в audit там, де публікується, до шини, а не в підписнику. Збій audit не скасовує вже виконану зміну статусу, але `manager_events` додає попередження `warnings`.
+3. **Дрейф даних лагодить сканер.** Не інструменти. `Scanner.Watch` на кожному тику синхронізує картки `Work/<id>/PROJECT.md` з реєстром: створює відсутні, повертає відсутній frontmatter, перетворює `aliases` на блоковий список, синхронізує `repositories`. Тіло, `aliases`, `default_assignee`, Activity Log і картки, яких реєстр не знає (`_life`), не чіпає. Кожні 30 тиків перевіряє `counters.json`: створює відсутній, доповнює поля, піднімає лічильник вище за найбільший ref у дереві. Пошкоджений JSON не переписує, а звітує. Збій проходу видно в `degraded` (компоненти `scan`, `workspace`, `counters`), і прохід повторюється.

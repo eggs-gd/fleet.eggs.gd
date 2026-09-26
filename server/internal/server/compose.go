@@ -10,6 +10,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/executionfinalizer"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
@@ -46,6 +47,7 @@ type ComposeConfig struct {
 	TaskProvider     providerconfig.Settings
 	LauncherIdentity string
 	Logger           *l.Logger
+	Health           *health.Monitor
 }
 
 // Compose constructs listener, execution, finalizer, and dashboard siblings.
@@ -98,7 +100,7 @@ func Compose(cfg ComposeConfig) *App {
 		}
 		return execution.TaskFromFlow(flowTask), nil
 	}, store.UpsertTask)
-	events := eventbus.New()
+	events := &auditedBus{bus: eventbus.New(), root: cfg.RuntimeRoot, health: cfg.Health}
 	finalizer.WithPublisher(events)
 
 	exec := execution.NewService(execution.ServiceOptions{
@@ -197,6 +199,7 @@ func compose(cfg Config, taskProviderSettings providerconfig.Settings) *App {
 		DryRun:         cfg.DryRun,
 		SessionTimeout: cfg.SessionTimeout,
 		TaskProvider:   taskProviderSettings,
+		Health:         cfg.Health,
 	})
 }
 

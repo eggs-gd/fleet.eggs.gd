@@ -14,7 +14,7 @@ make serve
 The `serve` command is the single runtime entry point. It:
 
 - serves the built Svelte backoffice from `view/dist`;
-- exposes `/api/health`;
+- exposes `/api/health` (`degraded` lists failing parts, empty when healthy);
 - exposes runtime Core state at `/api/state`;
 - persists task edits through `PATCH /api/tasks`;
 - creates new Work tasks through `POST /api/tasks`;

@@ -141,7 +141,7 @@ func TestCreateFromRequestDefaultsAndValidates(t *testing.T) {
 }
 
 func TestSlugifyAndUniqueFileBase(t *testing.T) {
-	if got := slugifyTitle("Create new Core tasks from the dashboard!"); got != "create-new-core-tasks-from-the-dashboard" {
+	if got := tasklifecycle.SlugifyTitle("Create new Core tasks from the dashboard!"); got != "create-new-core-tasks-from-the-dashboard" {
 		t.Fatalf("slug = %q", got)
 	}
 	if got := workProjectDirID("eggs-gd-prod/career-wizard"); got != "eggs-gd-prod" {

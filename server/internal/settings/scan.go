@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
 )
 
@@ -33,6 +34,9 @@ type ScanStatus struct {
 }
 
 type Scanner struct {
+	// Health, when set, is told about failing scans and workspace repairs.
+	Health *health.Monitor
+
 	mu     sync.Mutex
 	status ScanStatus
 	sniff  func(scanRoots []string, registryDir string) error

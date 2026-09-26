@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 )
 
@@ -39,10 +40,13 @@ func (UnconfiguredClassifier) Classify(context.Context, string, Vocabulary) (Int
 // executions, finalize, own change-detection walkers, or call providers
 // directly (_docs/TASK_FLOW_CONTOURS.md §3, CORE-110).
 type Service struct {
-	Tasks      TaskManagement
-	Board      BoardReader
-	STT        Transcriber
-	Classifier IntentClassifier
+	Tasks       TaskManagement
+	Board       BoardReader
+	STT         Transcriber
+	Classifier  IntentClassifier
+	DataRoot    string
+	RuntimeRoot string
+	Health      *health.Monitor
 }
 
 func NewService(tasks TaskManagement, board BoardReader) *Service {
@@ -170,7 +174,18 @@ func (s *Service) createTask(ctx context.Context, intent Intent, path, source st
 	if source == "voice" {
 		reason = "Created by Core Manager API from voice input."
 	}
-	task, err := createViaService(ctx, s.Tasks, intent.Title, intent.Description, intent.Project, intent.Repository, intent.Status, intent.Type, intent.Assignee, reason, source, intent.Priority)
+	description := intent.Description
+	if strings.TrimSpace(intent.Acceptance) != "" {
+		description += "\n\n## Acceptance\n" + strings.TrimSpace(intent.Acceptance)
+	}
+	if strings.TrimSpace(intent.SourceInbox) != "" {
+		description += "\n\nsource_inbox: " + strings.TrimSpace(intent.SourceInbox)
+	}
+	repository := intent.Repository
+	if repository == "" && len(intent.Repositories) > 0 {
+		repository = intent.Repositories[0]
+	}
+	task, err := createViaService(ctx, s.Tasks, intent.Title, description, intent.Project, repository, intent.Status, intent.Type, intent.Assignee, reason, source, intent.Priority, intent.DependsOn)
 	if err != nil {
 		return failureFromErr(err)
 	}

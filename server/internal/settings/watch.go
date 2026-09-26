@@ -2,21 +2,30 @@ package settings
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
+
+// countersEvery is how many ticks pass between full checks of the ref
+// counters against the refs already in the tree.
+const countersEvery = 30
 
 type watchSeen struct {
 	ready       bool
 	fingerprint string
 }
 
-// Watch polls the saved scan roots while serve is running. A full registry
-// rewrite runs once at start and again whenever the set of git checkouts changes.
+// Watch keeps the workspace in order while serve is running. Every tick it
+// syncs the project cards with the registry. Every countersEvery ticks it also
+// checks the ref counters. It polls the saved scan roots too: a full registry
+// rewrite runs once at start and again whenever the set of git checkouts
+// changes. A failing part is reported to Health and retried on the next tick.
 func (s *Scanner) Watch(ctx context.Context, coreRoot string, interval time.Duration) {
 	if s == nil || ctx == nil {
 		return
@@ -25,16 +34,39 @@ func (s *Scanner) Watch(ctx context.Context, coreRoot string, interval time.Dura
 		interval = 2 * time.Second
 	}
 	var seen watchSeen
+	s.maintain(coreRoot, true)
 	s.watchOnce(coreRoot, nil, &seen)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	for {
+	for tick := 1; ; tick++ {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			s.maintain(coreRoot, tick%countersEvery == 0)
 			s.watchOnce(coreRoot, nil, &seen)
 		}
+	}
+}
+
+// maintain repairs the project cards and, when full is set, the ref counters.
+func (s *Scanner) maintain(coreRoot string, full bool) {
+	if s == nil {
+		return
+	}
+	_, err := projectscan.MaintainCards(filepath.Join(coreRoot, "_registry"), filepath.Join(coreRoot, "Work"))
+	if err != nil {
+		s.Health.Fail("workspace", err)
+	} else {
+		s.Health.OK("workspace")
+	}
+	if !full {
+		return
+	}
+	if _, err := tasklifecycle.EnsureCounters(coreRoot); err != nil {
+		s.Health.Fail("counters", err)
+	} else {
+		s.Health.OK("counters")
 	}
 }
 
@@ -47,6 +79,7 @@ func (s *Scanner) watchOnce(coreRoot string, paths func(scanRoots []string) ([]s
 	}
 	overlay, err := LoadOverlay(coreRoot)
 	if err != nil {
+		s.Health.Fail("scan", err)
 		return
 	}
 	scanRoots, _ := EffectiveScanRoots(overlay)
@@ -55,6 +88,7 @@ func (s *Scanner) watchOnce(coreRoot string, paths func(scanRoots []string) ([]s
 	}
 	found, err := paths(scanRoots)
 	if err != nil {
+		s.Health.Fail("scan", err)
 		return
 	}
 	sort.Strings(found)
@@ -78,9 +112,15 @@ func (s *Scanner) watchOnce(coreRoot string, paths func(scanRoots []string) ([]s
 	s.mu.Unlock()
 
 	s.run(scanRoots, filepath.Join(coreRoot, "_registry"), sniff, reload)
-	if s.Status().State != ScanSucceeded {
+	if status := s.Status(); status.State != ScanSucceeded {
+		msg := status.Error
+		if msg == "" {
+			msg = "scan ended in state " + status.State
+		}
+		s.Health.Fail("scan", errors.New(msg))
 		return
 	}
+	s.Health.OK("scan")
 	seen.ready = true
 	seen.fingerprint = fingerprint
 }

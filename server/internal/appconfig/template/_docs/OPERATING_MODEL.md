@@ -42,7 +42,7 @@ Use the Core Manager API when:
 - the input needs triage into task/note/decision/inbox;
 - aliases, project routing, or Core metadata should be updated.
 
-Manager writes:
+Manager tools write:
 
 - `Inbox/items/*.md` for ambiguous raw capture;
 - `Work/<project-id>/tasks/*.md` for actionable tasks;
@@ -75,7 +75,7 @@ The worker should:
 
 1. Read `AGENTS.md`. Claude also reads `CLAUDE.md`, Gemini also reads
    `GEMINI.md`; both point at `AGENTS.md`.
-2. Read `_docs/MANAGER.md`.
+2. Read `_docs/TASK_LIFECYCLE.md`.
 3. Read `Fleet/ROUTING.md`.
 4. Open `Work/INDEX.md`.
 5. Find tasks matching its agent id:

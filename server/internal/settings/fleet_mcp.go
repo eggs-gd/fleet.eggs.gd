@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/eggs-gd/fleet.eggs.gd/internal/managerskills"
 )
 
 // CodexTrustWarning is the one sentence shown when Fleet trusts a data root
@@ -58,6 +60,9 @@ func EnsureManagerMCP(root, agent, addr, token string) (FleetMCPStatus, error) {
 	case "claude", "codex", "gemini", "cursor":
 	default:
 		return FleetMCPStatus{}, fmt.Errorf("unknown manager agent %q", agent)
+	}
+	if err := managerskills.Install(root); err != nil {
+		return FleetMCPStatus{}, err
 	}
 	url := ManagerMCPURL(addr, token)
 	abs, err := filepath.Abs(root)
@@ -174,23 +179,7 @@ func upsertMCPServer(path, name string, entry any) error {
 		return err
 	}
 	data = append(data, '\n')
-	if err := backupOnce(path, existing); err != nil {
-		return err
-	}
 	return writePrivateFile(path, data)
-}
-
-// backupOnce keeps the first pre-Fleet copy of a provider file next to it, so a
-// user's own configuration can always be recovered.
-func backupOnce(path string, existing []byte) error {
-	if len(strings.TrimSpace(string(existing))) == 0 {
-		return nil
-	}
-	backup := path + ".fleet-bak"
-	if _, err := os.Stat(backup); err == nil {
-		return nil
-	}
-	return os.WriteFile(backup, existing, 0o600)
 }
 
 func writeCodexManagerMCP(path, url string) error {
@@ -204,9 +193,6 @@ func writeCodexManagerMCP(path, url string) error {
 	next := upsertTOMLSection(existing, "[mcp_servers.manager]", body)
 	if next == existing {
 		return nil
-	}
-	if err := backupOnce(path, []byte(existing)); err != nil {
-		return err
 	}
 	return writePrivateFile(path, []byte(next))
 }
@@ -232,9 +218,6 @@ func trustCodexProject(absRoot string) error {
 		next += "\n\n"
 	}
 	next += header + "\ntrust_level = \"trusted\"\n"
-	if err := backupOnce(path, []byte(existing)); err != nil {
-		return err
-	}
 	return writePrivateFile(path, []byte(next))
 }
 

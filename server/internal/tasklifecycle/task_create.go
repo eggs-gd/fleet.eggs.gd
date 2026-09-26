@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 var workRefCounterMu sync.Mutex
@@ -148,10 +150,20 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 // provider that creates tasks against the same Core root must allocate from
 // this single counter.
 func AllocateNextWorkRef(root string) (string, error) {
-	return allocateNextWorkRef(root)
+	return allocateRef(root, func(c *workRefCounters) (string, string, *int) {
+		return c.WorkRefPrefix, "CORE", &c.NextWorkRef
+	}, "next_work_ref")
 }
 
-func allocateNextWorkRef(root string) (string, error) {
+// AllocateNextInboxRef allocates the next INBOX-N ref from the same counters
+// file.
+func AllocateNextInboxRef(root string) (string, error) {
+	return allocateRef(root, func(c *workRefCounters) (string, string, *int) {
+		return c.InboxRefPrefix, "INBOX", &c.NextInboxRef
+	}, "next_inbox_ref")
+}
+
+func allocateRef(root string, pick func(*workRefCounters) (prefix, fallback string, next *int), field string) (string, error) {
 	workRefCounterMu.Lock()
 	defer workRefCounterMu.Unlock()
 
@@ -165,16 +177,17 @@ func allocateNextWorkRef(root string) (string, error) {
 	if err := json.Unmarshal(data, &counters); err != nil {
 		return "", fmt.Errorf("parse counters: %w", err)
 	}
-	if counters.NextWorkRef < 1 {
-		return "", fmt.Errorf("counters next_work_ref must be >= 1")
+	prefix, fallback, next := pick(&counters)
+	if *next < 1 {
+		return "", fmt.Errorf("counters %s must be >= 1", field)
 	}
-	prefix := strings.TrimSpace(counters.WorkRefPrefix)
+	prefix = strings.TrimSpace(prefix)
 	if prefix == "" {
-		prefix = "CORE"
+		prefix = fallback
 	}
 
-	ref := fmt.Sprintf("%s-%d", prefix, counters.NextWorkRef)
-	counters.NextWorkRef++
+	ref := fmt.Sprintf("%s-%d", prefix, *next)
+	*next++
 
 	encoded, err := json.MarshalIndent(counters, "", "  ")
 	if err != nil {
@@ -211,4 +224,46 @@ func writeCountersAtomic(path string, data []byte) error {
 		return err
 	}
 	return os.Rename(tempPath, path)
+}
+
+var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
+
+// SlugifyTitle turns a title into a short lowercase ASCII slug. It returns
+// "" when the title has no ASCII letters or digits.
+func SlugifyTitle(title string) string {
+	lower := strings.ToLower(strings.TrimSpace(title))
+	var b strings.Builder
+	lastDash := false
+	for _, r := range lower {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			b.WriteRune(r)
+			lastDash = false
+		default:
+			if !lastDash && b.Len() > 0 {
+				b.WriteByte('-')
+				lastDash = true
+			}
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	slug = nonSlugChars.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+
+	parts := strings.Split(slug, "-")
+	kept := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		kept = append(kept, part)
+		if len(kept) >= 8 {
+			break
+		}
+	}
+	slug = strings.Join(kept, "-")
+	if len(slug) > 72 {
+		slug = strings.Trim(slug[:72], "-")
+	}
+	return slug
 }

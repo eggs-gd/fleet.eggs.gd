@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/manager"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/managerskills"
 )
 
 // registerManagerMCPRoute mounts the Manager API as MCP tools directly on
@@ -58,6 +60,80 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		return nil, service.SubmitCommand(ctx, in), nil
 	})
 
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_board", Description: "Read the live board. view is needs_attention, blocked, in_review, or all. Filter by project or status. detail=summary adds the start of each description. Results are paged: pass next_offset back as offset."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in boardMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.ShowBoard(ctx, in), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_task", Description: "Read one task: card, full description, dependencies, blockers, session, and recent activity."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in refMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Task(ctx, in.Ref), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_workers", Description: "List available agents and the task each busy agent holds."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, _ emptyMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Workers(ctx), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_events", Description: "List task events recorded after the given audit row id. This does not push events into the chat."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in eventsMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Events(in.Since), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_resolve_project", Description: "Rank project candidates for a phrase. Verdict is confident, ambiguous, or none."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in phraseMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.ResolveProject(in.Phrase), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_similar", Description: "Find duplicate or related tasks before creating one."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in textMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Similar(ctx, in.Text), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_route", Description: "Recommend a worker from an explicit instruction, category, then a free agent."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in draftMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Route(ctx, in.Draft), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_validate", Description: "Dry-run a draft. Returns fixes and writes nothing."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in draftMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Validate(ctx, in.Draft), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_inbox", Description: "capture, promote, or list Inbox notes. Promote creates one task and records promoted_to."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in inboxMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Inbox(ctx, in.Action, in.Text, in.Ref, in.Project, in.Title), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_project", Description: "Record an alias, note, or decision on the project card. Repeating the same text does not duplicate it."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in projectMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Project(in.Action, in.Project, in.Text), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_answer", Description: "Record the person's answer, move a waiting task forward, and let the worker continue."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in answerMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Answer(ctx, in.Ref, in.Text, in.Status), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_review", Description: "accept sets done and releases ownership. rework sets needs_rework and stores the comment."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in reviewMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Review(ctx, in.Ref, in.Verdict, in.Comment), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_update", Description: "Change project, repository, depends_on, or the description (body) of an existing task. Only the fields you set change. Each is checked against the board first."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in manager.UpdateInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Update(ctx, in), nil
+		})
+
+	for _, name := range managerskills.Names {
+		desc, err := managerskills.Description(name)
+		if err != nil {
+			panic(fmt.Sprintf("manager skill %s is not embedded: %v", name, err))
+		}
+		skillName := name
+		mcpServer.AddPrompt(&mcp.Prompt{Name: skillName, Description: desc}, func(_ context.Context, _ *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+			body, err := managerskills.Read(service.DataRoot, skillName)
+			if err != nil {
+				return nil, err
+			}
+			return &mcp.GetPromptResult{
+				Description: desc,
+				Messages: []*mcp.PromptMessage{{
+					Role:    "user",
+					Content: &mcp.TextContent{Text: body},
+				}},
+			}, nil
+		})
+	}
+
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return mcpServer
 	}, &mcp.StreamableHTTPOptions{Stateless: true})
@@ -68,3 +144,51 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 // AddTool requires an object-shaped In type, so a bare empty struct stands
 // in for "nothing to pass".
 type emptyMCPInput struct{}
+
+type boardMCPInput = manager.BoardQuery
+
+type refMCPInput struct {
+	Ref string `json:"ref"`
+}
+
+type eventsMCPInput struct {
+	Since int64 `json:"since"`
+}
+
+type phraseMCPInput struct {
+	Phrase string `json:"phrase"`
+}
+
+type textMCPInput struct {
+	Text string `json:"text"`
+}
+
+type draftMCPInput struct {
+	Draft manager.Intent `json:"draft"`
+}
+
+type inboxMCPInput struct {
+	Action  string `json:"action"`
+	Text    string `json:"text,omitempty"`
+	Ref     string `json:"ref,omitempty"`
+	Project string `json:"project,omitempty"`
+	Title   string `json:"title,omitempty"`
+}
+
+type projectMCPInput struct {
+	Action  string `json:"action"`
+	Project string `json:"project"`
+	Text    string `json:"text"`
+}
+
+type answerMCPInput struct {
+	Ref    string `json:"ref"`
+	Text   string `json:"text"`
+	Status string `json:"status,omitempty"`
+}
+
+type reviewMCPInput struct {
+	Ref     string `json:"ref"`
+	Verdict string `json:"verdict"`
+	Comment string `json:"comment,omitempty"`
+}

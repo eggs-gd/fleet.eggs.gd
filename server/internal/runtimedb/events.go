@@ -68,3 +68,39 @@ FROM events ORDER BY id`)
 	}
 	return events, nil
 }
+
+// TaskEvent is one task.* audit row with its cursor id.
+type TaskEvent struct {
+	ID      int64
+	Type    string
+	TaskRef string
+	Message string
+}
+
+// TaskEventsAfter returns task.* events whose row id is greater than after.
+func TaskEventsAfter(root string, after int64) ([]TaskEvent, error) {
+	db, err := Open(root)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := db.Query(`
+SELECT id, type, task_ref, message FROM events
+WHERE id > ? AND type LIKE 'task.%'
+ORDER BY id`, after)
+	if err != nil {
+		return nil, fmt.Errorf("list task events: %w", err)
+	}
+	defer rows.Close()
+	var events []TaskEvent
+	for rows.Next() {
+		var event TaskEvent
+		if err := rows.Scan(&event.ID, &event.Type, &event.TaskRef, &event.Message); err != nil {
+			return nil, fmt.Errorf("scan task event: %w", err)
+		}
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list task events: %w", err)
+	}
+	return events, nil
+}

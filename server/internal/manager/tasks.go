@@ -62,7 +62,7 @@ func summaryFromFlow(task taskflow.Task) TaskSummary {
 }
 
 // createViaService creates a task through Contour 1 TaskManagement.
-func createViaService(ctx context.Context, tasks TaskManagement, title, description, project, repository, status, typ, assignee, reason, source string, priority *int) (TaskSummary, error) {
+func createViaService(ctx context.Context, tasks TaskManagement, title, description, project, repository, status, typ, assignee, reason, source string, priority *int, dependsOn []string) (TaskSummary, error) {
 	if tasks == nil {
 		return TaskSummary{}, Failure{Code: FailureProviderError, Message: "task service is not configured"}
 	}
@@ -76,6 +76,7 @@ func createViaService(ctx context.Context, tasks TaskManagement, title, descript
 		Assignee:         assignee,
 		AssignmentReason: reason,
 		Source:           source,
+		DependsOn:        append([]string{}, dependsOn...),
 	}
 	if priority != nil {
 		input.Priority = *priority

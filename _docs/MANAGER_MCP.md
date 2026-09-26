@@ -1,11 +1,12 @@
 # Manager MCP
 
 `internal/server/manager_mcp.go` mounts the Manager API as MCP tools
-directly on `core serve`, at `/mcp`, so an agent acting as Manager (most
-often Codex chat, per the CORE-92 override path — see
-`../../Data/_docs/MANAGER.md`) can create/patch tasks through one
-structured call instead of hand-parsing `Work/INDEX.md`, `_registry/*.json`,
-and individual task Markdown files.
+directly on `core serve`, at `/mcp`. The Manager is a Claude, Codex, Cursor,
+or Gemini session whose folder is the data root. It reads and changes the
+board through these tools instead of hand-parsing `Work/INDEX.md`,
+`_registry/*.json`, and task Markdown files. The judgment (when to ask, how to
+split, what counts as ready) lives in the Manager skills, see
+[manager-skills](specs/manager-skills.md).
 
 ## Architecture
 
@@ -26,19 +27,36 @@ machine running a built App binary, with nothing to install or spawn.
 
 ## Tools
 
-- `manager_schema` — the Intent JSON schema `manager_command` expects.
-  Call once per session instead of guessing field names.
-- `manager_vocabulary` — current valid project ids, workspace ids,
-  assignees, and statuses (the same board projection Core itself uses to
-  validate references). Call this instead of reading `Work/INDEX.md` or
-  `_registry/*.json` by hand.
-- `manager_command` — executes one structured `Intent` (see
-  `internal/manager/types.go`): create a task (`kind: task`), change
-  status/assignee/priority, add a comment, cancel (`kind: cancel`,
-  requires `confirm: true`), or look up a task/board (`kind: board_command`
-  or `question`). Wraps `Service.SubmitCommand` — deterministic, no LLM
-  classification involved (the calling agent is already the LLM
-  constructing the intent).
+Every tool call goes to the same `*manager.Service`. Failures come back as
+typed errors with a suggestion (`fail-with-fix`), and a call that worked but
+needs the person's attention carries `warnings`. The behavior of each tool is
+specified in [manager-skills](specs/manager-skills.md).
+
+- **Schema and vocabulary.** `manager_schema` is the Intent JSON schema
+  `manager_command` expects. `manager_vocabulary` lists the valid project
+  ids, workspace ids, assignees, and statuses.
+- **`manager_command`.** Executes one structured `Intent` (see
+  `internal/manager/types.go`): create a task (`kind: task`, with
+  `depends_on`, `repositories`, `acceptance_criteria`, `source_inbox`),
+  change status/assignee/priority, add a comment, cancel (`kind: cancel`,
+  requires `confirm: true`), or look up a task or the board (`board_command`,
+  `question`). Wraps `Service.SubmitCommand`: deterministic, no
+  LLM classification, because the calling agent is already the LLM.
+- **Read.** `manager_board` (views, `project`/`status` filters,
+  `detail=summary`, `limit`/`offset` paging), `manager_task` (full
+  description, blockers, session, recent activity), `manager_workers`,
+  `manager_events` (`task.*` audit rows after a row id; nothing is pushed
+  into the session).
+- **Decide.** `manager_resolve_project`, `manager_similar`, `manager_route`,
+  `manager_validate` (dry run, writes nothing).
+- **Write.** `manager_inbox` (capture, promote, list), `manager_project`
+  (alias, note, decision on the project card), `manager_answer`,
+  `manager_review`, `manager_update` (project, repository, `depends_on`, and
+  description of an existing task).
+
+The Manager skills are also served as MCP prompts under the same names
+(`intake`, `shape-task`, `resolve-project`, `route`, `triage-attention`,
+`review`, `briefing`). A prompt returns the canonical file from the data root.
 
 `manager_text`/`manager_audio` (the fast-path + LLM-classifier pipeline
 behind `POST /api/manager/text`) are deliberately not exposed as MCP tools:
@@ -49,9 +67,12 @@ through a second, unconfigured classification step.
 
 ## Registration
 
-`Data/.mcp.json` (bundled in App's bootstrap template — see
-`internal/appconfig/template/.mcp.json` — so every fresh Data root gets it
-on first run):
+`core serve` writes the Fleet MCP entry into the provider files of the data
+root before a Manager session is created or adopted: `.mcp.json` (Claude),
+`.codex/config.toml` (Codex), `.cursor/mcp.json` (Cursor), and
+`.agents/mcp_config.json` (Gemini). Keys and servers already in those files
+are kept, and a file that is not valid JSON is refused, not overwritten. The
+bundled template ships the same files with the URL only:
 
 ```json
 {
@@ -64,7 +85,10 @@ on first run):
 }
 ```
 
-Matches `core serve`'s default `--addr`. Requires `core serve` to already
-be running — an operator using Manager MCP tools is, by definition, working
-against a live Core install. If `--addr` is overridden, update the URL to
-match.
+The URL Fleet writes carries the per-install launch token in the query
+(`?token=...`), which `/mcp` requires. The token is created once in
+`~/.fleet/launch-token` and does not change between restarts, so these files
+stay tracked and stable. It is valid only for `127.0.0.1` with the server's own
+Host, but a query string reaches logs, so do not publish the URL. The address
+matches `core serve`'s `--addr`, default `127.0.0.1:8787`. Requires `core
+serve` to be running.

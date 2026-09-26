@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/manager"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
@@ -28,6 +29,7 @@ type Config struct {
 	LaunchToken        string
 	StartedAt          time.Time
 	DataRootCreated    bool
+	Health             *health.Monitor
 }
 
 func Serve(cfg Config) error {
@@ -46,6 +48,12 @@ func Serve(cfg Config) error {
 	}
 	if cfg.StartedAt.IsZero() {
 		cfg.StartedAt = time.Now()
+	}
+	if cfg.Health == nil {
+		cfg.Health = health.New()
+	}
+	if err := preflight(cfg); err != nil {
+		return err
 	}
 
 	taskProviderSettings, err := providerconfig.Load(cfg.CoreRoot)
@@ -68,12 +76,17 @@ func Serve(cfg Config) error {
 	// Dashboard additionally polls RuntimeService — it is outside the three
 	// contours and must not subscribe to Go channels (CORE-114).
 	managerService := manager.NewService(coreRuntime.TaskService(), boardReader{app: coreRuntime})
+	managerService.DataRoot = cfg.CoreRoot
+	managerService.RuntimeRoot = cfg.RuntimeRoot
+	managerService.Health = cfg.Health
 	dashboard := coreRuntime.Surface()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		problems := cfg.Health.Problems()
 		writeJSON(w, map[string]any{
 			"ok":        true,
+			"degraded":  problems,
 			"core_root": cfg.CoreRoot,
 			"time":      time.Now().Format(time.RFC3339),
 		})
@@ -101,6 +114,7 @@ func Serve(cfg Config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	settingsRT.scanner.Health = cfg.Health
 	go settingsRT.scanner.Watch(ctx, cfg.CoreRoot, 2*time.Second)
 	go coreRuntime.Run(ctx)
 

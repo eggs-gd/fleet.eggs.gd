@@ -16,9 +16,11 @@ Data
 |-- _docs/       your own decisions and operating notes
 |-- AGENTS.md    canonical agent instruction file for this tree
 |-- .mcp.json    Fleet MCP for Claude
-|-- .codex/      Fleet MCP for Codex
-|-- .agents/     Fleet MCP for Gemini
-`-- .cursor/     Fleet MCP for Cursor
+|-- .codex/      Fleet MCP and Manager skills for Codex
+|-- .agents/     Fleet MCP for Gemini, plus the canonical Manager skills
+|-- .claude/     Manager skills for Claude
+|-- .gemini/     Manager skills for Gemini
+`-- .cursor/     Fleet MCP and Manager rules for Cursor
 ```
 
 This template is the generic bootstrap. An operator's Data copy may diverge from it. The human profile here is `owner`; an existing Data root may still use `alex`. Aligning worker notes between the two trees is not required for bootstrap.

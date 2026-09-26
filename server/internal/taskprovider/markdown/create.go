@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
-
-var nonSlugChars = regexp.MustCompile(`[^a-z0-9]+`)
 
 func (p *Provider) CreateFromRequest(req tasklifecycle.TaskCreateRequest) (tasklifecycle.Task, error) {
 	normalized, err := tasklifecycle.NormalizeTaskCreateRequest(req)
@@ -34,7 +30,7 @@ func (p *Provider) CreateFromRequest(req tasklifecycle.TaskCreateRequest) (taskl
 
 	now := time.Now()
 	dateStamp := now.Format("2006-01-02")
-	slug := slugifyTitle(normalized.Title)
+	slug := tasklifecycle.SlugifyTitle(normalized.Title)
 	if slug == "" {
 		slug = "task"
 	}
@@ -103,44 +99,6 @@ func uniqueTaskFileBase(root string, projectID string, dateStamp string, slug st
 			return "", fmt.Errorf("could not allocate unique task filename for %s", base)
 		}
 	}
-}
-
-func slugifyTitle(title string) string {
-	lower := strings.ToLower(strings.TrimSpace(title))
-	var b strings.Builder
-	lastDash := false
-	for _, r := range lower {
-		switch {
-		case unicode.IsLetter(r) || unicode.IsDigit(r):
-			b.WriteRune(r)
-			lastDash = false
-		default:
-			if !lastDash && b.Len() > 0 {
-				b.WriteByte('-')
-				lastDash = true
-			}
-		}
-	}
-	slug := strings.Trim(b.String(), "-")
-	slug = nonSlugChars.ReplaceAllString(slug, "-")
-	slug = strings.Trim(slug, "-")
-
-	parts := strings.Split(slug, "-")
-	kept := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if part == "" {
-			continue
-		}
-		kept = append(kept, part)
-		if len(kept) >= 8 {
-			break
-		}
-	}
-	slug = strings.Join(kept, "-")
-	if len(slug) > 72 {
-		slug = strings.Trim(slug[:72], "-")
-	}
-	return slug
 }
 
 func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, fileBase string, now time.Time) string {

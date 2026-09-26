@@ -12,8 +12,8 @@ Reusable Markdown templates live in `_docs/templates/` (e.g.
 - `TASK_LIFECYCLE.md` — canonical task frontmatter schema, project/assignee
   resolution precedence, and the task state machine (statuses,
   transitions, Definition Of Done). Read this first.
-- `MANAGER.md` — durable Manager Markdown rules, refs, and Definition
-  Of Done.
+- `MANAGER.md` — human reference: what the Manager tools own and where
+  their files live.
 - `OPERATING_MODEL.md` — how Manager, workers, manual wakeup, daemon
   direction, and no-auto-commit policy fit together.
 - `PERSONAL_SPACE.md` — Life workspace rules for `Work/_life/`.

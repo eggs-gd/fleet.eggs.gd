@@ -119,9 +119,8 @@ func TestClaudeManagerMCPOmitsEmptyFieldsAndKeepsOtherKeys(t *testing.T) {
 	if _, ok := manager["args"]; ok {
 		t.Fatalf("null args written: %s", data)
 	}
-	backup, err := os.ReadFile(path + ".fleet-bak")
-	if err != nil || string(backup) != original {
-		t.Fatalf("backup = %q err = %v", backup, err)
+	if _, err := os.Stat(path + ".fleet-bak"); err == nil {
+		t.Fatal("a backup file was written")
 	}
 }
 

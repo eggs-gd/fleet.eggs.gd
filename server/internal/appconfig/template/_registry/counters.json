@@ -1,0 +1,12 @@
+{
+  "work_ref_prefix": "CORE",
+  "next_work_ref": 1,
+  "inbox_ref_prefix": "INBOX",
+  "next_inbox_ref": 1,
+  "life_ref_prefix": "LIFE",
+  "next_life_ref": 1,
+  "notes": [
+    "Human-facing refs are monotonically increasing and must not be reused.",
+    "Use CORE-N for Work items, INBOX-N for raw Inbox items, and LIFE-N for personal notes, ideas, reminders, and decisions."
+  ]
+}

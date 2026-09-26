@@ -27,6 +27,7 @@ contains project-specific raw material after the project is already known.
 Global raw capture still starts in `Inbox/items/` when the project is unknown or
 the input is ambiguous.
 
-See `_docs/MANAGER.md` for the exact task format, slug rules, alias capture
-rules, index rules, and handoff rules. Use `_docs/templates/WORK_ITEM.md` for new
-tasks.
+See `_docs/TASK_LIFECYCLE.md` for the task schema and lifecycle,
+`_docs/templates/WORK_ITEM.md` for the task template, and `_docs/MANAGER.md`
+for what the Manager tools own. Slugs, refs, and aliases are handled by those
+tools.

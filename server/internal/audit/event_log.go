@@ -10,6 +10,7 @@ import (
 
 // Event is one append-only runtime audit record.
 type Event struct {
+	ID         int64          `json:"id,omitempty"`
 	Time       string         `json:"time"`
 	Type       string         `json:"type"`
 	TaskRef    string         `json:"task_ref,omitempty"`
@@ -81,4 +82,17 @@ func EventLogText(root string) (string, error) {
 		buf.WriteByte('\n')
 	}
 	return buf.String(), nil
+}
+
+// TaskEventsAfter returns task.* audit rows newer than after.
+func TaskEventsAfter(root string, after int64) ([]Event, error) {
+	rows, err := runtimedb.TaskEventsAfter(root, after)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Event, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, Event{ID: row.ID, Type: row.Type, TaskRef: row.TaskRef, Message: row.Message})
+	}
+	return out, nil
 }

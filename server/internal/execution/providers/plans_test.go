@@ -49,7 +49,7 @@ func TestBuildPromptIncludesRequiredCoreFrameworkRules(t *testing.T) {
 	})
 
 	for _, expected := range []string{
-		"_docs/MANAGER.md",
+		"_docs/TASK_LIFECYCLE.md",
 		"_docs/OPERATING_MODEL.md",
 		"Fleet/ROUTING.md",
 		"Fleet/LAUNCH_POLICY.md",

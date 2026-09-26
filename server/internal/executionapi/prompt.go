@@ -28,7 +28,7 @@ Task:
 
 Required Core framework rules:
 - Read the task card before changing anything.
-- Follow _docs/MANAGER.md.
+- Follow _docs/TASK_LIFECYCLE.md.
 - Follow _docs/OPERATING_MODEL.md.
 - Follow Fleet/ROUTING.md.
 - Follow Fleet/LAUNCH_POLICY.md.

@@ -203,11 +203,59 @@ canonical task cards, and whatever tool reads this tree refreshes derived
 views. `make rebuild-index` (or equivalent) is for startup, recovery, and
 explicit maintenance.
 
+## Priority And Pickup Order
+
+- `1` is the highest priority, `5` the lowest.
+- New tasks default to `priority: 5`. A missing or invalid priority is
+  treated as `5`.
+- `needs_rework` is picked before `todo` for the same assignee, even when
+  the `todo` task has a numerically higher priority.
+- Within the same status and assignee queue, pickup order is priority
+  ascending, then natural `CORE-*` ref order.
+- Workers do not pick up `backlog` tasks. A worker opens a `todo` task; if
+  the context is not enough, it sets `blocked`, writes the missing question
+  into the task card (not only into chat), and asks the operator.
+- Done work stays under `Work/<project-id>/tasks/` with `status: done` or
+  `archived`. `Archive/` is for standalone historical material that is not
+  an Inbox or Work item.
+
 ## Definition Of Done
 
 A task is not complete if the only result is a chat response.
 
 Every task must produce or update at least one physical artifact in this
-tree or the target repository: code, docs, tests, README, roadmap,
-decision, project note, or similar — before it can move to
-`needs_review`/`done`.
+tree or the target repository before it can move to `needs_review`/`done`.
+Valid artifacts:
+
+- code changes in the target repository;
+- tests, fixtures, migrations, or config changes;
+- updates to README, docs, roadmap, specs, or architecture notes;
+- a new or updated decision record or project note;
+- a refined task card with concrete findings and next steps;
+- generated output saved to a file.
+
+For research, investigation, architecture, planning, or documentation tasks
+the artifact may be Markdown. The worker writes the conclusion somewhere
+durable: `Work/<project-id>/notes/`, `Work/<project-id>/decisions/`, project
+docs, or the task card itself.
+
+When a task reaches `needs_review`, `## Deliverable` lists the changed files
+or created artifacts. With no artifact the task stays `doing` or `blocked`.
+
+AI workers do not move their own implementation tasks to `done`. The
+operator is the default closer.
+
+How a worker reaches `needs_review` or `blocked` depends on how it started:
+
+- A manually woken worker has direct filesystem access to its target
+  repository and may set `status: needs_review` on its own claimed task once
+  real artifacts exist (`OPERATING_MODEL.md`, Manual Wakeup Mode).
+- A daemon-launched worker never edits its own or any canonical task card.
+  It reports the outcome through a compact result payload
+  (`../Fleet/LAUNCH_POLICY.md`), and the runtime applies the transition. A
+  task-shaped file in the target repository is a debug artifact, never
+  canonical state.
+
+When a task returns from `needs_review` to `needs_rework`, a `## Review
+Comments` entry says what must change. Workers treat review comments as
+active instructions.

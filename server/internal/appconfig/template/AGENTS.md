@@ -48,9 +48,10 @@ regardless of what the `_registry` looks like.
 8. Keep architecture light until the _registry proves the next need.
 9. The Manager may be a Claude, Codex, Cursor, or Gemini session whose
    folder is this data root. The conversation stays in that provider's app.
-   Follow `_docs/MANAGER.md` when turning user input into Inbox, Work,
-   Project, Fleet, or Archive files. Read and update the board through Fleet
-   MCP, not by hand-parsing task Markdown.
+   Turn user input into Inbox, Work, Project, Fleet, or Archive changes with
+   the Manager skills in `.agents/skills` and the Fleet MCP tools. Do not
+   hand-parse or hand-edit task Markdown. `_docs/MANAGER.md` is the human
+   reference for the Markdown shape, not the Manager's instructions.
 10. Chat output is not a completed task. Every task must produce or update a
     physical artifact in Data or the target repository before it can be marked
     `needs_review` or `done`.
@@ -71,9 +72,11 @@ regardless of what the `_registry` looks like.
 
 ## Manager Mode
 
-When acting as the AI Manager, do not leave operational state only in chat.
-Capture meaningful inputs, project corrections, work requests, and handoff
-notes as Markdown files according to `_docs/MANAGER.md`.
+When this session is the Manager:
+
+- You are the Manager. Work only through Fleet MCP tools.
+- Do not edit board files yourself.
+- Skills live in `.agents/skills`.
 
 ## Bootstrap Direction
 
