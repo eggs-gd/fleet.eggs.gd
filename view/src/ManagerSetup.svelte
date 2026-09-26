@@ -1,7 +1,9 @@
 <script>
+  import { apiFetch } from './lib/api.js';
   const providers = [
     { id: 'codex', label: 'Codex' },
     { id: 'claude', label: 'Claude' },
+    { id: 'cursor', label: 'Cursor' },
     { id: 'gemini', label: 'Gemini' }
   ];
 
@@ -16,7 +18,7 @@
     creating = true;
     error = '';
     try {
-      const response = await fetch('/api/manager/session', {
+      const response = await apiFetch('/api/manager/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agent })
@@ -51,7 +53,16 @@
       </span>
     </div>
     {#if agent === 'codex'}
-      <p class="settings-hint">Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP server.</p>
+      <p class="settings-hint">
+        Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP
+        server.
+      </p>
+    {/if}
+    {#if agent === 'cursor'}
+      <p class="settings-hint">
+        Fleet does not start a Cursor process. Open this data root in Cursor. That chat stays on
+        this computer.
+      </p>
     {/if}
     {#if error}
       <p class="settings-error">{error}</p>

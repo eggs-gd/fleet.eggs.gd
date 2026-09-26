@@ -109,7 +109,7 @@ above 1:
 - it needs its own git-flow / worktree coordination design first (a real
   decision, not a default), covering at minimum: does each concurrent
   session get its own worktree or branch, how conflicts are surfaced to
-  Alex, and how the launch-policy scopes in `Fleet/LAUNCH_POLICY.md` change
+  the operator, and how the launch-policy scopes in `Fleet/LAUNCH_POLICY.md` change
   from "at most one" to "at most N" per scope;
 - only then does naming concurrent sessions (`worker1`, `worker2`, ...) and
   a configurable limit belong in code — do not add the config knob first and

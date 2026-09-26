@@ -84,18 +84,21 @@ func createManagerSession(ctx context.Context, cfg Config, agent, workspace stri
 	if err != nil {
 		return ManagerBindingStatus{}, "", err
 	}
-	mcpStatus, err := settings.EnsureManagerMCP(root, agent, cfg.Addr)
+	mcpStatus, err := settings.EnsureManagerMCP(root, agent, cfg.Addr, cfg.LaunchToken)
 	if err != nil {
 		return ManagerBindingStatus{}, "", err
 	}
 	if !mcpStatus.Written || !mcpStatus.Matches {
 		return ManagerBindingStatus{}, "", errString("fleet MCP was not written for " + agent)
 	}
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-	threadID, err := start(ctx, agent, root)
-	if err != nil {
-		return ManagerBindingStatus{}, "", err
+	threadID := execution.CursorWorkspaceBinding
+	if agent != "cursor" {
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		threadID, err = start(ctx, agent, root)
+		if err != nil {
+			return ManagerBindingStatus{}, "", err
+		}
 	}
 	if err := saveManagerIdentity(root, agent, threadID, root); err != nil {
 		return ManagerBindingStatus{}, "", err
@@ -117,7 +120,7 @@ func adoptManagerSession(ctx context.Context, cfg Config, agent, threadID string
 	if err != nil {
 		return ManagerBindingStatus{}, "", err
 	}
-	if _, err := settings.EnsureManagerMCP(root, agent, cfg.Addr); err != nil {
+	if _, err := settings.EnsureManagerMCP(root, agent, cfg.Addr, cfg.LaunchToken); err != nil {
 		return ManagerBindingStatus{}, "", err
 	}
 	threads, err := listManagerThreads(ctx, cfg.RuntimeRoot, agent)

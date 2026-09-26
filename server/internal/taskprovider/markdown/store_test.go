@@ -38,7 +38,7 @@ Do the thing.
 	task, err := PatchTaskFile(root, tasklifecycle.TaskPatch{
 		Path:          taskPath,
 		Status:        "todo",
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 		Comment:       "Fix the returned task before trying again.",
 	})
 	if err != nil {
@@ -47,7 +47,7 @@ Do the thing.
 	if task.Status != "todo" {
 		t.Fatalf("status = %q, want todo", task.Status)
 	}
-	if len(task.Comments) != 1 || task.Comments[0].Author != "alex" {
+	if len(task.Comments) != 1 || task.Comments[0].Author != "owner" {
 		t.Fatalf("comments = %#v", task.Comments)
 	}
 }
@@ -169,7 +169,7 @@ func TestProviderAllowsBlockedToNeedsReview(t *testing.T) {
 		Path:          taskPath,
 		Status:        "needs_review",
 		Comment:       "Alex verified artifacts; infrastructure blocker cleared.",
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 	})
 	if err != nil {
 		t.Fatal(err)

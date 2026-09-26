@@ -17,6 +17,7 @@ import (
 type Input struct {
 	Version            string
 	Addr               string
+	LaunchToken        string
 	StartedAt          time.Time
 	CoreRoot           string
 	RuntimeRoot        string
@@ -45,7 +46,7 @@ func Build(in Input) Snapshot {
 	agents := inspectAgents(in.CoreRoot, overlay, in.RuntimeSessions)
 	manager := inspectManager(in.CoreRoot, overlay)
 	integrations := loadMCP(in.CoreRoot)
-	integrations.FleetMCP = InspectManagerMCP(in.CoreRoot, overlay.Manager.Agent, in.Addr)
+	integrations.FleetMCP = InspectManagerMCP(in.CoreRoot, overlay.Manager.Agent, in.Addr, in.LaunchToken)
 	sessions := classifySessions(in.RuntimeSessions, in.SessionGroups, in.OrphanedTasks)
 	flow := workflowSnapshot()
 	snap := Snapshot{

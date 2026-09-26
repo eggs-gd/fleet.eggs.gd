@@ -40,7 +40,7 @@ and only one of them is automatic:
   `Work/<project-id>/PROJECT.md` via `make workspaces`). Core's own tooling
   already knows this without asking Plane anything.
 - **Which of those projects has a Plane project behind it, and which one**
-  — never guessed. Alex is the only one who writes that value, because it
+  — never guessed. The operator is the only one who writes that value, because it
   requires a decision (does this project get a Plane mirror at all) that
   Core must not make on its own (Ground Rule 4: "Suggestions are not
   decisions").
@@ -59,9 +59,9 @@ taskProvider:
   baseUrl: https://api.plane.so
   tokenEnv: PLANE_API_TOKEN
   projects:
-    core-eggs-gd: <plane-project-ref>   # Alex filled this in
-    career-wizard: <plane-project-ref>  # Alex filled this in
-    some-new-repo-just-scanned-in: ""   # auto-added key, empty until Alex fills it
+    core-eggs-gd: <plane-project-ref>   # the operator filled this in
+    career-wizard: <plane-project-ref>  # the operator filled this in
+    some-new-repo-just-scanned-in: ""   # auto-added key, empty until the operator fills it
 statusMap:
   backlog: Backlog
   todo: Todo

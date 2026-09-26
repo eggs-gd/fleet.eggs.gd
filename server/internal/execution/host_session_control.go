@@ -114,8 +114,8 @@ func (s *Service) releaseRuntimeSession(patch SessionControlPatch) error {
 		flowUpdated, err := s.tasks.Patch(context.Background(), locator, taskflow.PatchInput{
 			Status:        taskflow.Status(targetStatus),
 			Comment:       comment,
-			CommentAuthor: "alex",
-			Actor:         "alex",
+			CommentAuthor: "owner",
+			Actor:         "owner",
 			Reason:        session.ErrorMessage,
 		})
 		if err != nil {
@@ -134,7 +134,7 @@ func (s *Service) releaseRuntimeSession(patch SessionControlPatch) error {
 	} else if taskOK {
 		locator := firstNonEmpty(task.RelativePath, task.Path)
 		if err := s.tasks.AddComment(
-			taskflow.WithCommentAuthor(context.Background(), "alex"),
+			taskflow.WithCommentAuthor(context.Background(), "owner"),
 			locator,
 			comment,
 		); err == nil {

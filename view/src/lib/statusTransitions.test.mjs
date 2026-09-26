@@ -6,7 +6,12 @@ import { actionsForStatus, canTransitionStatus, STATUS_TRANSITIONS } from './sta
 test('STATUS_TRANSITIONS matches the Go operator map', () => {
   assert.deepEqual(STATUS_TRANSITIONS.needs_review, ['needs_rework', 'todo', 'done', 'archived']);
   assert.deepEqual(STATUS_TRANSITIONS.done, ['archived']);
-  assert.deepEqual(STATUS_TRANSITIONS.blocked, ['needs_review', 'needs_rework', 'todo', 'archived']);
+  assert.deepEqual(STATUS_TRANSITIONS.blocked, [
+    'needs_review',
+    'needs_rework',
+    'todo',
+    'archived'
+  ]);
   assert.deepEqual(STATUS_TRANSITIONS.archived, ['backlog']);
   assert.equal(canTransitionStatus('blocked', 'done'), false);
   assert.equal(canTransitionStatus('needs_review', 'done'), true);

@@ -1,5 +1,9 @@
 # Task Flow Contours
 
+`internal/corechain` in this document is a historical package name. That
+package is gone. The contours below are still the responsibility map; the
+names are not current import paths.
+
 Canonical architecture for independent Core task-flow contours
 (`CORE-108` … `CORE-114`).
 
@@ -14,7 +18,7 @@ Related durable contracts:
   providers, status rules) from `CORE-100`…`CORE-107`. Contours **supersede**
   that document’s single vertical pipeline diagram; shared contracts remain.
 - `_docs/DOMAIN_MODEL.md` — task schema and status state machine.
-- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
+- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / the operator roles.
 - `_docs/CORE_MANAGER_API.md` — Manager capture surface.
 - `_docs/AGENT_LAUNCHER.md` — launch eligibility and worker prompt shape.
 - Go package `internal/taskflow` — compile-checked contract types (migrate
@@ -375,7 +379,7 @@ a soft missing-tool warning into Finalizer comments when required MCP tools were
 not observed in session evidence; it does not block `needs_review`.
 
 Quality review will later use additional board statuses and dedicated agents.
-Bot-produced `completed` work still stops at `needs_review`; Alex alone moves
+Bot-produced `completed` work still stops at `needs_review`; the operator alone moves
 to `done`.
 
 Naming note: today’s `corechain.CoreFinalizer` is a **change-detection**

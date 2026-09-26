@@ -201,7 +201,7 @@ func (s *Service) patchStatus(ctx context.Context, intent Intent, path string) R
 func (s *Service) addComment(ctx context.Context, intent Intent, path string) Response {
 	author := intent.CommentAuthor
 	if author == "" {
-		author = "alex"
+		author = "owner"
 	}
 	task, err := patchViaService(ctx, s.Tasks, intent.Ref, taskflow.PatchInput{
 		Comment:       intent.Comment,

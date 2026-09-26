@@ -11,7 +11,9 @@ export function draftFromSnapshot(snapshot) {
     };
   }
   return {
-    scanRoots: Array.isArray(snapshot?.projects?.scan_roots) ? [...snapshot.projects.scan_roots] : [],
+    scanRoots: Array.isArray(snapshot?.projects?.scan_roots)
+      ? [...snapshot.projects.scan_roots]
+      : [],
     sessionTimeout: snapshot?.general?.session_timeout_config?.value || '',
     agents,
     manager: {
@@ -44,7 +46,10 @@ export function patchFromDraft(draft, baseline) {
   if (Object.keys(agents).length) patch.agents = agents;
   const managerDraft = draft?.manager || {};
   const managerBase = baseline?.manager || {};
-  if ((managerDraft.agent || '') !== (managerBase.agent || '') || (managerDraft.threadId || '') !== (managerBase.threadId || '')) {
+  if (
+    (managerDraft.agent || '') !== (managerBase.agent || '') ||
+    (managerDraft.threadId || '') !== (managerBase.threadId || '')
+  ) {
     patch.manager = { agent: managerDraft.agent || '', threadId: managerDraft.threadId || '' };
   }
   return patch;

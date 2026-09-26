@@ -160,7 +160,9 @@ export const technologyIconMap = {
 };
 
 export const normalizeTechnologyTag = (tag) => {
-  let value = String(tag || '').trim().toLowerCase();
+  let value = String(tag || '')
+    .trim()
+    .toLowerCase();
   while (/^(raw|detected|eff|effective)[:\s_-]+/.test(value)) {
     value = value.replace(/^(raw|detected|eff|effective)[:\s_-]+/, '');
   }
@@ -252,30 +254,45 @@ export const uniqueTechnologyTags = (tags) => {
 };
 
 const withoutTags = (tags, blocked) => tags.filter((tag) => !blocked.has(tag));
-const profileTags = (profile, kinds) => uniqueTechnologyTags(kinds.flatMap((kind) => profile?.[kind] || []));
+const profileTags = (profile, kinds) =>
+  uniqueTechnologyTags(kinds.flatMap((kind) => profile?.[kind] || []));
 const repositoryProfileTags = (repo, source, kinds) => profileTags(repo?.[source], kinds);
 const technology = (item) => item?.technology || {};
 export const techRepositories = (item) => technology(item).repositories || [];
 const itemProfileTags = (item, source, kinds) =>
-  uniqueTechnologyTags(techRepositories(item).flatMap((repo) => repositoryProfileTags(repo, source, kinds)));
-const flatTechnologyTags = (item, source) => uniqueTechnologyTags(technology(item)?.[`${source}_tags`] || []);
+  uniqueTechnologyTags(
+    techRepositories(item).flatMap((repo) => repositoryProfileTags(repo, source, kinds))
+  );
+const flatTechnologyTags = (item, source) =>
+  uniqueTechnologyTags(technology(item)?.[`${source}_tags`] || []);
 const mergeTechnologyTags = (...lists) => uniqueTechnologyTags(lists.flat());
 const fallbackPrimaryTags = (item, source) =>
-  flatTechnologyTags(item, source).filter((tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag));
-const categoryFallbackTags = (item, source, category) => flatTechnologyTags(item, source).filter((tag) => category.has(tag));
+  flatTechnologyTags(item, source).filter(
+    (tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag)
+  );
+const categoryFallbackTags = (item, source, category) =>
+  flatTechnologyTags(item, source).filter((tag) => category.has(tag));
 const primaryProfileTags = (item, source) =>
-  withoutTags(withoutTags(itemProfileTags(item, source, primaryTechnologyKinds), auditToolingTags), broadCapabilityTags);
+  withoutTags(
+    withoutTags(itemProfileTags(item, source, primaryTechnologyKinds), auditToolingTags),
+    broadCapabilityTags
+  );
 const toolingProfileTags = (item, source) =>
   mergeTechnologyTags(
     itemProfileTags(item, source, ['tooling']),
     itemProfileTags(item, source, primaryTechnologyKinds).filter((tag) => auditToolingTags.has(tag))
   );
 const repositoryPrimaryProfileTags = (repo, source) =>
-  withoutTags(withoutTags(repositoryProfileTags(repo, source, primaryTechnologyKinds), auditToolingTags), broadCapabilityTags);
+  withoutTags(
+    withoutTags(repositoryProfileTags(repo, source, primaryTechnologyKinds), auditToolingTags),
+    broadCapabilityTags
+  );
 const repositoryToolingProfileTags = (repo, source) =>
   mergeTechnologyTags(
     repositoryProfileTags(repo, source, ['tooling']),
-    repositoryProfileTags(repo, source, primaryTechnologyKinds).filter((tag) => auditToolingTags.has(tag))
+    repositoryProfileTags(repo, source, primaryTechnologyKinds).filter((tag) =>
+      auditToolingTags.has(tag)
+    )
   );
 
 export const itemTechnologyView = (item) => {
@@ -301,7 +318,11 @@ export const itemTechnologyView = (item) => {
     primary,
     tooling,
     capabilities,
-    hasAny: primary.length > 0 || tooling.length > 0 || capabilities.length > 0 || techRepositories(item).length > 0
+    hasAny:
+      primary.length > 0 ||
+      tooling.length > 0 ||
+      capabilities.length > 0 ||
+      techRepositories(item).length > 0
   };
 };
 
@@ -309,18 +330,26 @@ export const repositoryTechnologyView = (repo) => ({
   primary: mergeTechnologyTags(
     repositoryPrimaryProfileTags(repo, 'effective'),
     repositoryPrimaryProfileTags(repo, 'detected'),
-    uniqueTechnologyTags(repo?.effective_tags || []).filter((tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag)),
-    uniqueTechnologyTags(repo?.detected_tags || []).filter((tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag))
+    uniqueTechnologyTags(repo?.effective_tags || []).filter(
+      (tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag)
+    ),
+    uniqueTechnologyTags(repo?.detected_tags || []).filter(
+      (tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag)
+    )
   ),
   tooling: mergeTechnologyTags(
     repositoryToolingProfileTags(repo, 'effective'),
     repositoryToolingProfileTags(repo, 'detected'),
-    uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter((tag) => auditToolingTags.has(tag))
+    uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter(
+      (tag) => auditToolingTags.has(tag)
+    )
   ),
   capabilities: mergeTechnologyTags(
     repositoryProfileTags(repo, 'effective', ['capabilities']),
     repositoryProfileTags(repo, 'detected', ['capabilities']),
-    uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter((tag) => broadCapabilityTags.has(tag))
+    uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter(
+      (tag) => broadCapabilityTags.has(tag)
+    )
   )
 });
 
@@ -328,7 +357,12 @@ export const hasTechnology = (item) => itemTechnologyView(item).hasAny;
 
 export const repoHasTechnology = (repo) => {
   const view = repositoryTechnologyView(repo);
-  return view.primary.length > 0 || view.tooling.length > 0 || view.capabilities.length > 0 || (repo?.evidence?.length || 0) > 0;
+  return (
+    view.primary.length > 0 ||
+    view.tooling.length > 0 ||
+    view.capabilities.length > 0 ||
+    (repo?.evidence?.length || 0) > 0
+  );
 };
 
 // Registry remotes are stored however git reports them (often SSH, e.g.

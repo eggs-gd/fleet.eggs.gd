@@ -277,7 +277,8 @@ func DeriveBlockedReason(task Task) string {
 		return ""
 	}
 	for i := len(task.Comments) - 1; i >= 0; i-- {
-		if strings.EqualFold(strings.TrimSpace(task.Comments[i].Author), "alex") {
+		author := strings.ToLower(strings.TrimSpace(task.Comments[i].Author))
+		if author == "alex" || author == "owner" {
 			continue
 		}
 		if text := strings.TrimSpace(task.Comments[i].Text); text != "" {

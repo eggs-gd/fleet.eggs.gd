@@ -1,5 +1,8 @@
 # Agent Launcher
 
+`internal/corechain` in this document is a historical package name. That
+package is gone.
+
 Core launcher is the deterministic layer that decides whether a task may be
 handed to an agent.
 
@@ -304,7 +307,7 @@ because each backend observes the worker differently:
   process end (`finishCodexAppServerSession`), just backed by data collected
   throughout the turn rather than only at the very end.
 - **Claude** (`background-remote`): the background session is *not* owned by
-  Core — it stays open independently so Alex can keep chatting with it on the
+  Core — it stays open independently so the operator can keep chatting with it on the
   phone, and its `claude agents --json` state can stay `running` indefinitely.
   Every ~5s poll refetches the transcript via `claude logs`; as soon as
   `ParseWorkerResult` finds a valid payload in it, Core applies the task
@@ -589,7 +592,7 @@ Local setup:
 
 Smoke procedure:
 
-1. Start `core serve` with an idle threshold from Alex's normal host console.
+1. Start `core serve` with an idle threshold from the operator's normal host console.
 2. Move a low-stakes Codex task to `todo` or `needs_rework`.
 3. Confirm `/api/state` and the dashboard runtime strip show the Core claim id,
    provider `codex`, process id, host name/id, human `codex_thread_title`,
@@ -674,7 +677,7 @@ Observed version after reinstall:
 2026.07.23-e383d2b
 ```
 
-The installed path on Alex's host was:
+The installed path on the operator's host was:
 
 ```text
 /Users/operator/.local/bin/cursor-agent
@@ -752,7 +755,7 @@ but could not complete authenticated model work:
   with `SecItemCopyMatching failed -50` in the restricted Codex sandbox.
 - `cursor-agent --print ... --workspace /private/tmp/core-cursor-smoke ...`
   exited with `EPERM` while creating `~/.cursor/projects/...`.
-- After Alex reinstalled Cursor Agent, the Core manual smoke command started a
+- After the operator reinstalled Cursor Agent, the Core manual smoke command started a
   real process through `Runtime.startLaunchCandidate`, captured stdout/stderr in
   `~/.fleet/_registry/sessions/<claim_id>.log`, observed exit code 1, and moved the
   temporary smoke task to `blocked`. The captured session log showed the same

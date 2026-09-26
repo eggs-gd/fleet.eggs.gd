@@ -1,8 +1,8 @@
 # Owner
 
-The human operator of this workspace. Rename this file and the `owner`
-assignee value to your own name/slug if you prefer — nothing else in this
-tree hardcodes the literal word `owner`.
+The human operator of this workspace. A fresh workspace uses assignee
+`owner`. Rename this file and that assignee value together if you prefer
+your own slug. The app accepts `owner` and `alex`.
 
 ## Best At
 

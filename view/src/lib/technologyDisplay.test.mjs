@@ -13,10 +13,16 @@ import {
 } from './technologyDisplay.js';
 
 test('repoWebUrl normalizes scp-style and full ssh:// remotes to https, and leaves https alone', () => {
-  assert.equal(repoWebUrl('git@github.com:eggs-gd/core.eggs.gd.git'), 'https://github.com/eggs-gd/core.eggs.gd');
+  assert.equal(
+    repoWebUrl('git@github.com:eggs-gd/core.eggs.gd.git'),
+    'https://github.com/eggs-gd/core.eggs.gd'
+  );
   // Full ssh:// remotes (with or without an explicit port) used to be mangled
   // because the scp-style branch ran first and read "ssh" itself as the host.
-  assert.equal(repoWebUrl('ssh://git@example.com:2222/org/repo.git'), 'https://example.com/org/repo');
+  assert.equal(
+    repoWebUrl('ssh://git@example.com:2222/org/repo.git'),
+    'https://example.com/org/repo'
+  );
   assert.equal(repoWebUrl('ssh://git@example.com/org/repo'), 'https://example.com/org/repo');
   assert.equal(repoWebUrl('https://github.com/org/repo.git'), 'https://github.com/org/repo');
   assert.equal(repoWebUrl(''), '');

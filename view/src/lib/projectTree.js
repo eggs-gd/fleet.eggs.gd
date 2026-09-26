@@ -13,13 +13,19 @@ export const projectHue = (id) =>
 
 export const projectColor = (id) => `hsl(${projectHue(id)} 62% 46%)`;
 
-export const projectInitial = (title, id) => String(title || id || '?').trim().slice(0, 1).toUpperCase() || '?';
+export const projectInitial = (title, id) =>
+  String(title || id || '?')
+    .trim()
+    .slice(0, 1)
+    .toUpperCase() || '?';
 
 export const projectOpenCount = (tasks, projectId) =>
-  (tasks ?? []).filter((task) => taskProjectId(task) === projectId && task.status !== 'archived').length;
+  (tasks ?? []).filter((task) => taskProjectId(task) === projectId && task.status !== 'archived')
+    .length;
 
 export const workspaceOpenCount = (tasks, workspaceId) =>
-  (tasks ?? []).filter((task) => task.workspace_id === workspaceId && task.status !== 'archived').length;
+  (tasks ?? []).filter((task) => task.workspace_id === workspaceId && task.status !== 'archived')
+    .length;
 
 // Longest-prefix parent lookup: id "a/b/c" nests under "a/b" only if "a/b" is
 // itself in the list, else falls back to "a", etc. Shared by the sidebar tree
@@ -88,13 +94,25 @@ export const buildSidebarTree = (workspaces, projects, tasks) =>
       )
     )
     .map((workspace) => {
-      const owned = (projects ?? []).filter((project) => (project.workspace_id || project.id) === workspace.id);
+      const owned = (projects ?? []).filter(
+        (project) => (project.workspace_id || project.id) === workspace.id
+      );
       const rootProject = owned.find((project) => project.id === workspace.id) || null;
       const childProjects = owned.filter((project) => project.id !== workspace.id);
       const children = nestById(childProjects, tasks);
       const isGroup = workspace.kind === 'workspace_group' || children.length > 0;
-      const leafProject = isGroup ? null : rootProject || owned[0] || { id: workspace.id, title: workspace.title, workspace_id: workspace.id };
-      const rootNode = isGroup && rootProject ? { project: rootProject, children: [], taskCount: projectOpenCount(tasks, rootProject.id) } : null;
+      const leafProject = isGroup
+        ? null
+        : rootProject ||
+          owned[0] || { id: workspace.id, title: workspace.title, workspace_id: workspace.id };
+      const rootNode =
+        isGroup && rootProject
+          ? {
+              project: rootProject,
+              children: [],
+              taskCount: projectOpenCount(tasks, rootProject.id)
+            }
+          : null;
       return {
         workspace,
         isGroup,

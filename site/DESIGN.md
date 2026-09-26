@@ -18,13 +18,6 @@ around them as the local orchestration layer:
 - keep one active task/agent per repository;
 - preserve review boundaries instead of letting agent work disappear into chat.
 
-Initial public offer:
-
-- first 5 completed tasks free;
-- then `$9/month`.
-
-Pricing should not dominate the first viewport.
-
 ## Reference Study
 
 References:
@@ -108,8 +101,7 @@ Recommended composition:
 - top navigation with brand, Product/Docs/Releases anchors, and Download CTA;
 - left side: concise positioning and primary CTA;
 - right side: large product visual based on Fleet's real interaction model;
-- supporting line: "Local-first orchestration for coding agents" or similar;
-- pricing note below CTA, quiet: "First 5 completed tasks free, then $9/mo."
+- supporting line: "Local-first orchestration for coding agents" or similar.
 
 The product visual should show:
 

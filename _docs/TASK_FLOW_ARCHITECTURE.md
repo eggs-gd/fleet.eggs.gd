@@ -1,5 +1,8 @@
 # Task Flow Architecture
 
+`internal/corechain` in this document is a historical package name. That
+package is gone.
+
 Canonical application contracts for Core task orchestration.
 
 This document is the architectural source of truth for the task-flow refactor
@@ -19,7 +22,7 @@ Related durable contracts:
 - `_docs/TASK_FLOW_CONTOURS.md` — independent contours; no single
   FsWalker→agent chain (`CORE-108`…).
 - `_docs/DOMAIN_MODEL.md` — task schema and status state machine.
-- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / Alex roles.
+- Data root `_docs/OPERATING_MODEL.md` — Manager / worker / the operator roles.
 - `_docs/CORE_MANAGER_API.md` — Manager capture surface.
 - `_docs/AGENT_LAUNCHER.md` — launch eligibility and worker prompt shape.
 - Go package `internal/taskflow` — compile-checked target contract types.
@@ -406,7 +409,7 @@ Canonical outcomes:
 
 | Outcome | Meaning |
 |---|---|
-| `completed` | Work finished with physical artifacts; ready for Alex review |
+| `completed` | Work finished with physical artifacts; ready for the operator review |
 | `failed` | Execution or work failed |
 | `needs_input` | Missing info/approval/access (replaces worker `waiting_input`) |
 | `needs_rework` | Worker judges the same task needs another pass before review |
@@ -445,7 +448,7 @@ Contour 2.
 | `orphaned` | `AddComment(…)` → `Transition(blocked)` |
 
 Preferred API: `TaskService.ReportExecution(result)` applies this table in
-one place. Bot-produced work still stops at `needs_review`; Alex alone
+one place. Bot-produced work still stops at `needs_review`; the operator alone
 moves to `done`.
 
 This prevents task state and runtime state from diverging.
@@ -533,9 +536,9 @@ Owned by domain model + `TaskService` validation:
 - durable launch lock: `todo|needs_rework → doing` (claim);
 - bot completion: `doing → needs_review` only via Finalizer after
   `completed`;
-- Alex close: `needs_review → done`;
+- The operator close: `needs_review → done`;
 - operator recovery: `blocked → needs_review` is allowed for manual board /
-  TaskService patches when Alex verifies artifacts without re-running the
+  TaskService patches when the operator verifies artifacts without re-running the
   agent; Finalizer still only acts from `doing` and must not use this path;
 - workers never write status themselves.
 

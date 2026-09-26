@@ -65,7 +65,14 @@ const firstPoll = {
       task_ref: 'CORE-67',
       task_id: 'work-67',
       task_path: '/core/Work/core-eggs-gd/tasks/core-67.md',
-      sessions: [{ claim_id: 'c67-1', role: 'current', status: 'exited', claimed_at: '2026-08-01T10:00:00+03:00' }]
+      sessions: [
+        {
+          claim_id: 'c67-1',
+          role: 'current',
+          status: 'exited',
+          claimed_at: '2026-08-01T10:00:00+03:00'
+        }
+      ]
     }
   ]
 };
@@ -169,7 +176,10 @@ test('accordion state survives repeated polling for unchanged project technology
   assert.equal(isAccordionOpen(openState, historyGroupKey), true);
   assert.equal(isAccordionOpen(openState, archiveWorkspaceKey), false);
   assert.equal(isAccordionOpen(openState, archiveProjectKey), false);
-  assert.equal(reconcileSelectedTaskFromState(firstPoll.tasks[0], secondPoll)?.title, 'Preserve dashboard UI state during polling');
+  assert.equal(
+    reconcileSelectedTaskFromState(firstPoll.tasks[0], secondPoll)?.title,
+    'Preserve dashboard UI state during polling'
+  );
 });
 
 test('missing items close without clearing unrelated expanded accordions', () => {
@@ -204,7 +214,11 @@ test('missing items close without clearing unrelated expanded accordions', () =>
 
 test('sessionGroupKey prefers task_path, then task_id, then task_ref', () => {
   assert.equal(
-    sessionGroupKey({ task_path: 'Work/core-eggs-gd/tasks/x.md', task_id: 'work-x', task_ref: 'CORE-1' }),
+    sessionGroupKey({
+      task_path: 'Work/core-eggs-gd/tasks/x.md',
+      task_id: 'work-x',
+      task_ref: 'CORE-1'
+    }),
     'Work/core-eggs-gd/tasks/x.md'
   );
   assert.equal(sessionGroupKey({ task_id: 'work-x', task_ref: 'CORE-1' }), 'work-x');
@@ -297,7 +311,10 @@ test('session activity helpers pick current role and active statuses', () => {
   assert.equal(sessionIsActive({ execution_status: 'running' }), true);
   assert.equal(sessionIsActive({ execution_status: 'waiting_input' }), true);
   assert.equal(sessionIsActive({ status: 'exited' }), false);
-  assert.equal(sessionAllowsOperatorRelease({ claim_id: 'a', execution_status: 'resumable' }), true);
+  assert.equal(
+    sessionAllowsOperatorRelease({ claim_id: 'a', execution_status: 'resumable' }),
+    true
+  );
   assert.equal(sessionAllowsOperatorRelease({ claim_id: 'a', execution_status: 'dead' }), true);
   assert.equal(
     sessionAllowsOperatorRelease({
@@ -308,7 +325,10 @@ test('session activity helpers pick current role and active statuses', () => {
     false
   );
   assert.equal(sessionAllowsOperatorRelease({ execution_status: 'resumable' }), false);
-  assert.equal(sessionAllowsOperatorRelease({ claim_id: 'a', execution_status: 'succeeded' }), false);
+  assert.equal(
+    sessionAllowsOperatorRelease({ claim_id: 'a', execution_status: 'succeeded' }),
+    false
+  );
   assert.equal(sessionActivityAt({ last_output_at: 'b', claimed_at: 'a' }), 'b');
   assert.equal(
     groupLatestSession({
@@ -597,24 +617,53 @@ test('prepareExecutionHistory can keep only closed sessions for a selected proje
       task_ref: 'CORE-10',
       task_id: 'work-10',
       sessions: [
-        { claim_id: 'live', role: 'current', status: 'running', execution_status: 'running', claimed_at: '2026-08-02T11:00:00+03:00' },
-        { claim_id: 'done-10', role: 'historical', status: 'exited', claimed_at: '2026-08-02T09:00:00+03:00' }
+        {
+          claim_id: 'live',
+          role: 'current',
+          status: 'running',
+          execution_status: 'running',
+          claimed_at: '2026-08-02T11:00:00+03:00'
+        },
+        {
+          claim_id: 'done-10',
+          role: 'historical',
+          status: 'exited',
+          claimed_at: '2026-08-02T09:00:00+03:00'
+        }
       ]
     },
     {
       task_ref: 'CORE-11',
       task_id: 'work-11',
-      sessions: [{ claim_id: 'done-11', role: 'current', status: 'exited', claimed_at: '2026-08-02T10:00:00+03:00' }]
+      sessions: [
+        {
+          claim_id: 'done-11',
+          role: 'current',
+          status: 'exited',
+          claimed_at: '2026-08-02T10:00:00+03:00'
+        }
+      ]
     }
   ];
 
   const now = Date.parse('2026-08-02T12:00:00+03:00');
   const closed = prepareExecutionHistory(groups, { tasks, closedOnly: true, now });
   assert.equal(closed.groups.length, 2);
-  assert.equal(closed.groups.find((item) => item.group.task_ref === 'CORE-10')?.visibleSessions.length, 1);
-  assert.equal(closed.groups.find((item) => item.group.task_ref === 'CORE-10')?.visibleSessions[0].claim_id, 'done-10');
+  assert.equal(
+    closed.groups.find((item) => item.group.task_ref === 'CORE-10')?.visibleSessions.length,
+    1
+  );
+  assert.equal(
+    closed.groups.find((item) => item.group.task_ref === 'CORE-10')?.visibleSessions[0].claim_id,
+    'done-10'
+  );
 
-  const filtered = prepareExecutionHistory(groups, { tasks, closedOnly: true, projectId: 'unity/foo', now });
+  const filtered = prepareExecutionHistory(groups, {
+    tasks,
+    closedOnly: true,
+    projectId: 'unity/foo',
+    now
+  });
   assert.equal(filtered.groups.length, 1);
   assert.equal(filtered.groups[0].group.task_ref, 'CORE-11');
   assert.equal(sessionGroupProjectId(groups[0], tasks), 'core-eggs-gd');
@@ -630,14 +679,34 @@ test('flattenClosedSessions lists closed sessions as cards without grouping', ()
       task_ref: 'CORE-10',
       task_id: 'work-10',
       sessions: [
-        { claim_id: 'live', role: 'current', status: 'running', execution_status: 'running', claimed_at: '2026-08-02T11:00:00+03:00' },
-        { claim_id: 'done-10', role: 'historical', status: 'exited', claimed_at: '2026-08-02T09:00:00+03:00', exited_at: '2026-08-02T09:30:00+03:00' }
+        {
+          claim_id: 'live',
+          role: 'current',
+          status: 'running',
+          execution_status: 'running',
+          claimed_at: '2026-08-02T11:00:00+03:00'
+        },
+        {
+          claim_id: 'done-10',
+          role: 'historical',
+          status: 'exited',
+          claimed_at: '2026-08-02T09:00:00+03:00',
+          exited_at: '2026-08-02T09:30:00+03:00'
+        }
       ]
     },
     {
       task_ref: 'CORE-11',
       task_id: 'work-11',
-      sessions: [{ claim_id: 'done-11', role: 'current', status: 'exited', claimed_at: '2026-08-02T10:00:00+03:00', exited_at: '2026-08-02T10:20:00+03:00' }]
+      sessions: [
+        {
+          claim_id: 'done-11',
+          role: 'current',
+          status: 'exited',
+          claimed_at: '2026-08-02T10:00:00+03:00',
+          exited_at: '2026-08-02T10:20:00+03:00'
+        }
+      ]
     }
   ];
 
@@ -672,7 +741,14 @@ test('flattenClosedSessions keeps HITL waiting_input off Closed', () => {
 test('flattenClosedSessions caps the result instead of growing without bound', () => {
   const groups = Array.from({ length: 80 }, (_, i) => ({
     task_ref: `CORE-${i}`,
-    sessions: [{ claim_id: `done-${i}`, role: 'current', status: 'exited', exited_at: `2026-01-01T00:${String(i % 60).padStart(2, '0')}:00Z` }]
+    sessions: [
+      {
+        claim_id: `done-${i}`,
+        role: 'current',
+        status: 'exited',
+        exited_at: `2026-01-01T00:${String(i % 60).padStart(2, '0')}:00Z`
+      }
+    ]
   }));
   assert.equal(flattenClosedSessions(groups, []).length, 60);
   assert.equal(flattenClosedSessions(groups, [], 5).length, 5);

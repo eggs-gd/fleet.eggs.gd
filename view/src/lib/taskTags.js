@@ -1,6 +1,17 @@
 /** Shared task tag tones. Every panel should use these helpers, not local color classes. */
 
-export const PILL_TONES = ['red', 'blue', 'purple', 'amber', 'green', 'teal', 'pink', 'indigo', 'cyan', 'slate'];
+export const PILL_TONES = [
+  'red',
+  'blue',
+  'purple',
+  'amber',
+  'green',
+  'teal',
+  'pink',
+  'indigo',
+  'cyan',
+  'slate'
+];
 
 export const TASK_TYPE_TONES = {
   bug: 'red',
@@ -20,9 +31,13 @@ export const TASK_TYPE_TONES = {
   infrastructure: 'slate'
 };
 
-const toneHash = (value) => [...String(value)].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) >>> 0, 0);
+const toneHash = (value) =>
+  [...String(value)].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) >>> 0, 0);
 
-export const normalizeTaskType = (type) => String(type || '').trim().toLowerCase();
+export const normalizeTaskType = (type) =>
+  String(type || '')
+    .trim()
+    .toLowerCase();
 
 export const typeTone = (type) => {
   const key = normalizeTaskType(type);

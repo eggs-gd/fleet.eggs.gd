@@ -8,7 +8,7 @@ Architectural boundaries: `_docs/TASK_FLOW_ARCHITECTURE.md`.
 
 ## When to use it
 
-Use Plane when Alex wants board state in
+Use Plane when the operator wants board state in
 [app.plane.so/eggs_gd](https://app.plane.so/eggs_gd/) instead of (or as a
 trial alongside migrating away from) `Work/*/tasks/*.md` files.
 
@@ -99,8 +99,9 @@ webhook (optional) → plane.ObserveWebhook → TaskEvent → same channel
 - **Polling:** Runtime attaches `ProviderSync` when the provider implements
   `taskprovider.ChangeSource` (Plane does; Markdown does not). Poll floor is
   45s for Plane's 60 req/min budget. Fingerprinting and `TaskEvent`
-  construction live in `plane.ObservePoll` / `ObserveChanges` — corechain
-  does not import Plane types or branch on `Type()=="plane"`.
+  construction live in `plane.ObservePoll` / `ObserveChanges`. The old
+  `internal/corechain` package is gone; runtime code does not import Plane
+  types or branch on `Type()=="plane"`.
 - **Webhook:** `ObserveWebhook` normalizes common Plane JSON envelopes and
   reloads via `Load`. Core does not host an HTTP webhook route in this
   slice; the adapter is ready for a future route without launcher changes.
@@ -127,7 +128,7 @@ webhook (optional) → plane.ObserveWebhook → TaskEvent → same channel
 - Workspaces (`Work/*/PROJECT.md`) and `_registry` stay file-based under
   both providers; only **tasks** move to Plane.
 - `Work/INDEX.md` is not rebuilt under Plane (Markdown-only convenience).
-- Live smoke against Alex's Plane workspace still requires a real token and
+- Live smoke against the operator's Plane workspace still requires a real token and
   matching workflow states — unit tests use a mocked HTTP Plane API.
 
 ## Verification checklist

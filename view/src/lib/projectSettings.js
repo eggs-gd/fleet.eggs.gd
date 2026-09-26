@@ -29,7 +29,8 @@ const indexRepositories = (repositories) => {
 
 const lookupRepo = (repo, index) => {
   if (repo?.id && index.byId.has(repo.id)) return index.byId.get(repo.id);
-  if (repo?.relative_path && index.byPath.has(repo.relative_path)) return index.byPath.get(repo.relative_path);
+  if (repo?.relative_path && index.byPath.has(repo.relative_path))
+    return index.byPath.get(repo.relative_path);
   return null;
 };
 
@@ -58,11 +59,17 @@ export const repositoryInspectRow = (repo, repositories = []) => {
   };
 };
 
-export const projectSettingsInspect = (item, { workspaces = [], projects = [], repositories = [] } = {}) => {
+export const projectSettingsInspect = (
+  item,
+  { workspaces = [], projects = [], repositories = [] } = {}
+) => {
   if (!item) return null;
   const index = indexRepositories(repositories);
   const workspace = workspaces.find((entry) => entry.id === (item.workspace_id || item.id)) || null;
-  const candidateIds = [...projects.map((entry) => entry.id), ...workspaces.map((entry) => entry.id)];
+  const candidateIds = [
+    ...projects.map((entry) => entry.id),
+    ...workspaces.map((entry) => entry.id)
+  ];
   const parentId = parentProjectId(item.id, candidateIds);
   const parent =
     (parentId && projects.find((entry) => entry.id === parentId)) ||
@@ -90,13 +97,18 @@ export const projectSettingsInspect = (item, { workspaces = [], projects = [], r
     projectMd: item.path || item.relative_path || '',
     summary: item.summary || '',
     membership:
-      workspace && workspace.id !== item.id ? { id: workspace.id, title: workspace.title || workspace.id } : null,
+      workspace && workspace.id !== item.id
+        ? { id: workspace.id, title: workspace.title || workspace.id }
+        : null,
     parent: parent
       ? { id: parent.id, title: parent.title || parent.id }
       : parentId
         ? { id: parentId, title: parentId }
         : null,
-    nested: childProjects(projects, item.id).map((entry) => ({ id: entry.id, title: entry.title || entry.id })),
+    nested: childProjects(projects, item.id).map((entry) => ({
+      id: entry.id,
+      title: entry.title || entry.id
+    })),
     repositories: rows
   };
 };

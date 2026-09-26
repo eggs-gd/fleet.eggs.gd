@@ -7,12 +7,12 @@ import (
 
 // TaskPatch is a partial update applied to one task.
 type TaskPatch struct {
-	Path                string    `json:"path"`
-	Status              string    `json:"status"`
-	Priority            *int      `json:"priority"`
-	Assignee            string    `json:"assignee"`
-	Project             string    `json:"project"`
-	Repository          string    `json:"repository"`
+	Path       string `json:"path"`
+	Status     string `json:"status"`
+	Priority   *int   `json:"priority"`
+	Assignee   string `json:"assignee"`
+	Project    string `json:"project"`
+	Repository string `json:"repository"`
 	// DependsOn is a pointer so callers can distinguish omit from clear
 	// (empty list). Dashboard/UI use this for hard launch blockers (CORE-148).
 	DependsOn           *[]string `json:"depends_on"`

@@ -36,6 +36,7 @@ func NormalizeTaskType(taskType string) string {
 
 var taskAssignees = map[string]bool{
 	"alex":       true,
+	"owner":      true,
 	"codex":      true,
 	"claude":     true,
 	"cursor":     true,
@@ -45,15 +46,15 @@ var taskAssignees = map[string]bool{
 
 // TaskCreateRequest is the dashboard/API payload for creating a new Work item.
 type TaskCreateRequest struct {
-	Title            string   `json:"title"`
-	Request          string   `json:"request"`
-	Project          string   `json:"project"`
-	Repository       string   `json:"repository"`
-	Status           string   `json:"status"`
-	Type             string   `json:"type"`
-	Assignee         string   `json:"assignee"`
-	Priority         *int     `json:"priority"`
-	AssignmentReason string   `json:"assignment_reason"`
+	Title            string `json:"title"`
+	Request          string `json:"request"`
+	Project          string `json:"project"`
+	Repository       string `json:"repository"`
+	Status           string `json:"status"`
+	Type             string `json:"type"`
+	Assignee         string `json:"assignee"`
+	Priority         *int   `json:"priority"`
+	AssignmentReason string `json:"assignment_reason"`
 	// DependsOn lists prerequisite refs that must be done before launch
 	// (CORE-148). Optional; empty means no hard dependency gate.
 	DependsOn []string `json:"depends_on"`

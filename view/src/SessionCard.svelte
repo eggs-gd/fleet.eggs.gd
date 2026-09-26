@@ -1,5 +1,10 @@
 <script>
-  import { agentColorClass, elapsedClock, orphanRecoveryLabel, toolUsageHasMissing } from './lib/taskDisplay.js';
+  import {
+    agentColorClass,
+    elapsedClock,
+    orphanRecoveryLabel,
+    toolUsageHasMissing
+  } from './lib/taskDisplay.js';
   import { sessionOutcomeLabel, sessionOutcomeTone } from './lib/sessionOutcome.js';
   import Icon from './Icon.svelte';
 
@@ -55,7 +60,11 @@
     event.preventDefault();
     event.stopPropagation();
     onReleaseSession?.(
-      { claim_id: session.claim_id, execution_status: session.execution_state || 'orphaned', status: session.execution_state || 'orphaned' },
+      {
+        claim_id: session.claim_id,
+        execution_status: session.execution_state || 'orphaned',
+        status: session.execution_state || 'orphaned'
+      },
       'release',
       'needs_review'
     );
@@ -73,7 +82,9 @@
   on:keydown={onKey}
 >
   <div class="session-card-head">
-    <span class={`agent-dot ${orphan ? 'agent-orphaned' : agentColorClass(session.agent || session.assignee)}`}></span>
+    <span
+      class={`agent-dot ${orphan ? 'agent-orphaned' : agentColorClass(session.agent || session.assignee)}`}
+    ></span>
     <strong class="session-card-agent">{session.agent || session.assignee || 'session'}</strong>
     {#if orphan}
       <span class="session-card-status session-card-status--orphan">
@@ -81,7 +92,10 @@
         {statusLabel}
       </span>
     {:else}
-      <span class={`session-card-status session-card-status--${tone}`} class:is-live={live && tone === 'live'}>
+      <span
+        class={`session-card-status session-card-status--${tone}`}
+        class:is-live={live && tone === 'live'}
+      >
         <span class="status-dot"></span>
         {statusLabel}
       </span>
@@ -100,13 +114,23 @@
     <div class="session-card-actions" role="group" aria-label="Resolve orphaned session">
       {#if onResolveOrphan}
         {#each ORPHAN_RESOLVE_ACTIONS as action (action.status)}
-          <button type="button" title={`Move task to ${action.label}`} aria-label={action.label} on:click={(event) => resolve(event, action.status)}>
+          <button
+            type="button"
+            title={`Move task to ${action.label}`}
+            aria-label={action.label}
+            on:click={(event) => resolve(event, action.status)}
+          >
             <Icon name={action.icon} size={13} />
           </button>
         {/each}
       {/if}
       {#if onReleaseSession && session.claim_id}
-        <button type="button" title="Release claim" aria-label="Release claim" on:click={releaseClaim}>
+        <button
+          type="button"
+          title="Release claim"
+          aria-label="Release claim"
+          on:click={releaseClaim}
+        >
           <Icon name="undo" size={13} />
         </button>
       {/if}

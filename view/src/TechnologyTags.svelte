@@ -24,5 +24,7 @@
   <TechnologyTag tag={item.tag} variant={item.variant} />
 {/each}
 {#if shown.hidden}
-  <span class="tech-more" title={`+${shown.hidden} more`}>+{shown.hidden}{moreSuffix ? ` ${moreSuffix}` : ''}</span>
+  <span class="tech-more" title={`+${shown.hidden} more`}
+    >+{shown.hidden}{moreSuffix ? ` ${moreSuffix}` : ''}</span
+  >
 {/if}

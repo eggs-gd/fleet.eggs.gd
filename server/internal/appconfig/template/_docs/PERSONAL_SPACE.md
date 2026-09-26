@@ -12,7 +12,7 @@ Keep Life inside Core for now.
 Reasons:
 
 - Core is already the operating system for capture, triage, refs, tasks, and agents.
-- Obsidian can point at the whole Core repository if needed.
+- Obsidian can point at the whole Core repository if needed. Obsidian and a separate LifeOS folder below are generic examples, not a particular machine.
 - Splitting Life into a separate repository too early would create duplicate
   routing, refs, and promotion rules.
 - A separate repository can still be created later if privacy, volume, or tooling

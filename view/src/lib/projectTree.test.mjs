@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { projectAccordionKey, pruneAccordionOpen, workspaceAccordionKey } from './dashboardState.js';
+import {
+  projectAccordionKey,
+  pruneAccordionOpen,
+  workspaceAccordionKey
+} from './dashboardState.js';
 import { archiveListMode, groupedByWorkspaceAndProject } from './taskDisplay.js';
 import { buildSidebarTree, projectInitial, projectOpenCount } from './projectTree.js';
 
@@ -36,7 +40,10 @@ test('buildSidebarTree nests projects by id prefix and keeps a standalone worksp
   // as a node even when the workspace also has real child projects — it used
   // to be silently dropped (excluded from children, and leafProject is null
   // for groups), making it unclickable in the sidebar.
-  assert.ok(unity.rootNode, 'workspace-root project should still be reachable when the workspace has children');
+  assert.ok(
+    unity.rootNode,
+    'workspace-root project should still be reachable when the workspace has children'
+  );
   assert.equal(unity.rootNode.project.id, 'unity');
   assert.equal(core.isGroup, false);
   assert.equal(core.leafProject.id, 'core-eggs-gd');

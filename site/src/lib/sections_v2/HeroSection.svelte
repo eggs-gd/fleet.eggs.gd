@@ -1,19 +1,12 @@
 <script lang="ts">
   import DownloadButton from '$lib/download/DownloadButton.svelte';
-  import {
-    Section,
-    SectionFoot,
-    SectionText,
-    SectionTitle,
-    Stack
-  } from '$lib/layout';
+  import { Section, SectionFoot, SectionText, SectionTitle, Stack } from '$lib/layout';
 </script>
 
 <Section class="v2-hero" id="product" aria-labelledby="hero-title">
   {#snippet band()}
     <SectionTitle id="hero-title" level={1} size="l">
-      I wanted one manager 
-      for coding-agent work.
+      I wanted one manager for coding-agent work.
     </SectionTitle>
   {/snippet}
 
@@ -21,16 +14,16 @@
     <SectionText size="l">That is pretty much how Fleet started.</SectionText>
     <SectionText size="m">Remote sessions let me use coding agents from my phone.</SectionText>
     <SectionText size="m">
-      It worked — until I had Codex in one project,<br/>
-      Claude in another, Cursor somewhere else,<br/>
+      It worked — until I had Codex in one project,<br />
+      Claude in another, Cursor somewhere else,<br />
       and my own memory acting as the orchestrator.
     </SectionText>
     <SectionText size="m">I didn't want remote access to a bunch of coding agents.</SectionText>
     <SectionText size="xl"><strong>I wanted one manager.</strong></SectionText>
 
     <SectionText size="l">
-      The manager is an agent you already use.
-      Fleet gave you that role: rough intent in, executable work out, real agents underneath.
+      The manager is an agent you already use. Fleet gave you that role: rough intent in, executable
+      work out, real agents underneath.
     </SectionText>
 
     <div class="v2-manager">
@@ -109,8 +102,8 @@
           <span class="pixel-thumb thumb-a"><i></i><i></i><i></i><i></i><i></i><i></i></span>
         </div>
         <div class="traveler junk paste fly-junk-3">
-          user: also the sidebar collapses<br />claude: got it, reproducing<br />claude: found it, fixing
-          now
+          user: also the sidebar collapses<br />claude: got it, reproducing<br />claude: found it,
+          fixing now
         </div>
         <div class="traveler junk fly-junk-4">icons broken on mobile</div>
         <div class="traveler junk img fly-junk-5">
@@ -126,8 +119,8 @@
       </div>
 
       <SectionText size="m" class="scene-caption">
-        A voice note, a screenshot, a half-formed sentence — the manager sorts it into the right project,
-        shapes it into a scoped task, and queues it for a worker.<br/>
+        A voice note, a screenshot, a half-formed sentence — the manager sorts it into the right
+        project, shapes it into a scoped task, and queues it for a worker.<br />
         If the project or the intent is unclear, it comes back with a question instead of a guess.
       </SectionText>
 

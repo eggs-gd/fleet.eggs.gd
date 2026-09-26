@@ -28,18 +28,18 @@ type registryRepositoriesPayload struct {
 }
 
 type registryRepositoryJSON struct {
-	ID                  string                  `json:"id"`
-	Name                string                  `json:"name"`
-	RelativePath        string                  `json:"relative_path"`
-	Remote              string                  `json:"remote"`
-	Branch              string                  `json:"branch"`
-	ParentRepositoryID  string                  `json:"parent_repository_id"`
-	NestedRepositoryIDs []string                `json:"nested_repository_ids"`
-	Stack               []string                `json:"stack"`
-	Markers             []string                `json:"markers"`
-	Effective           board.TechnologyProfile       `json:"effective"`
-	Detected            registryDetectedProfile `json:"detected"`
-	Evidence            []board.TechnologyEvidence    `json:"evidence"`
+	ID                  string                     `json:"id"`
+	Name                string                     `json:"name"`
+	RelativePath        string                     `json:"relative_path"`
+	Remote              string                     `json:"remote"`
+	Branch              string                     `json:"branch"`
+	ParentRepositoryID  string                     `json:"parent_repository_id"`
+	NestedRepositoryIDs []string                   `json:"nested_repository_ids"`
+	Stack               []string                   `json:"stack"`
+	Markers             []string                   `json:"markers"`
+	Effective           board.TechnologyProfile    `json:"effective"`
+	Detected            registryDetectedProfile    `json:"detected"`
+	Evidence            []board.TechnologyEvidence `json:"evidence"`
 }
 
 type registryDetectedProfile struct {

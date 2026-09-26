@@ -230,7 +230,7 @@ func TestServiceTransitionValidationCentralized(t *testing.T) {
 		t.Fatalf("backlog->doing err = %v, want ErrInvalidTransition", err)
 	}
 
-	if err := svc.Transition(context.Background(), task.Locator, StatusTodo, TransitionMeta{Actor: "alex"}); err != nil {
+	if err := svc.Transition(context.Background(), task.Locator, StatusTodo, TransitionMeta{Actor: "owner"}); err != nil {
 		t.Fatalf("backlog->todo: %v", err)
 	}
 	got, err := svc.Get(context.Background(), task.Locator)
@@ -272,7 +272,7 @@ func TestServicePatchAllowsBlockedToNeedsReview(t *testing.T) {
 	updated, err := svc.Patch(context.Background(), task.Locator, PatchInput{
 		Status:        StatusNeedsReview,
 		Comment:       "Artifacts verified; move to review without re-run.",
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -358,7 +358,7 @@ func TestServicePatchCombinesFieldWrites(t *testing.T) {
 		Assignee:      "cursor",
 		DependsOn:     &dependsOn,
 		Comment:       "routed through service",
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -375,7 +375,7 @@ func TestServicePatchCombinesFieldWrites(t *testing.T) {
 	if len(updated.DependsOn) != 1 || updated.DependsOn[0] != "CORE-144" {
 		t.Fatalf("depends_on = %#v, want [CORE-144]", updated.DependsOn)
 	}
-	if len(updated.Comments) != 1 || updated.Comments[0].Author != "alex" {
+	if len(updated.Comments) != 1 || updated.Comments[0].Author != "owner" {
 		t.Fatalf("comments = %#v", updated.Comments)
 	}
 

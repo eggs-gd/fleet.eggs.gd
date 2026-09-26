@@ -66,7 +66,12 @@
             </button>
             {#if projectOpen}
               {#each project.tasks as task (taskKey(task))}
-                <TaskCard {task} {transitions} onOpen={onOpenTask} onTransition={onTransitionTask} />
+                <TaskCard
+                  {task}
+                  {transitions}
+                  onOpen={onOpenTask}
+                  onTransition={onTransitionTask}
+                />
               {/each}
             {/if}
           </section>
@@ -116,7 +121,12 @@
                 </button>
                 {#if projectOpen}
                   {#each project.tasks as task (taskKey(task))}
-                    <TaskCard {task} {transitions} onOpen={onOpenTask} onTransition={onTransitionTask} />
+                    <TaskCard
+                      {task}
+                      {transitions}
+                      onOpen={onOpenTask}
+                      onTransition={onTransitionTask}
+                    />
                   {/each}
                 {/if}
               </section>

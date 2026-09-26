@@ -1,7 +1,12 @@
 <script>
   import { favoriteIds, toggleFavorite } from './lib/favorites.js';
   import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings.js';
-  import { hasTechnology, itemTechnologyView, repoWebUrl, techRepositories } from './lib/technologyDisplay.js';
+  import {
+    hasTechnology,
+    itemTechnologyView,
+    repoWebUrl,
+    techRepositories
+  } from './lib/technologyDisplay.js';
   import TechnologyTags from './TechnologyTags.svelte';
   import Icon from './Icon.svelte';
 
@@ -24,7 +29,11 @@
         { id: 'archive', label: 'Archive' }
       ];
 
-  $: primaryRemote = project ? techRepositories(project).map((repo) => repo.remote).find(Boolean) || '' : '';
+  $: primaryRemote = project
+    ? techRepositories(project)
+        .map((repo) => repo.remote)
+        .find(Boolean) || ''
+    : '';
   $: primaryRemoteUrl = repoWebUrl(primaryRemote);
 
   $: isFavorite = Boolean(project) && $favoriteIds.includes(project.id);
@@ -51,7 +60,13 @@
           <code class="project-header-path">~/{project.relative_path || project.path}</code>
         {/if}
         {#if primaryRemoteUrl}
-          <a class="project-header-icon-link" href={primaryRemoteUrl} target="_blank" rel="noreferrer" title={primaryRemote}>
+          <a
+            class="project-header-icon-link"
+            href={primaryRemoteUrl}
+            target="_blank"
+            rel="noreferrer"
+            title={primaryRemote}
+          >
             <Icon name="github" size={16} />
           </a>
         {/if}
@@ -93,7 +108,11 @@
 
 <nav class="project-tabs" aria-label="Project view">
   {#each views as view (view.id)}
-    <button type="button" class:active={activeView === view.id} on:click={() => onChangeView(view.id)}>
+    <button
+      type="button"
+      class:active={activeView === view.id}
+      on:click={() => onChangeView(view.id)}
+    >
       {view.label}
     </button>
   {/each}

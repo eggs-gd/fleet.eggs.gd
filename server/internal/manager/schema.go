@@ -38,7 +38,7 @@ const IntentJSONSchema = `{
     },
     "assignee": {
       "type": "string",
-      "enum": ["alex", "codex", "claude", "cursor", "gemini", "unassigned"]
+      "enum": ["alex", "owner", "codex", "claude", "cursor", "gemini", "unassigned"]
     },
     "ref": {
       "type": "string",

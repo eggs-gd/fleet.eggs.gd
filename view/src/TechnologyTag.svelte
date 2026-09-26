@@ -11,7 +11,14 @@
   aria-label={tag.title}
 >
   {#if tag.svg}
-    <svg class="tech-glyph-svg" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+    <svg
+      class="tech-glyph-svg"
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      aria-hidden="true"
+      focusable="false"
+    >
       {@html tag.svg}
     </svg>
   {:else if tag.glyph}

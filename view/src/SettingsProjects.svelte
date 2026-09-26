@@ -29,9 +29,10 @@
 <section class="settings-block" aria-label="Project scan roots">
   <h3>Project scan roots</h3>
   <p class="settings-lede">
-    Each path is a directory of git checkouts. Save, then the running server watches all of them and refreshes the registry when repositories appear or disappear.
-    Rescan runs a pass now. Recheck is for agents, not this tree.
-    Per-project repositories and PROJECT.md open from the Settings tab on that project.
+    Each path is a directory of git checkouts. Save, then the running server watches all of them and
+    refreshes the registry when repositories appear or disappear. Rescan runs a pass now. Recheck is
+    for agents, not this tree. Per-project repositories and PROJECT.md open from the Settings tab on
+    that project.
   </p>
   {#each scanRoots as root, index (index)}
     <div class="settings-row">
@@ -43,7 +44,8 @@
           value={root}
           on:input={(event) => editRoot(index, event.currentTarget.value)}
         />
-        <button type="button" class="settings-btn" on:click={() => removeRoot(index)}>Remove</button>
+        <button type="button" class="settings-btn" on:click={() => removeRoot(index)}>Remove</button
+        >
       </span>
     </div>
   {/each}
@@ -59,10 +61,17 @@
   <div class="settings-row">
     <span class="settings-key">Rescan</span>
     <span class="settings-val">
-      <button type="button" class="settings-btn" disabled={scanning || scanDirty} on:click={onRescan}>
+      <button
+        type="button"
+        class="settings-btn"
+        disabled={scanning || scanDirty}
+        on:click={onRescan}
+      >
         {scanning ? 'Scanning…' : 'Rescan'}
       </button>
-      <span class="settings-item-meta">{scan.state || 'idle'}{scan.finished_at ? ` · ${scan.finished_at}` : ''}</span>
+      <span class="settings-item-meta"
+        >{scan.state || 'idle'}{scan.finished_at ? ` · ${scan.finished_at}` : ''}</span
+      >
     </span>
   </div>
   {#if scanDirty}
@@ -108,9 +117,13 @@
   {#each projects.data_paths || [] as path (path.name)}
     <article class="settings-item">
       <div class="settings-item-head">
-        <span class={`status-dot-inline is-${path.exists && path.writable ? 'ok' : path.exists ? 'warn' : 'fail'}`}></span>
+        <span
+          class={`status-dot-inline is-${path.exists && path.writable ? 'ok' : path.exists ? 'warn' : 'fail'}`}
+        ></span>
         <strong>{path.name}</strong>
-        <span class="settings-pill">{path.exists ? (path.writable ? 'writable' : 'not writable') : 'missing'}</span>
+        <span class="settings-pill"
+          >{path.exists ? (path.writable ? 'writable' : 'not writable') : 'missing'}</span
+        >
       </div>
       <code class="settings-path">{path.path}</code>
       <p class="settings-hint">{path.role}</p>

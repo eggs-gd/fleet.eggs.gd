@@ -1,9 +1,8 @@
 :root {
   --font-sans:
-    "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono:
-    "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   --bg: #0c0e11;
   --panel: #13171d;
   --panel-strong: #171c23;
@@ -270,7 +269,7 @@ h3 {
 }
 
 .product-shot::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;

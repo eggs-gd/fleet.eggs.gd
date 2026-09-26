@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	maxStoredToolCalls   = 48
-	maxToolSummaryChars  = 160
+	maxStoredToolCalls    = 48
+	maxToolSummaryChars   = 160
 	toolEvidenceSourceRPC = "provider_rpc"
 	toolEvidenceSourceLog = "session_log"
 )

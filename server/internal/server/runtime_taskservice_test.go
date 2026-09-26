@@ -76,7 +76,7 @@ repositories:
 	commented, err := app.PatchTask(tasklifecycle.TaskPatch{
 		Path:          created.RelativePath,
 		Comment:       "dashboard write via TaskService",
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -86,12 +86,12 @@ repositories:
 	}
 	foundAlex := false
 	for _, c := range commented.Comments {
-		if c.Author == "alex" && strings.Contains(c.Text, "dashboard write via TaskService") {
+		if c.Author == "owner" && strings.Contains(c.Text, "dashboard write via TaskService") {
 			foundAlex = true
 		}
 	}
 	if !foundAlex {
-		t.Fatalf("comments = %#v, want alex dashboard note", commented.Comments)
+		t.Fatalf("comments = %#v, want owner dashboard note", commented.Comments)
 	}
 
 	assigned, err := app.PatchTask(tasklifecycle.TaskPatch{

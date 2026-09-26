@@ -7,7 +7,7 @@ Worker agents (Codex, Claude, Cursor) execute tasks. They must not act as the
 default manager for voice/task ingestion.
 
 Canonical mutation rules still live in `_docs/DOMAIN_MODEL.md` and the shared
-task write path in `internal/corechain`. This API is an ingestion and
+task write path in `internal/taskflow` (the old package name `internal/corechain` is gone). This API is an ingestion and
 classification front door, not a second task store.
 
 ## Role Split
@@ -16,7 +16,7 @@ classification front door, not a second task store.
 |---|---|---|
 | **Core Manager API** | Transcribe, classify, normalize, resolve project/repo, create/update tasks via the canonical mutation layer, answer status lookups | Write application code, launch workers as a side effect of chat, invent repository paths |
 | **Worker agents** | Implement coding/research tasks assigned on the board | Own voice triage, create Core board policy, spend coding credits on management |
-| **Alex** | Review, prioritize (`backlog` → `todo`), close `needs_review` → `done`/`needs_rework` | — |
+| **Operator** | Review, prioritize (`backlog` → `todo`), close `needs_review` → `done`/`needs_rework` | — |
 
 Codex chat may still be used for **coding** or explicit Manager override during
 migration, but it is no longer the default voice/task ingestion path.
@@ -172,7 +172,7 @@ LLM classifier. If the LLM is not configured, Core returns
 ```text
 Manager Service
     → TaskProvider (interface)
-        → MarkdownTaskProvider  (MVP: Work/**/tasks/*.md via corechain)
+        → MarkdownTaskProvider  (MVP: Work/**/tasks/*.md)
         → PlaneTaskProvider     (future)
 ```
 
@@ -224,8 +224,8 @@ Manager must never write code.
 
 | Code | When | Client behavior |
 |---|---|---|
-| `ambiguous_project` | Multiple projects match | Ask Alex to disambiguate |
-| `ambiguous_repository` | Multiple repos match | Ask Alex to disambiguate |
+| `ambiguous_project` | Multiple projects match | Ask the operator to disambiguate |
+| `ambiguous_repository` | Multiple repos match | Ask the operator to disambiguate |
 | `ambiguous_command` | Fast-path partial match / unclear intent | Fall through to LLM or ask |
 | `unsafe_command` | Destructive action without confirm | Require explicit confirm |
 | `malformed_model_output` | LLM JSON fails schema/validation | Retry once or ask |
@@ -265,4 +265,4 @@ flow. Phone/shortcut clients can call the same HTTP endpoints.
 | Package | `server/internal/manager/` |
 | HTTP routes | `server/internal/server/server.go` |
 | Dashboard panel | `view/src/ManagerPanel.svelte` |
-| Canonical writes | `internal/corechain` `CreateTask` / `PatchTask` |
+| Canonical writes | `internal/taskflow` `CreateTask` / `PatchTask` (`internal/corechain` no longer exists) |

@@ -1,9 +1,8 @@
 # Implementation Plan
 
-This repository is the public static surface for Fleet. It started with a
-first-viewport pass and has an experimental structural landing skeleton in
-Svelte. The canonical content plan now lives in `CONTENT.md`; update that file
-before changing page structure in code.
+`site/` inside the App repository is the public static surface for Fleet. The
+landing copy canon is `LANDING-v3.md`. Update that file before changing page
+structure in code.
 
 ## Target Stack
 
@@ -14,10 +13,8 @@ before changing page structure in code.
 
 ## Current Landing Structure
 
-The current Svelte page is a draft. The accepted landing structure should be
-planned in `CONTENT.md` first and only then moved into code. The current draft
-is structured around existing Fleet App/Data capabilities rather than invented
-marketing claims:
+The live page follows `LANDING-v3.md`. It is structured around existing Fleet
+capabilities rather than invented marketing claims:
 
 - Hero: local-first orchestration for coding agents.
 - Why Fleet exists: agent chats are easy to start but hard to coordinate.

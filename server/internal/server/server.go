@@ -7,8 +7,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -27,6 +25,7 @@ type Config struct {
 	SessionTimeout     time.Duration
 	SessionTimeoutFlag bool
 	Version            string
+	LaunchToken        string
 	StartedAt          time.Time
 	DataRootCreated    bool
 }
@@ -34,6 +33,13 @@ type Config struct {
 func Serve(cfg Config) error {
 	if cfg.Addr == "" {
 		cfg.Addr = "127.0.0.1:8787"
+	}
+	if strings.TrimSpace(cfg.LaunchToken) == "" {
+		token, err := loadLaunchToken(cfg.RuntimeRoot)
+		if err != nil {
+			return fmt.Errorf("launch token: %w", err)
+		}
+		cfg.LaunchToken = token
 	}
 	if cfg.SessionTimeout <= 0 {
 		cfg.SessionTimeout = 10 * time.Minute
@@ -78,19 +84,13 @@ func Serve(cfg Config) error {
 	registerManagerRoutes(mux, managerService, cfg)
 	registerManagerProvisionRoutes(mux, cfg)
 	if bound := managerBindingStatus(cfg.CoreRoot); bound.Bound {
-		_, _ = settings.EnsureManagerMCP(cfg.CoreRoot, bound.Agent, cfg.Addr)
+		_, _ = settings.EnsureManagerMCP(cfg.CoreRoot, bound.Agent, cfg.Addr, cfg.LaunchToken)
 	}
 	registerManagerMCPRoute(mux, managerService)
 	registerAppConfigRoutes(mux, cfg)
 
-	fs := http.FileServer(http.Dir(cfg.BackofficeDir))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		path := filepath.Join(cfg.BackofficeDir, filepath.Clean(r.URL.Path))
-		if info, err := os.Stat(path); err == nil && !info.IsDir() {
-			fs.ServeHTTP(w, r)
-			return
-		}
-		http.ServeFile(w, r, filepath.Join(cfg.BackofficeDir, "index.html"))
+		serveBackoffice(w, r, cfg.BackofficeDir, cfg.LaunchToken)
 	})
 
 	listener, err := net.Listen("tcp", cfg.Addr)
@@ -113,7 +113,7 @@ func Serve(cfg Config) error {
 	fmt.Printf("Backoffice dir: %s\n", cfg.BackofficeDir)
 	fmt.Printf("Launch mode: %s\n", launchMode)
 	fmt.Printf("Session timeout: %s\n", cfg.SessionTimeout)
-	return http.Serve(listener, mux)
+	return http.Serve(listener, guardLocal(cfg.Addr, cfg.LaunchToken, mux))
 }
 
 func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Config) {

@@ -70,10 +70,10 @@ func LoadTaskFile(root string, taskFile string) (tasklifecycle.Task, error) {
 			AutoPush:   mdfile.Boolean(fm, "launch.auto_push"),
 			AutoPR:     mdfile.Boolean(fm, "launch.auto_pr"),
 		},
-		Summary:  mdfile.FirstParagraph(body),
-		Body:     body,
-		Comments: parseReviewComments(body),
-		Path:     taskFile,
+		Summary:      mdfile.FirstParagraph(body),
+		Body:         body,
+		Comments:     parseReviewComments(body),
+		Path:         taskFile,
 		RelativePath: filepath.ToSlash(rel),
 		LaunchEvaluation: tasklifecycle.LaunchEvaluation{
 			Agent: firstNonEmpty(mdfile.Scalar(fm, "launch.agent", ""), mdfile.Scalar(fm, "assignee", "unassigned")),
@@ -150,7 +150,7 @@ func markdownSection(body string, title string) string {
 func formatComment(author string, text string) string {
 	author = strings.TrimSpace(author)
 	if author == "" {
-		author = "alex"
+		author = "owner"
 	}
 	text = mdfile.Whitespace.ReplaceAllString(strings.TrimSpace(text), " ")
 	return "- " + time.Now().Format(time.RFC3339) + " — " + author + ": " + text

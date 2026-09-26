@@ -42,9 +42,12 @@
 
   let commentField;
 
-  $: sortedProjects = [...projects].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+  $: sortedProjects = [...projects].sort((a, b) =>
+    (a.title || a.id).localeCompare(b.title || b.id)
+  );
   $: selectedProject = sortedProjects.find((project) => project.id === draftProject) || null;
-  $: selectedWorkspaceId = selectedProject?.workspace_id || selectedProject?.id || task?.workspace_id || '';
+  $: selectedWorkspaceId =
+    selectedProject?.workspace_id || selectedProject?.id || task?.workspace_id || '';
   $: currentDependsOn = dependsOnList(task);
 
   function resizeCommentField() {
@@ -56,7 +59,7 @@
   }
 
   // Grow on typing/paste and when an existing longer draft is restored.
-  $: draftComment, tick().then(resizeCommentField);
+  $: (draftComment, tick().then(resizeCommentField));
 
   function closeFromBackdrop(event) {
     if (event.target === event.currentTarget) {
@@ -66,7 +69,13 @@
 </script>
 
 <section class="modal-backdrop" role="presentation" on:click={closeFromBackdrop}>
-  <div class="task-modal" role="dialog" aria-modal="true" aria-labelledby="task-title" tabindex="-1">
+  <div
+    class="task-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="task-title"
+    tabindex="-1"
+  >
     <header>
       <div>
         <p class="eyebrow">{task.ref || task.type}</p>
@@ -122,7 +131,12 @@
       </div>
       <div>
         <span>Agent</span>
-        <strong>{launchEvaluation(task).agent || task.launch?.agent || task.assignee || 'unassigned'}</strong>
+        <strong
+          >{launchEvaluation(task).agent ||
+            task.launch?.agent ||
+            task.assignee ||
+            'unassigned'}</strong
+        >
       </div>
       <label>
         <span>Assignee</span>
@@ -139,15 +153,11 @@
 
     <label class="body-editor depends-editor">
       <span>Depends on (hard launch blockers)</span>
-      <input
-        bind:value={draftDependsOn}
-        placeholder="CORE-144, CORE-145"
-        spellcheck="false"
-      />
+      <input bind:value={draftDependsOn} placeholder="CORE-144, CORE-145" spellcheck="false" />
       <p class="depends-hint">
         Comma-separated prerequisite refs. Daemon will not claim/launch this task until each
-        dependency is <code>done</code>. Leave empty for no gate. Waiting stays in launch
-        evaluation — it does not flip status to <code>blocked</code>.
+        dependency is <code>done</code>. Leave empty for no gate. Waiting stays in launch evaluation
+        — it does not flip status to <code>blocked</code>.
       </p>
       {#if currentDependsOn.length}
         <div class="depends-chips" aria-label="Current depends_on">
@@ -195,13 +205,19 @@
           <p>{codexRemoteInstruction(execution(task))}</p>
           <div class="session-actions">
             {#if execution(task).thread_id}
-              <button type="button" on:click={() => copyText(execution(task).thread_id)}>Copy thread id</button>
+              <button type="button" on:click={() => copyText(execution(task).thread_id)}
+                >Copy thread id</button
+              >
             {/if}
             {#if execution(task).turn_id}
-              <button type="button" on:click={() => copyText(execution(task).turn_id)}>Copy turn id</button>
+              <button type="button" on:click={() => copyText(execution(task).turn_id)}
+                >Copy turn id</button
+              >
             {/if}
             {#if execution(task).thread_title}
-              <button type="button" on:click={() => copyText(execution(task).thread_title)}>Copy title</button>
+              <button type="button" on:click={() => copyText(execution(task).thread_title)}
+                >Copy title</button
+              >
             {/if}
           </div>
         {/if}
@@ -253,8 +269,7 @@
         placeholder={task.status === 'blocked' && draftStatus === 'needs_review'
           ? 'Why is this blocked task ready for review without re-running?'
           : 'What should the next worker fix?'}
-        on:input={resizeCommentField}
-      ></textarea>
+        on:input={resizeCommentField}></textarea>
     </label>
 
     <label class="body-editor">

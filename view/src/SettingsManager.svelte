@@ -1,4 +1,5 @@
 <script>
+  import { apiFetch } from './lib/api.js';
   import SettingsField from './SettingsField.svelte';
   import { timeAgo } from './lib/taskDisplay.js';
 
@@ -21,7 +22,7 @@
     if (!nextAgent || !nextWorkspace) return;
     threadsLoading = true;
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/manager/threads?agent=${encodeURIComponent(nextAgent)}&cwd=${encodeURIComponent(nextWorkspace)}`
       );
       const body = await response.text();
@@ -48,7 +49,7 @@
     adopting = threadId;
     adoptError = '';
     try {
-      const response = await fetch('/api/manager/adopt', {
+      const response = await apiFetch('/api/manager/adopt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agent, threadId })
@@ -65,7 +66,9 @@
 
 <section class="settings-block" aria-label="Manager">
   <h3>Manager</h3>
-  <p class="settings-lede">Manager is a session in the provider app. Fleet remembers it and does not send chat into it.</p>
+  <p class="settings-lede">
+    Manager is a session in the provider app. Fleet remembers it and does not send chat into it.
+  </p>
   <SettingsField label="Role" value={manager.role || '—'} />
   <SettingsField label="Provider" value={session ? manager.provider : 'none'} />
   <SettingsField label="Session" value={session?.id || 'none'} mono />
@@ -81,7 +84,12 @@
           <li>
             {thread.name || '(untitled)'} — {timeAgo(thread.updatedAt) || thread.id}
             {#if thread.id !== session.id}
-              <button type="button" class="settings-btn" disabled={adopting !== ''} on:click={() => adopt(thread.id)}>
+              <button
+                type="button"
+                class="settings-btn"
+                disabled={adopting !== ''}
+                on:click={() => adopt(thread.id)}
+              >
                 {adopting === thread.id ? 'Saving…' : 'Use as Manager'}
               </button>
             {/if}

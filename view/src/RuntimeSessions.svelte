@@ -51,10 +51,22 @@
   <header class="runtime-strip-header">
     <strong>Sessions</strong>
     <div class="session-tabs" role="tablist" aria-label="Session status">
-      <button type="button" role="tab" aria-selected={tab === 'active'} class:active={tab === 'active'} on:click={() => (tab = 'active')}>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === 'active'}
+        class:active={tab === 'active'}
+        on:click={() => (tab = 'active')}
+      >
         Active
       </button>
-      <button type="button" role="tab" aria-selected={tab === 'closed'} class:active={tab === 'closed'} on:click={() => (tab = 'closed')}>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === 'closed'}
+        class:active={tab === 'closed'}
+        on:click={() => (tab = 'closed')}
+      >
         Closed
       </button>
     </div>
@@ -96,7 +108,14 @@
         <SessionCard {session} kind="live" {now} onOpen={openSelected} />
       {/each}
       {#each orphanedTasks as orphan (orphanKey(orphan))}
-        <SessionCard session={orphan} kind="orphan" {now} onOpen={openSelected} {onResolveOrphan} {onReleaseSession} />
+        <SessionCard
+          session={orphan}
+          kind="orphan"
+          {now}
+          onOpen={openSelected}
+          {onResolveOrphan}
+          {onReleaseSession}
+        />
       {/each}
     {:else}
       {#each closedSessions as session (sessionKey(session))}

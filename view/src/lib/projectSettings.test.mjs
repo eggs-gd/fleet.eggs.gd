@@ -4,7 +4,14 @@ import test from 'node:test';
 import { childProjects, parentProjectId, projectSettingsInspect } from './projectSettings.js';
 
 test('parent and child ids follow slash nesting against the real project/workspace id list', () => {
-  const ids = ['core-eggs-gd', 'audiophile', 'audiophile/jivemax-lua', 'audiophile/jivemax', 'audiophile/jivemax/jivelite', 'other'];
+  const ids = [
+    'core-eggs-gd',
+    'audiophile',
+    'audiophile/jivemax-lua',
+    'audiophile/jivemax',
+    'audiophile/jivemax/jivelite',
+    'other'
+  ];
   assert.equal(parentProjectId('core-eggs-gd', ids), '');
   assert.equal(parentProjectId('audiophile/jivemax-lua', ids), 'audiophile');
   // Longest-prefix match: a grandchild resolves to its immediate parent, not
@@ -14,7 +21,12 @@ test('parent and child ids follow slash nesting against the real project/workspa
   assert.equal(parentProjectId('audiophile/jivemax/jivelite', ids), 'audiophile/jivemax');
   assert.deepEqual(
     childProjects(
-      [{ id: 'audiophile/cratune' }, { id: 'audiophile/jivemax' }, { id: 'audiophile/jivemax/jivelite' }, { id: 'other' }],
+      [
+        { id: 'audiophile/cratune' },
+        { id: 'audiophile/jivemax' },
+        { id: 'audiophile/jivemax/jivelite' },
+        { id: 'other' }
+      ],
       'audiophile'
     ).map((p) => p.id),
     ['audiophile/cratune', 'audiophile/jivemax']
@@ -23,7 +35,12 @@ test('parent and child ids follow slash nesting against the real project/workspa
   // direct child of audiophile — it's a direct child of audiophile/jivemax.
   assert.deepEqual(
     childProjects(
-      [{ id: 'audiophile/cratune' }, { id: 'audiophile/jivemax' }, { id: 'audiophile/jivemax/jivelite' }, { id: 'other' }],
+      [
+        { id: 'audiophile/cratune' },
+        { id: 'audiophile/jivemax' },
+        { id: 'audiophile/jivemax/jivelite' },
+        { id: 'other' }
+      ],
       'audiophile/jivemax'
     ).map((p) => p.id),
     ['audiophile/jivemax/jivelite']
@@ -83,7 +100,7 @@ test('nested project shows workspace membership and enriches git nesting from re
           {
             id: 'jivemax-lua-1',
             relative_path: 'Audiophile/jivemax-lua',
-            remote: 'git@github.com:dukobpa3/jivemax-lua.git',
+            remote: 'git@github.com:example/jivemax-lua.git',
             branch: 'main'
           }
         ]

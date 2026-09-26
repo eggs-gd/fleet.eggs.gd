@@ -1,11 +1,5 @@
 <script lang="ts">
-  import {
-    Section,
-    SectionFoot,
-    SectionText,
-    SectionTitle,
-    Stack
-  } from '$lib/layout';
+  import { Section, SectionFoot, SectionText, SectionTitle, Stack } from '$lib/layout';
 
   let shot: HTMLElement;
   let seen = $state(false);
@@ -46,8 +40,12 @@
       <span class="callout c1" aria-hidden="true"><b>01</b><i></i><em>sessions</em></span>
       <span class="callout c2" aria-hidden="true"><b>02</b><i></i><em>projects</em></span>
       <span class="callout c3" aria-hidden="true"><b>03</b><i></i><em>current work</em></span>
-      <span class="callout c4 flip" aria-hidden="true"><b>04</b><i></i><em>needs attention</em></span>
-      <span class="callout c5 flip" aria-hidden="true"><b>05</b><i></i><em>recent completed</em></span>
+      <span class="callout c4 flip" aria-hidden="true"
+        ><b>04</b><i></i><em>needs attention</em></span
+      >
+      <span class="callout c5 flip" aria-hidden="true"
+        ><b>05</b><i></i><em>recent completed</em></span
+      >
       <span class="callout c6" aria-hidden="true"><b>06</b><i></i><em>manager</em></span>
     </figure>
 
@@ -177,7 +175,7 @@
     }
     .v2-dashboard .seen .c4 {
       opacity: 1;
-      transition-delay: 3.0s;
+      transition-delay: 3s;
     }
     .v2-dashboard .seen .c5 {
       opacity: 1;

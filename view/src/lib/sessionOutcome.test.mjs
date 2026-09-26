@@ -9,10 +9,22 @@ import {
 } from './sessionOutcome.js';
 
 test('blocked / needs_input / needs_rework are HITL, not fail', () => {
-  assert.equal(sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'blocked' } }), 'hitl');
-  assert.equal(sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'needs_input' } }), 'hitl');
-  assert.equal(sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'needs_rework' } }), 'hitl');
-  assert.equal(sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'blocked' } }), 'Blocked');
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'blocked' } }),
+    'hitl'
+  );
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'needs_input' } }),
+    'hitl'
+  );
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'needs_rework' } }),
+    'hitl'
+  );
+  assert.equal(
+    sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'blocked' } }),
+    'Blocked'
+  );
   assert.equal(
     sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'needs_input' } }),
     'HITL'
@@ -29,25 +41,40 @@ test('live waiting_input is HITL even without a worker outcome', () => {
 });
 
 test('completed / succeeded / released are success', () => {
-  assert.equal(sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'completed' } }), 'success');
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'completed' } }),
+    'success'
+  );
   assert.equal(sessionOutcomeTone({ execution_status: 'released' }), 'success');
-  assert.equal(sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'completed' } }), 'Succeeded');
+  assert.equal(
+    sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'completed' } }),
+    'Succeeded'
+  );
   assert.equal(sessionOutcomeLabel({ execution_status: 'released' }), 'Released');
 });
 
 test('failed worker outcome and provider errors are fail', () => {
-  assert.equal(sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'failed' } }), 'fail');
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'succeeded', result: { outcome: 'failed' } }),
+    'fail'
+  );
   assert.equal(sessionOutcomeTone({ execution_status: 'provider_error' }), 'fail');
   assert.equal(sessionOutcomeTone({ execution_status: 'failed' }), 'fail');
   assert.equal(sessionOutcomeTone({ execution_status: 'terminal' }), 'fail');
   assert.equal(sessionOutcomeLabel({ execution_status: 'provider_error' }), 'Provider error');
-  assert.equal(sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'failed' } }), 'Failed');
+  assert.equal(
+    sessionOutcomeLabel({ execution_status: 'succeeded', result: { outcome: 'failed' } }),
+    'Failed'
+  );
 });
 
 test('running live sessions stay live unless HITL or fail', () => {
   assert.equal(sessionOutcomeTone({ execution_status: 'running' }, 'live'), 'live');
   assert.equal(sessionOutcomeLabel({ execution_status: 'running' }, 'live'), 'Running');
-  assert.equal(sessionOutcomeTone({ execution_status: 'running', result: { outcome: 'blocked' } }, 'live'), 'hitl');
+  assert.equal(
+    sessionOutcomeTone({ execution_status: 'running', result: { outcome: 'blocked' } }, 'live'),
+    'hitl'
+  );
 });
 
 test('orphans are their own tone', () => {
@@ -62,13 +89,19 @@ test('elapsedClockPrecise includes seconds', () => {
 });
 
 test('resolveOpenSession follows a live session into closed after it finishes', () => {
-  const selected = { key: 'claim-1', kind: 'live', snapshot: { claim_id: 'claim-1', execution_status: 'running' } };
+  const selected = {
+    key: 'claim-1',
+    kind: 'live',
+    snapshot: { claim_id: 'claim-1', execution_status: 'running' }
+  };
   const live = [{ claim_id: 'claim-1', execution_status: 'running', last_event: 'working' }];
   const opened = resolveOpenSession(selected, live, [], []);
   assert.equal(opened.kind, 'live');
   assert.equal(opened.session.last_event, 'working');
 
-  const closed = [{ claim_id: 'claim-1', execution_status: 'succeeded', result: { outcome: 'completed' } }];
+  const closed = [
+    { claim_id: 'claim-1', execution_status: 'succeeded', result: { outcome: 'completed' } }
+  ];
   const finished = resolveOpenSession(selected, [], closed, []);
   assert.equal(finished.kind, 'closed');
   assert.equal(finished.session.result.outcome, 'completed');

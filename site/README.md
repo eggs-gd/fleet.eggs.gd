@@ -26,31 +26,20 @@ for GitHub Pages.
 
 ## Implementation Scope
 
-Content strategy lives in `CONTENT.md`. Update that document first, then move
-accepted content into Svelte.
+The landing copy canon is `LANDING-v3.md`. Visual rules live in `DESIGN.md`.
+Change those before changing the page structure in Svelte.
 
-The first implementation pass built:
-
-- navigation/header;
-- first viewport/hero;
-- primary product visual;
-- primary CTA.
-
-Later sections should not be treated as final just because they exist in code.
-Plan the content in `CONTENT.md`, then implement the accepted structure.
-
-See `DESIGN.md` before implementing.
+The live page is `src/routes/+page.svelte`: hero, manager loop, workers,
+execution, dashboard, and install.
 
 ## Agent Development
 
-Repository instructions live in `AGENTS.md`. `CLAUDE.md` and Cursor rules
-point there so agents share one source of truth.
+Developer instructions live in the App root `AGENTS.md`. `CLAUDE.md`,
+`GEMINI.md`, and Cursor rules there point at that file. Codex reads it
+from the repository root.
 
-Local MCP servers are declared in `.mcp.json`:
-
-- Svelte documentation and autofix tools;
-- gopls for consistency with neighboring Fleet repos;
-- optional design-pattern research.
+Developer MCP servers (Svelte, gopls, design-patterns) are declared on the
+App root, not in this directory.
 
 Before finishing code work, run:
 

@@ -1,8 +1,10 @@
 <script context="module">
   let cachedSnapshot = null;
 </script>
+
 <script>
   import { onMount } from 'svelte';
+  import { apiFetch } from './lib/api.js';
   import { settingsSectionLabel } from './lib/settingsNav.js';
   import { draftFromSnapshot, patchFromDraft } from './lib/settingsDraft.js';
   import SettingsAgents from './SettingsAgents.svelte';
@@ -27,8 +29,12 @@
   let baseline = null;
   let draft = null;
 
-  $: scanKey = draft ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}` : '';
-  $: baseKey = baseline ? `${JSON.stringify(baseline.scanRoots)}|${baseline.sessionTimeout || ''}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}` : '';
+  $: scanKey = draft
+    ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}`
+    : '';
+  $: baseKey = baseline
+    ? `${JSON.stringify(baseline.scanRoots)}|${baseline.sessionTimeout || ''}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}`
+    : '';
   $: dirty = Boolean(draft && baseline && scanKey !== baseKey);
 
   function acceptSnapshot(next) {
@@ -44,7 +50,7 @@
     if (loading || dirty) return;
     loading = true;
     try {
-      const response = await fetch('/api/settings');
+      const response = await apiFetch('/api/settings');
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -62,7 +68,7 @@
     saving = true;
     warnings = [];
     try {
-      const response = await fetch('/api/settings', {
+      const response = await apiFetch('/api/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchFromDraft(draft, baseline))
@@ -95,7 +101,7 @@
     if (dirty) return;
     loading = true;
     try {
-      const response = await fetch('/api/settings/recheck', { method: 'POST' });
+      const response = await apiFetch('/api/settings/recheck', { method: 'POST' });
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -113,7 +119,7 @@
   async function rescan() {
     if (dirty) return;
     try {
-      const response = await fetch('/api/settings/rescan', { method: 'POST' });
+      const response = await apiFetch('/api/settings/rescan', { method: 'POST' });
       if (!response.ok) {
         throw new Error(await response.text());
       }
@@ -166,8 +172,15 @@
   {#if dirty}
     <div class="settings-savebar">
       <span>Save writes gitignored core.local.yaml. Browser prefs are not included.</span>
-      <button type="button" class="settings-btn" disabled={saving} on:click={discardSettings}>Discard</button>
-      <button type="button" class="settings-btn is-primary" disabled={saving} on:click={saveSettings}>
+      <button type="button" class="settings-btn" disabled={saving} on:click={discardSettings}
+        >Discard</button
+      >
+      <button
+        type="button"
+        class="settings-btn is-primary"
+        disabled={saving}
+        on:click={saveSettings}
+      >
         {saving ? 'Saving…' : 'Save'}
       </button>
     </div>
@@ -197,7 +210,13 @@
       />
     {:else if section === 'agents'}
       <SettingsManager manager={snapshot.manager} onReload={loadSettings} />
-      <SettingsAgents agents={snapshot.agents} {draft} onUpdate={updateAgent} onRecheck={recheck} {dirty} />
+      <SettingsAgents
+        agents={snapshot.agents}
+        {draft}
+        onUpdate={updateAgent}
+        onRecheck={recheck}
+        {dirty}
+      />
     {:else if section === 'workflow'}
       <SettingsWorkflow workflow={snapshot.workflow} />
     {:else if section === 'integrations'}

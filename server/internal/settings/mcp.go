@@ -14,10 +14,10 @@ type mcpFile struct {
 }
 
 type mcpEntry struct {
-	Type    string   `json:"type"`
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	URL     string   `json:"url"`
+	Type    string   `json:"type,omitempty"`
+	Command string   `json:"command,omitempty"`
+	Args    []string `json:"args,omitempty"`
+	URL     string   `json:"url,omitempty"`
 }
 
 func loadMCP(root string) Integrations {

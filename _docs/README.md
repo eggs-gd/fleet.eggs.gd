@@ -5,8 +5,6 @@ Product roadmaps, specs, and engineering notes for this repository
 Inbox/Work/Fleet/Archive conventions live in the configured Data root's
 `_docs/`, not here.
 
-Сирі нотатки в `raw/` — джерело, з них не працюємо.
-
 Позначки в роадмапах і ТЗ:
 
 - **готово** — є в репозиторії зараз
@@ -15,6 +13,8 @@ Inbox/Work/Fleet/Archive conventions live in the configured Data root's
 - **поза релізом** — свідомо не зараз
 
 Роадмап ставить пункт у порядок і лінкує спеку. Спека — єдине місце, де розписано, що саме робити.
+
+Роадмапи й спеки українською і з позначками статусу. Engineering і findings лишаються англійською: це не другий роадмап, тож позначок статусу на них немає. Findings лишаються в репозиторії. Домашні шляхи і живі session id туди не повертаються.
 
 ## Роадмапи
 
@@ -25,6 +25,7 @@ Inbox/Work/Fleet/Archive conventions live in the configured Data root's
 ## Спеки
 
 - [Windows](specs/windows.md)
+- [Manager: skills, код і MCP](specs/manager-skills.md)
 
 ## Engineering / Architecture
 

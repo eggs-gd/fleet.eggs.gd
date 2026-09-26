@@ -31,7 +31,11 @@
   <SettingsField label="Uptime" value={general.uptime || '—'} />
   <SettingsField label="Host" value={general.host || '—'} />
   <SettingsField label="API endpoint" value={general.api_endpoint || '—'} mono />
-  <SettingsField label="Session timeout" value={general.session_timeout || '—'} hint="Running process. Idle attention threshold, not a total session cap." />
+  <SettingsField
+    label="Session timeout"
+    value={general.session_timeout || '—'}
+    hint="Running process. Idle attention threshold, not a total session cap."
+  />
   <div class="settings-row">
     <span class="settings-key">Saved timeout</span>
     <span class="settings-val">
@@ -44,7 +48,8 @@
     </span>
   </div>
   <p class="settings-hint">
-    Written to core.local.yaml. New sessions use it after restart. An explicit --session-timeout overrides the file.
+    Written to core.local.yaml. New sessions use it after restart. An explicit --session-timeout
+    overrides the file.
     {#if general.session_timeout_config?.overridden_by}
       This process was started with {general.session_timeout_config.overridden_by}.
     {/if}
@@ -63,23 +68,34 @@
       <ThemeSwitch pref={themePref} onChange={onThemeChange} />
     </span>
   </div>
-  <p class="settings-hint">{general.theme?.source || 'Same localStorage state as the sidebar switcher. Applies immediately.'}</p>
+  <p class="settings-hint">
+    {general.theme?.source ||
+      'Same localStorage state as the sidebar switcher. Applies immediately.'}
+  </p>
   <div class="settings-row">
     <span class="settings-key">Auto-refresh interval</span>
     <span class="settings-val">
-      <select class="settings-input" value={refreshMs} on:change={(e) => onRefreshChange(Number(e.target.value))}>
+      <select
+        class="settings-input"
+        value={refreshMs}
+        on:change={(e) => onRefreshChange(Number(e.target.value))}
+      >
         {#each AUTO_REFRESH_MS as ms}
           <option value={ms}>{label(ms)}</option>
         {/each}
       </select>
     </span>
   </div>
-  <p class="settings-hint">Work board poll of /api/state. Stored in localStorage core.autoRefreshMs. Applies immediately.</p>
+  <p class="settings-hint">
+    Work board poll of /api/state. Stored in localStorage core.autoRefreshMs. Applies immediately.
+  </p>
 </section>
 
 <section class="settings-block" aria-label="Startup behaviour">
   <h3>Startup behaviour</h3>
-  <p class="settings-lede">Observed bootstrap. These are not toggles — Core does not expose startup flags yet.</p>
+  <p class="settings-lede">
+    Observed bootstrap. These are not toggles — Core does not expose startup flags yet.
+  </p>
   {#each general.startup || [] as fact (fact.id)}
     <SettingsField label={fact.label} value={fact.value} hint={fact.source} />
   {/each}

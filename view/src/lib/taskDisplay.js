@@ -9,7 +9,8 @@ export const priorityValue = (task) => {
 
 export const priorityLabel = (task) => `P${priorityValue(task)}`;
 
-export const refNumber = (task) => Number((task?.ref || '').split('-')[1]) || Number.MAX_SAFE_INTEGER;
+export const refNumber = (task) =>
+  Number((task?.ref || '').split('-')[1]) || Number.MAX_SAFE_INTEGER;
 
 export const taskPickupCompare = (a, b) => {
   const priorityDiff = priorityValue(a) - priorityValue(b);
@@ -48,7 +49,8 @@ export const projectById = (projects, projectId) =>
     repositories: []
   };
 
-export const projectTitle = (projects, projectId) => projectById(projects, projectId).title || projectId;
+export const projectTitle = (projects, projectId) =>
+  projectById(projects, projectId).title || projectId;
 
 export const columnStatuses = (column) => column.statuses || [column.id];
 
@@ -78,16 +80,19 @@ export const launchVisibilityLabel = (task) => {
 export const executionClass = (task) => {
   const state = executionState(task);
   if (['running', 'starting', 'claimed', 'resumable'].includes(state)) return 'execution-live';
-  if (['waiting_input', 'operator_attention', 'stalled'].includes(state)) return 'execution-waiting';
+  if (['waiting_input', 'operator_attention', 'stalled'].includes(state))
+    return 'execution-waiting';
   if (['orphaned', 'dead', 'terminal', 'unknown'].includes(state)) return 'execution-orphaned';
   if (['failed', 'timed_out', 'cancelled'].includes(state)) return 'execution-failed';
   if (['succeeded', 'completed'].includes(state)) return 'execution-complete';
   return 'execution-none';
 };
 
-export const showExecutionSignal = (task) => task.status === 'doing' || executionState(task) !== 'none';
+export const showExecutionSignal = (task) =>
+  task.status === 'doing' || executionState(task) !== 'none';
 
-export const executionReason = (task) => execution(task).blocking_reason || execution(task).terminal_reason || '';
+export const executionReason = (task) =>
+  execution(task).blocking_reason || execution(task).terminal_reason || '';
 
 const pauseStates = ['waiting_input', 'operator_attention', 'stalled'];
 
@@ -108,7 +113,9 @@ export const operatorPause = (task) => {
   if (task?.status !== 'doing') return { waiting: false, question: '' };
   const text = latestCommentText(task);
   if (!/waiting on operator input/i.test(text)) return { waiting: false, question: '' };
-  const match = text.match(/Question:\s*([\s\S]*?)(?=\s+Artifacts:|\s+Session log:|\s+Tests\/checks:|$)/);
+  const match = text.match(
+    /Question:\s*([\s\S]*?)(?=\s+Artifacts:|\s+Session log:|\s+Tests\/checks:|$)/
+  );
   return { waiting: true, question: (match?.[1] || text).trim() };
 };
 
@@ -120,7 +127,8 @@ export const cardStatusLabel = (task) => {
 export const sessionCoversTask = (session, task) => {
   if (!session || !task) return false;
   return (
-    (session.task_path && (task.path === session.task_path || task.relative_path === session.task_path)) ||
+    (session.task_path &&
+      (task.path === session.task_path || task.relative_path === session.task_path)) ||
     (session.task_id && task.id === session.task_id) ||
     (session.task_ref && task.ref === session.task_ref)
   );
@@ -144,7 +152,8 @@ export const providerErrorDetail = (record) => record?.provider_error?.detail ||
 
 export const providerErrorKind = (record) => record?.provider_error?.kind || '';
 
-export const providerErrorSuggestedAction = (record) => record?.provider_error?.suggested_action || '';
+export const providerErrorSuggestedAction = (record) =>
+  record?.provider_error?.suggested_action || '';
 
 export const providerErrorRetryPolicy = (record) => record?.provider_error?.retry_policy || '';
 
@@ -157,12 +166,19 @@ export const sessionResumeLabel = (session) => {
   return 'resume in progress';
 };
 
-export const remoteThreadTitle = (record) => record?.codex_thread_title || record?.thread_title || '';
+export const remoteThreadTitle = (record) =>
+  record?.codex_thread_title || record?.thread_title || '';
 
 export const remoteHostLabel = (record) => record?.host_name || record?.host_id || '';
 
 export const codexRemoteInstruction = (record) => {
-  const title = remoteThreadTitle(record) || record?.task_ref || record?.task_id || record?.thread_id || record?.codex_thread_id || '';
+  const title =
+    remoteThreadTitle(record) ||
+    record?.task_ref ||
+    record?.task_id ||
+    record?.thread_id ||
+    record?.codex_thread_id ||
+    '';
   const host = remoteHostLabel(record);
   const project = record?.repository || record?.project_id || '';
   return [
@@ -205,7 +221,9 @@ export const executionIdentity = (record) =>
     record?.thread_id ? `thread ${record.thread_id}` : '',
     record?.codex_thread_id ? `thread ${record.codex_thread_id}` : '',
     record?.cursor_chat_id ? `cursor ${record.cursor_chat_id}` : '',
-    record?.session_id && record.session_id !== record.thread_id ? `session ${record.session_id}` : '',
+    record?.session_id && record.session_id !== record.thread_id
+      ? `session ${record.session_id}`
+      : '',
     record?.turn_id ? `turn ${record.turn_id}` : '',
     record?.codex_turn_id ? `turn ${record.codex_turn_id}` : '',
     record?.log_path ? record.log_path : ''
@@ -266,10 +284,13 @@ export const launchReason = (task) => {
   return evaluation.failed_gates?.[0] || '';
 };
 
-export const blockedReason = (task) => (task?.status === 'blocked' ? task?.blocked_reason || launchReason(task) : '');
+export const blockedReason = (task) =>
+  task?.status === 'blocked' ? task?.blocked_reason || launchReason(task) : '';
 
 export const dependsOnList = (task) =>
-  Array.isArray(task?.depends_on) ? task.depends_on.map((ref) => String(ref || '').trim()).filter(Boolean) : [];
+  Array.isArray(task?.depends_on)
+    ? task.depends_on.map((ref) => String(ref || '').trim()).filter(Boolean)
+    : [];
 
 export const dependsOnDraft = (task) => dependsOnList(task).join(', ');
 
@@ -329,8 +350,8 @@ export const archiveListMode = (selectedProjectId, selectedWorkspaceId) => {
 };
 
 export const groupedByWorkspaceAndProject = (sourceTasks, workspaces, projects) => {
-  const workspaceIds = Array.from(new Set(sourceTasks.map((task) => task.workspace_id))).sort((a, b) =>
-    workspaceTitle(workspaces, a).localeCompare(workspaceTitle(workspaces, b))
+  const workspaceIds = Array.from(new Set(sourceTasks.map((task) => task.workspace_id))).sort(
+    (a, b) => workspaceTitle(workspaces, a).localeCompare(workspaceTitle(workspaces, b))
   );
   return workspaceIds.map((workspaceId) => {
     const workspaceTasks = sourceTasks.filter((task) => task.workspace_id === workspaceId);

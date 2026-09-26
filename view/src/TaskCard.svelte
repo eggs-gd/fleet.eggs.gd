@@ -1,5 +1,15 @@
 <script>
-  import { agentColorClass, assigneeLabel, cardStatusLabel, launchOutcome, operatorPause, priorityLabel, showLaunchSignal, taskAgent, timeAgo } from './lib/taskDisplay.js';
+  import {
+    agentColorClass,
+    assigneeLabel,
+    cardStatusLabel,
+    launchOutcome,
+    operatorPause,
+    priorityLabel,
+    showLaunchSignal,
+    taskAgent,
+    timeAgo
+  } from './lib/taskDisplay.js';
   import { pillClass } from './lib/taskTags.js';
   import { actionsForStatus } from './lib/statusTransitions.js';
   import Icon from './Icon.svelte';
@@ -25,7 +35,9 @@
       <span class="task-row-priority pill pill-priority">{priorityLabel(task)}</span>
       <strong class="task-row-title">
         {#if done}
-          <span class="task-row-done-mark" aria-hidden="true"><Icon name="checks-circle" size={16} /></span>
+          <span class="task-row-done-mark" aria-hidden="true"
+            ><Icon name="checks-circle" size={16} /></span
+          >
         {/if}
         <span class="task-row-title-text">{task.title}</span>
       </strong>
@@ -43,16 +55,20 @@
   <div class="task-row-footer">
     <button type="button" class="task-row-tags" on:click={() => onOpen(task)}>
       {#if statusLabel}
-        <span class={pillClass(pause.waiting || task.status === 'needs_rework' ? 'amber' : 'slate')}>{statusLabel}</span>
+        <span class={pillClass(pause.waiting || task.status === 'needs_rework' ? 'amber' : 'slate')}
+          >{statusLabel}</span
+        >
       {/if}
       <TypePill type={task.type} />
       <code class="task-row-ref">{task.ref}</code>
       {#if showLaunchSignal(task)}
-        <span class={pillClass(launchOutcome(task) === 'waiting' ? 'amber' : 'slate')}>{launchOutcome(task)}</span>
+        <span class={pillClass(launchOutcome(task) === 'waiting' ? 'amber' : 'slate')}
+          >{launchOutcome(task)}</span
+        >
       {/if}
     </button>
     {#if actions.length}
-      <StatusActions {task} {transitions} onTransition={onTransition} />
+      <StatusActions {task} {transitions} {onTransition} />
     {/if}
   </div>
 </div>

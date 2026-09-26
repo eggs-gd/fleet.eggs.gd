@@ -4,7 +4,8 @@
   export let diagnostics = {};
   export let inventory = [];
 
-  const tone = (status) => (status === 'ok' ? 'ok' : status === 'warn' ? 'warn' : status === 'error' ? 'fail' : 'muted');
+  const tone = (status) =>
+    status === 'ok' ? 'ok' : status === 'warn' ? 'warn' : status === 'error' ? 'fail' : 'muted';
 </script>
 
 <section class="settings-block" aria-label="System health">
@@ -27,7 +28,10 @@
   <SettingsField label="Closed" value={String(diagnostics.sessions?.closed ?? 0)} />
   <SettingsField label="Failed" value={String(diagnostics.sessions?.failed ?? 0)} />
   <SettingsField label="Orphaned" value={String(diagnostics.sessions?.orphaned ?? 0)} />
-  <SettingsField label="Orphaned resumable" value={String(diagnostics.sessions?.orphaned_resumable ?? 0)} />
+  <SettingsField
+    label="Orphaned resumable"
+    value={String(diagnostics.sessions?.orphaned_resumable ?? 0)}
+  />
 </section>
 
 <section class="settings-block" aria-label="Configuration issues">

@@ -18,18 +18,18 @@ var (
 
 // knownToolSet is the closed set we treat as AGENTS.md-relevant evidence.
 var knownToolSet = map[string]bool{
-	ToolGoDiagnostics:    true,
-	ToolGoVulncheck:      true,
-	ToolSvelteAutofixer:  true,
-	ToolListSections:     true,
-	ToolGetDocumentation: true,
-	ToolFindPatterns:     true,
-	ToolFindSimilarCode:  true,
-	"get_pattern_details": true,
-	"search_patterns":     true,
-	"go_references":       true,
+	ToolGoDiagnostics:      true,
+	ToolGoVulncheck:        true,
+	ToolSvelteAutofixer:    true,
+	ToolListSections:       true,
+	ToolGetDocumentation:   true,
+	ToolFindPatterns:       true,
+	ToolFindSimilarCode:    true,
+	"get_pattern_details":  true,
+	"search_patterns":      true,
+	"go_references":        true,
 	"go_symbol_references": true,
-	"go_package_api":      true,
+	"go_package_api":       true,
 }
 
 // ExtractToolCallsFromCodexParams extracts tool evidence from one Codex JSON-RPC params blob.

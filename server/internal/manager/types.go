@@ -16,14 +16,14 @@ const (
 
 // Intent kinds for structured Manager output.
 const (
-	KindTask            = "task"
-	KindStatusChange    = "status_change"
-	KindComment         = "comment"
-	KindBoardCommand    = "board_command"
-	KindQuestion        = "question"
-	KindAssigneeChange  = "assignee_change"
-	KindPriorityChange  = "priority_change"
-	KindCancel          = "cancel"
+	KindTask           = "task"
+	KindStatusChange   = "status_change"
+	KindComment        = "comment"
+	KindBoardCommand   = "board_command"
+	KindQuestion       = "question"
+	KindAssigneeChange = "assignee_change"
+	KindPriorityChange = "priority_change"
+	KindCancel         = "cancel"
 )
 
 const (
@@ -39,22 +39,22 @@ const (
 
 // Intent is the structured Manager output validated against IntentJSONSchema.
 type Intent struct {
-	Kind           string `json:"kind"`
-	Project        string `json:"project,omitempty"`
-	Repository     string `json:"repository,omitempty"`
-	Title          string `json:"title,omitempty"`
-	Description    string `json:"description,omitempty"`
-	Priority       *int   `json:"priority,omitempty"`
-	Status         string `json:"status,omitempty"`
-	Type           string `json:"type,omitempty"`
-	Assignee       string `json:"assignee,omitempty"`
-	Ref            string `json:"ref,omitempty"`
-	Comment        string `json:"comment,omitempty"`
-	CommentAuthor  string `json:"comment_author,omitempty"`
-	BoardAction    string `json:"board_action,omitempty"`
-	Query          string `json:"query,omitempty"`
-	Confirm        bool   `json:"confirm,omitempty"`
-	RawTranscript  string `json:"raw_transcript,omitempty"`
+	Kind          string `json:"kind"`
+	Project       string `json:"project,omitempty"`
+	Repository    string `json:"repository,omitempty"`
+	Title         string `json:"title,omitempty"`
+	Description   string `json:"description,omitempty"`
+	Priority      *int   `json:"priority,omitempty"`
+	Status        string `json:"status,omitempty"`
+	Type          string `json:"type,omitempty"`
+	Assignee      string `json:"assignee,omitempty"`
+	Ref           string `json:"ref,omitempty"`
+	Comment       string `json:"comment,omitempty"`
+	CommentAuthor string `json:"comment_author,omitempty"`
+	BoardAction   string `json:"board_action,omitempty"`
+	Query         string `json:"query,omitempty"`
+	Confirm       bool   `json:"confirm,omitempty"`
+	RawTranscript string `json:"raw_transcript,omitempty"`
 }
 
 // TextRequest is the body for POST /api/manager/text.
@@ -93,10 +93,10 @@ type Result struct {
 
 // Response is the unified Manager API response.
 type Response struct {
-	OK       bool     `json:"ok"`
-	Path     string   `json:"path,omitempty"`
-	Intent   *Intent  `json:"intent,omitempty"`
-	Result   *Result  `json:"result,omitempty"`
-	Failure  *Failure `json:"failure,omitempty"`
-	Transcript string `json:"transcript,omitempty"`
+	OK         bool     `json:"ok"`
+	Path       string   `json:"path,omitempty"`
+	Intent     *Intent  `json:"intent,omitempty"`
+	Result     *Result  `json:"result,omitempty"`
+	Failure    *Failure `json:"failure,omitempty"`
+	Transcript string   `json:"transcript,omitempty"`
 }

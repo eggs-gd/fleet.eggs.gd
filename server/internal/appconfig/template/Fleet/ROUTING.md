@@ -4,10 +4,12 @@ This document helps the Manager choose an assignee for Work items.
 
 Routing is advisory, not absolute. The user's explicit instruction wins.
 
-The Manager is the Core Manager API for normal voice/text ingestion. Codex /
-Claude / Cursor are **worker** executors, not the default board manager.
-Codex chat may still assist with Manager override during migration, but
-coding workers must not spend credits on routine triage.
+The Manager is a session of an agent the operator already uses (Claude, Codex,
+Gemini, or Cursor opened on this folder), working through the Fleet MCP. Every
+agent can also be a **worker** executor for the tasks the Manager creates, but a
+worker must not spend credits on routine triage. Cursor as Manager is only this
+folder opened in Cursor: Fleet does not start that session, and it is not
+reachable from a phone.
 
 See `_docs/OPERATING_MODEL.md` for manual wakeup mode, daemon direction, and
 no-auto-commit policy. See `Fleet/LAUNCH_POLICY.md` before actually launching
@@ -63,7 +65,7 @@ Use this order:
 Examples:
 
 - If the user says "give this to Claude", assign `claude`.
-- If `Work/eggs-gd-prod/PROJECT.md` says Career Wizard is currently Claude-led,
+- If `Work/acme-web/PROJECT.md` says Billing Portal is currently Claude-led,
   assign `claude` unless the user says otherwise.
 - If no project override exists and the task is repo/code implementation,
   prefer `codex`.
@@ -120,7 +122,7 @@ different worker.
 
 Known current override candidates:
 
-- Career Wizard (`eGGs.gd.prod/career-wizard`) may be Claude-led while Claude is
+- Billing Portal (`acme/billing-portal`) may be Claude-led while Claude is
   actively working on it.
 
 ## Agent-Specific Notes

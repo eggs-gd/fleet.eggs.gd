@@ -51,9 +51,18 @@
   >
     <header>
       <div>
-        <p class="eyebrow">{session.agent || session.assignee || 'session'} · {session.repository || session.project_id || 'session'}</p>
-        <h2 id="session-title">{session.task_title || session.task_ref || session.task_id || 'Session'}</h2>
-        <p class={`session-modal-status session-card-status--${tone}`} class:is-live={live && tone === 'live'}>
+        <p class="eyebrow">
+          {session.agent || session.assignee || 'session'} · {session.repository ||
+            session.project_id ||
+            'session'}
+        </p>
+        <h2 id="session-title">
+          {session.task_title || session.task_ref || session.task_id || 'Session'}
+        </h2>
+        <p
+          class={`session-modal-status session-card-status--${tone}`}
+          class:is-live={live && tone === 'live'}
+        >
           <span class="status-dot"></span>
           {statusLabel}
         </p>

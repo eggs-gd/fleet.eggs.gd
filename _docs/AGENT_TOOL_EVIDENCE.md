@@ -2,7 +2,7 @@
 
 Core captures compact evidence that required agent tools were actually invoked
 during a runtime session. This closes the visibility loop after sessions became
-dashboard-visible: Alex can see whether an agent followed `AGENTS.md` tool
+dashboard-visible: The operator can see whether an agent followed `AGENTS.md` tool
 policy, instead of trusting transcript claims or a worker `tests[]` self-report.
 
 ## What is stored

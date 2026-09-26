@@ -10,13 +10,24 @@
     <SettingsField label="Provider" value={integrations.fleet_mcp.provider} />
     <SettingsField label="File" value={integrations.fleet_mcp.path || '—'} mono />
     <SettingsField label="URL" value={integrations.fleet_mcp.url || 'not written'} mono />
-    <SettingsField label="Matches this process" value={integrations.fleet_mcp.matches ? 'yes' : 'no'} />
+    <SettingsField
+      label="Matches this process"
+      value={integrations.fleet_mcp.matches ? 'yes' : 'no'}
+    />
     {#if integrations.fleet_mcp.trusted != null}
-      <SettingsField label="Codex trust" value={integrations.fleet_mcp.trusted ? 'trusted' : 'not trusted'} />
-      <p class="settings-hint">Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP server.</p>
+      <SettingsField
+        label="Codex trust"
+        value={integrations.fleet_mcp.trusted ? 'trusted' : 'not trusted'}
+      />
+      <p class="settings-hint">
+        Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP
+        server.
+      </p>
     {/if}
   {:else}
-    <p class="settings-hint">No Manager session is recorded, so Fleet MCP is not checked against a provider file.</p>
+    <p class="settings-hint">
+      No Manager session is recorded, so Fleet MCP is not checked against a provider file.
+    </p>
   {/if}
 </section>
 
@@ -27,7 +38,9 @@
   {#each integrations.mcp || [] as server (server.name)}
     <article class="settings-item">
       <div class="settings-item-head">
-        <span class={`status-dot-inline is-${server.detected ? 'ok' : server.configured ? 'warn' : 'muted'}`}></span>
+        <span
+          class={`status-dot-inline is-${server.detected ? 'ok' : server.configured ? 'warn' : 'muted'}`}
+        ></span>
         <strong>{server.name}</strong>
         <span class="settings-pill">{server.detected ? 'detected' : 'not detected'}</span>
       </div>
@@ -43,7 +56,9 @@
         <p class="settings-warn">{server.error}</p>
       {/if}
       {#if !server.install_known}
-        <p class="settings-hint">No Install button — Core has no deterministic installer for this server.</p>
+        <p class="settings-hint">
+          No Install button — Core has no deterministic installer for this server.
+        </p>
       {/if}
     </article>
   {:else}

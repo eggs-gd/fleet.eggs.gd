@@ -171,8 +171,8 @@ func TestExtractToolCallsFromCursorTranscriptCallMcpTool(t *testing.T) {
 
 func TestCursorProjectSlug(t *testing.T) {
 	t.Parallel()
-	got := cursorProjectSlug("/Users/operator/Projects/core.eggs.gd")
-	want := "Users-dukobpa3-Projects-core-eggs-gd"
+	got := cursorProjectSlug("/Users/operator/Projects/example")
+	want := "Users-operator-Projects-example"
 	if got != want {
 		t.Fatalf("cursorProjectSlug() = %q, want %q", got, want)
 	}

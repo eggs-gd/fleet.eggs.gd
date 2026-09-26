@@ -1,14 +1,12 @@
 # Fleet
 
-This is the short version of `LANDING-v2.md`.
-
-Keep the same product concept:
+Keep the product concept:
 
 **remote agents -> too many separate sessions -> one manager -> rough intent becomes executable work -> Fleet runs the deterministic layer underneath -> native agents and humans do the work -> repository ownership keeps execution safe -> review and human input stay explicit**
 
 Do not introduce a new story. Compress the existing one.
 
-The implementation should update the current v2 interface/components rather than create a separate `sections_v3` tree.
+The implementation lives in `src/lib/sections_v2`. `ManagerLoopSection` is the loop animation after the hero: a chat line becomes a backlog task, a yellow card returns as Needs Attention, and after a reply it flies back green into Review. It is not the Remote Human Input section below. A back-to-top control appears after scrolling and links to `#top`.
 
 Header:
 
@@ -206,7 +204,7 @@ The point is safety, not maximal swarm throughput.
 
 # Remote Human Input
 
-**Hidden.** Not rendered on the page: `RemoteHitlSection` is removed from `+page.svelte`. The component file and its export stay in `sections_v2` so it can come back. The copy below is kept as reference only.
+**Hidden.** Not rendered on the page. The copy below is kept as reference only.
 
 ## Human input should not require sitting at the desk.
 
@@ -281,8 +279,7 @@ Fleet works with your local projects and the coding agents you already use.
 - A caret opens a dropdown of every available build (macOS Apple silicon / Intel, Windows, Linux).
 - If no release exists (or the API fails) the button is disabled and reads `Coming soon`.
 - Expected asset names contain `macos|darwin`, `windows`, or `linux`, and `arm64|aarch64` (else
-  amd64 is assumed); checksum/sbom files are ignored. Releases are meant to be published into the
-  Site repo by the App's release workflow (not built yet).
+  amd64 is assumed); checksum/sbom files are ignored. Releases are published in this same App repository.
 - The header "Download" button scrolls to this section.
 
 Footer: **fleet.eggs.gd**

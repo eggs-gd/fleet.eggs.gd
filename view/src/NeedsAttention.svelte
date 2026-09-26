@@ -1,5 +1,13 @@
 <script>
-  import { blockedReason, launchReason, operatorPause, priorityLabel, timeAgo, agentColorClass, assigneeLabel } from './lib/taskDisplay.js';
+  import {
+    blockedReason,
+    launchReason,
+    operatorPause,
+    priorityLabel,
+    timeAgo,
+    agentColorClass,
+    assigneeLabel
+  } from './lib/taskDisplay.js';
   import { taskKey } from './lib/dashboardState.js';
   import Icon from './Icon.svelte';
   import StatusActions from './StatusActions.svelte';
@@ -21,7 +29,11 @@
   });
 </script>
 
-<section class="status-panel status-panel--attention" class:is-collapsed={!open} aria-label="Needs attention">
+<section
+  class="status-panel status-panel--attention"
+  class:is-collapsed={!open}
+  aria-label="Needs attention"
+>
   <header>
     <button type="button" class="panel-toggle" aria-expanded={open} on:click={onToggle}>
       <h3>Needs Attention</h3>
@@ -33,7 +45,11 @@
     <div class="attention-list">
       {#each items as task (taskKey(task))}
         {@const pause = operatorPause(task)}
-        {@const summary = (pause.waiting && pause.question) || blockedReason(task) || launchReason(task) || task.summary}
+        {@const summary =
+          (pause.waiting && pause.question) ||
+          blockedReason(task) ||
+          launchReason(task) ||
+          task.summary}
         <div
           class="attention-item"
           class:attention-item--waiting={pause.waiting}

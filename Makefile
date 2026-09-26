@@ -8,7 +8,8 @@ GO_CACHE ?= /tmp/core-eggs-gocache
 ADDR ?= 127.0.0.1:8787
 SESSION_TIMEOUT ?= 10m
 
-.PHONY: help scan workspaces rebuild-index build test check serve serve-live version clean
+.PHONY: fmt help scan workspaces rebuild-index build test check serve serve-live version clean site
+SITE_DIR := site
 
 help:
 	@printf '%s\n' 'Core service entry points:'
@@ -19,6 +20,8 @@ help:
 	@printf '%s\n' '  make build       Build the Svelte backoffice'
 	@printf '%s\n' '  make test        Run Go tests'
 	@printf '%s\n' '  make check       Run build and tests'
+	@printf '%s\n' '  make site        Typecheck and build the static landing'
+	@printf '%s\n' '  make fmt         gofmt for server, prettier for view and site'
 	@printf '%s\n' '  make serve       Serve built backoffice at http://$(ADDR)/'
 	@printf '%s\n' '  make version     Print Core runtime version'
 	@printf '%s\n' ''
@@ -45,6 +48,14 @@ test:
 	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go test ./...
 
 check: build test
+
+site:
+	cd "$(SITE_DIR)" && npm run check && npm run build
+
+fmt:
+	cd "$(SERVER_DIR)" && gofmt -w .
+	cd "$(VIEW_DIR)" && npm run format
+	cd "$(SITE_DIR)" && npm run format
 
 serve: build
 	if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi; \

@@ -20,8 +20,13 @@ func TestEnsureDataRootCreatesTemplateForFreshRoot(t *testing.T) {
 
 	for _, want := range []string{
 		"AGENTS.md",
+		"CLAUDE.md",
+		"GEMINI.md",
 		"README.md",
 		".mcp.json",
+		".codex/config.toml",
+		".agents/mcp_config.json",
+		".cursor/mcp.json",
 		"Inbox/README.md",
 		"Inbox/items/README.md",
 		"Work/README.md",

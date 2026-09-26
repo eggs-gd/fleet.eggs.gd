@@ -17,9 +17,9 @@ func TestParseFastPathCommands(t *testing.T) {
 
 	priority := 2
 	cases := []struct {
-		name    string
-		input   string
-		want    *Intent
+		name     string
+		input    string
+		want     *Intent
 		failCode string
 	}{
 		{
@@ -50,7 +50,7 @@ func TestParseFastPathCommands(t *testing.T) {
 		{
 			name:  "add comment",
 			input: "add comment to CORE-57: please check the API shape",
-			want:  &Intent{Kind: KindComment, Ref: "CORE-57", Comment: "please check the API shape", CommentAuthor: "alex"},
+			want:  &Intent{Kind: KindComment, Ref: "CORE-57", Comment: "please check the API shape", CommentAuthor: "owner"},
 		},
 		{
 			name:  "assign",
@@ -143,10 +143,10 @@ func TestBuildVocabularyIsDynamicWithSummariesAndTechnologies(t *testing.T) {
 			},
 		}},
 		Projects: []board.Project{{
-			ID:          "career-wizard",
-			Title:       "Career Wizard",
-			WorkspaceID: "eggs-gd-prod",
-			Summary:     "Personal career-materials workspace: CV, vacancy analysis, Telegram control.",
+			ID:           "career-wizard",
+			Title:        "Career Wizard",
+			WorkspaceID:  "eggs-gd-prod",
+			Summary:      "Personal career-materials workspace: CV, vacancy analysis, Telegram control.",
 			Repositories: []string{"eGGs.gd.prod/career-wizard"},
 			Technology: board.TechnologySummary{
 				EffectiveTags: []string{"python", "docker"},
@@ -156,8 +156,8 @@ func TestBuildVocabularyIsDynamicWithSummariesAndTechnologies(t *testing.T) {
 		Registry: board.RegistryInfo{
 			Repositories: []board.RepositoryTechnology{
 				{
-					Name:         "career-wizard",
-					RelativePath: "eGGs.gd.prod/career-wizard",
+					Name:          "career-wizard",
+					RelativePath:  "eGGs.gd.prod/career-wizard",
 					EffectiveTags: []string{"python"},
 				},
 			},
@@ -437,7 +437,7 @@ func TestManagerWritesGoThroughTaskService(t *testing.T) {
 	if !comment.OK {
 		t.Fatalf("comment failed: %#v", comment.Failure)
 	}
-	if len(provider.comments) != 1 || !strings.Contains(provider.comments[0], "alex:") {
+	if len(provider.comments) != 1 || !strings.Contains(provider.comments[0], "owner:") {
 		t.Fatalf("comments = %#v", provider.comments)
 	}
 

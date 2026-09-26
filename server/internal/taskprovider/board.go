@@ -24,14 +24,14 @@ type Board struct {
 
 // Snapshot is the board-only poll projection (no runtime sessions).
 type Snapshot struct {
-	GeneratedAt string               `json:"generated_at"`
-	Root        string               `json:"root"`
-	Statuses    []string             `json:"statuses"`
-	Workspaces  []board.Workspace    `json:"workspaces"`
-	Projects    []board.Project      `json:"projects"`
-	Tasks       []Task               `json:"tasks"`
-	LifeItems   []board.LifeItem     `json:"life_items"`
-	Registry    board.RegistryInfo   `json:"registry"`
+	GeneratedAt string             `json:"generated_at"`
+	Root        string             `json:"root"`
+	Statuses    []string           `json:"statuses"`
+	Workspaces  []board.Workspace  `json:"workspaces"`
+	Projects    []board.Project    `json:"projects"`
+	Tasks       []Task             `json:"tasks"`
+	LifeItems   []board.LifeItem   `json:"life_items"`
+	Registry    board.RegistryInfo `json:"registry"`
 }
 
 func NewBoard(root string) *Board {

@@ -44,11 +44,15 @@
     {/if}
   </div>
   {#if orphanCapabilitySummary(session)}
-    <p class="session-message" title={session.capabilities?.notes || ''}>{orphanCapabilitySummary(session)}</p>
+    <p class="session-message" title={session.capabilities?.notes || ''}>
+      {orphanCapabilitySummary(session)}
+    </p>
   {/if}
   <div class="session-actions">
     {#each ['blocked', 'needs_rework', 'todo', 'done'] as nextStatus (nextStatus)}
-      <button type="button" on:click={() => onResolveOrphan(session, nextStatus)}>{nextStatus}</button>
+      <button type="button" on:click={() => onResolveOrphan(session, nextStatus)}
+        >{nextStatus}</button
+      >
     {/each}
     {#if session.claim_id}
       <button
@@ -73,13 +77,20 @@
     <span>{status}</span>
     <span>{session.visibility_mode || 'unknown'}</span>
     {#if session.resumable === false}
-      <span class="session-role role-unresumable" title="This provider/backend cannot auto-resume this session">not auto-resumable</span>
+      <span
+        class="session-role role-unresumable"
+        title="This provider/backend cannot auto-resume this session">not auto-resumable</span
+      >
     {/if}
     {#if sessionResumeLabel(session)}
-      <span title="Resume outcome the launcher recorded for this session">{sessionResumeLabel(session)}</span>
+      <span title="Resume outcome the launcher recorded for this session"
+        >{sessionResumeLabel(session)}</span
+      >
     {/if}
     {#if session.supersedes_claim_id}
-      <span title="This session supersedes an earlier session for this task">supersedes {session.supersedes_claim_id}</span>
+      <span title="This session supersedes an earlier session for this task"
+        >supersedes {session.supersedes_claim_id}</span
+      >
     {/if}
     {#if session.remote_control_url}
       <a href={session.remote_control_url} target="_blank" rel="noreferrer">Open session</a>
@@ -159,13 +170,17 @@
     <p class="session-message">{codexRemoteInstruction(session)}</p>
     <div class="session-actions">
       {#if session.codex_thread_id}
-        <button type="button" on:click={() => copyText(session.codex_thread_id)}>Copy thread id</button>
+        <button type="button" on:click={() => copyText(session.codex_thread_id)}
+          >Copy thread id</button
+        >
       {/if}
       {#if session.codex_turn_id}
         <button type="button" on:click={() => copyText(session.codex_turn_id)}>Copy turn id</button>
       {/if}
       {#if remoteThreadTitle(session)}
-        <button type="button" on:click={() => copyText(remoteThreadTitle(session))}>Copy title</button>
+        <button type="button" on:click={() => copyText(remoteThreadTitle(session))}
+          >Copy title</button
+        >
       {/if}
     </div>
   {/if}
@@ -189,21 +204,45 @@
   {/if}
   {#if live && session.provider_controllable && session.agent === 'codex'}
     <div class="session-actions">
-      <button type="button" on:click={() => onControlSession(session, 'continue', 'Continue from the current Core task context.')}>Continue</button>
-      <button type="button" on:click={() => onControlSession(session, 'interrupt')}>Interrupt</button>
+      <button
+        type="button"
+        on:click={() =>
+          onControlSession(session, 'continue', 'Continue from the current Core task context.')}
+        >Continue</button
+      >
+      <button type="button" on:click={() => onControlSession(session, 'interrupt')}
+        >Interrupt</button
+      >
       <button type="button" on:click={() => onControlSession(session, 'cancel')}>Cancel</button>
     </div>
   {:else if sessionAllowsOperatorRelease(session)}
     <div class="session-actions">
-      <button type="button" on:click={() => onReleaseSession(session, 'release', 'needs_review')}>Release → review</button>
-      <button type="button" on:click={() => onReleaseSession(session, 'release', 'needs_rework')}>Release → rework</button>
-      <button type="button" on:click={() => onReleaseSession(session, 'mark_dead', 'blocked')}>Mark dead</button>
-      <button type="button" on:click={() => onReleaseSession(session, 'mark_provider_unavailable', 'blocked')}>Provider unavailable</button>
-      <button type="button" on:click={() => onReleaseSession(session, 'cancel_without_provider_control', 'needs_rework')}>Cancel without control</button>
+      <button type="button" on:click={() => onReleaseSession(session, 'release', 'needs_review')}
+        >Release → review</button
+      >
+      <button type="button" on:click={() => onReleaseSession(session, 'release', 'needs_rework')}
+        >Release → rework</button
+      >
+      <button type="button" on:click={() => onReleaseSession(session, 'mark_dead', 'blocked')}
+        >Mark dead</button
+      >
+      <button
+        type="button"
+        on:click={() => onReleaseSession(session, 'mark_provider_unavailable', 'blocked')}
+        >Provider unavailable</button
+      >
+      <button
+        type="button"
+        on:click={() =>
+          onReleaseSession(session, 'cancel_without_provider_control', 'needs_rework')}
+        >Cancel without control</button
+      >
     </div>
   {/if}
   {#if session.result}
-    <span class="session-result-chip" title={session.result.summary || ''}>result {session.result.outcome}</span>
+    <span class="session-result-chip" title={session.result.summary || ''}
+      >result {session.result.outcome}</span
+    >
   {/if}
   {#if session.result?.summary}
     <p class="session-message" title={session.result.summary}>{session.result.summary}</p>

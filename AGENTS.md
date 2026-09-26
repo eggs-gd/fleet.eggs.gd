@@ -2,8 +2,9 @@
 
 This file is the canonical agent instruction file for the **App**
 repository (`fleet.eggs.gd` — the Core tool itself: `server`
-Go backend, `view` Svelte dashboard, and `site` static landing). `CLAUDE.md`,
-`.cursor/rules/agents.mdc`, and `.gemini/settings.json` all point here
+Go backend, `view` Svelte dashboard, and `site` static landing). Codex reads
+this file from the repository root. `CLAUDE.md`, `GEMINI.md`,
+`.gemini/settings.json`, and `.cursor/rules/agents.mdc` all point here
 instead of duplicating these rules — keep durable rules in this file only.
 
 > **App vs Data.** App and Data are two fully independent repositories

@@ -27,8 +27,8 @@ Core then polls `claude agents --json` and `claude logs <background_id>` for:
 | Session | Started | Background ID | Remote URL | Transcript | Outcome |
 |---|---|---|---|---|---|
 | CORE-115 | 2026-08-04 01:20 | `06a53116` | yes | 188 KB | succeeded |
-| CORE-116 | 2026-08-04 06:27 | `5b7f90c0` | **no** | 1424 B frozen | idle attention → released |
-| CORE-140 | 2026-08-05 22:57 | `3c272af1` | **no** | 1424 B frozen | idle attention → released |
+| CORE-116 | 2026-08-04 06:27 | `<session-b>` | **no** | 1424 B frozen | idle attention → released |
+| CORE-140 | 2026-08-05 22:57 | `<session-a>` | **no** | 1424 B frozen | idle attention → released |
 
 Logs:
 
@@ -77,12 +77,12 @@ Run on the daemon host:
 ```bash
 /Users/operator/.local/bin/claude --version
 /Users/operator/.local/bin/claude agents --json
-/Users/operator/.local/bin/claude logs 3c272af1
-/Users/operator/.local/bin/claude logs 5b7f90c0
+/Users/operator/.local/bin/claude logs <session-a>
+/Users/operator/.local/bin/claude logs <session-b>
 
 # Clean zombies if still listed
-/Users/operator/.local/bin/claude stop 3c272af1
-/Users/operator/.local/bin/claude stop 5b7f90c0
+/Users/operator/.local/bin/claude stop <session-a>
+/Users/operator/.local/bin/claude stop <session-b>
 
 # Smoke
 /Users/operator/.local/bin/claude --bg --remote-control --name CORE-142-SMOKE \

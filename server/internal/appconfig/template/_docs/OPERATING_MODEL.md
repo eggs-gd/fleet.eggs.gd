@@ -7,9 +7,9 @@ agent daemon exists.
 
 Core has three practical roles in the MVP:
 
-1. **Core Manager API** — voice/text capture, triage, durable write into
-   this tree. Replaces Codex-as-manager for non-coding ingestion. Codex
-   chat may still be used as an explicit override during migration.
+1. **Manager** — a Claude, Codex, Cursor, or Gemini session whose folder is
+   this data root. The conversation stays in that provider's app. Fleet MCP
+   is how the session reads and writes the board.
 2. **Worker agents** — Codex/Claude/Cursor/Gemini-style workers that read tasks
    and do work. Workers must not own voice triage or board management.
 3. **the operator** — owner, reviewer, final commit/push authority.
@@ -73,14 +73,16 @@ The user manually wakes a worker with a short instruction such as:
 
 The worker should:
 
-1. Read `CLAUDE.md`.
+1. Read `AGENTS.md`. Claude also reads `CLAUDE.md`, Gemini also reads
+   `GEMINI.md`; both point at `AGENTS.md`.
 2. Read `_docs/MANAGER.md`.
 3. Read `Fleet/ROUTING.md`.
 4. Open `Work/INDEX.md`.
 5. Find tasks matching its agent id:
    - `assignee: codex` for Codex;
    - `assignee: claude` for Claude;
-   - `assignee: cursor` only when explicitly used later.
+   - `assignee: cursor` for Cursor;
+   - `assignee: gemini` for Gemini.
 6. Prefer `status: todo`. Moving a task from `backlog` to `todo` is the operator's
    signal that the task is ready to attempt.
 7. If no direct assignment exists, optionally consider `assignee: unassigned`

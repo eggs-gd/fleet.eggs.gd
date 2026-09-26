@@ -1,12 +1,14 @@
 export const taskKey = (task) => task?.path || task?.relative_path || task?.id || task?.ref || '';
 
 export const sessionKey = (session) =>
-  session?.claim_id || `${session?.task_ref || session?.task_id || 'session'}:${session?.agent || ''}:${session?.repository || session?.project_id || ''}`;
+  session?.claim_id ||
+  `${session?.task_ref || session?.task_id || 'session'}:${session?.agent || ''}:${session?.repository || session?.project_id || ''}`;
 
 export const orphanKey = (orphan) =>
   `${orphan?.task_path || orphan?.task_id || orphan?.task_ref || 'orphan'}:${orphan?.assignee || ''}:${orphan?.repository || orphan?.project_id || ''}`;
 
-export const sessionGroupKey = (group) => group?.task_path || group?.task_id || group?.task_ref || 'session-group';
+export const sessionGroupKey = (group) =>
+  group?.task_path || group?.task_id || group?.task_ref || 'session-group';
 
 export const workspaceAccordionKey = (workspace) => `workspace:${workspace?.id || ''}`;
 
@@ -19,7 +21,8 @@ export const executionHistoryPanelKey = () => 'execution-history:panel';
 
 export const executionHistoryGroupKey = (group) => `execution-history:${sessionGroupKey(group)}`;
 
-export const archiveWorkspaceAccordionKey = (workspace) => `archive-workspace:${workspace?.id || ''}`;
+export const archiveWorkspaceAccordionKey = (workspace) =>
+  `archive-workspace:${workspace?.id || ''}`;
 
 export const archiveProjectAccordionKey = (project) => `archive-project:${project?.id || ''}`;
 
@@ -40,7 +43,8 @@ const ACTIVE_SESSION_STATUSES = new Set([
   'resumable'
 ]);
 
-export const isAccordionOpen = (accordionOpen, key, defaultOpen = false) => accordionOpen[key] ?? defaultOpen;
+export const isAccordionOpen = (accordionOpen, key, defaultOpen = false) =>
+  accordionOpen[key] ?? defaultOpen;
 
 export const updateAccordionOpen = (accordionOpen, key, open) => ({
   ...accordionOpen,
@@ -198,7 +202,9 @@ export const sessionActivityAt = (session) =>
 
 export const groupLatestSession = (group) => {
   const sessions = group?.sessions ?? [];
-  return sessions.find((session) => session?.role === 'current') || sessions[sessions.length - 1] || null;
+  return (
+    sessions.find((session) => session?.role === 'current') || sessions[sessions.length - 1] || null
+  );
 };
 
 export const groupActivityAt = (group) => {
@@ -213,7 +219,8 @@ export const groupActivityAt = (group) => {
 export const taskTitleForSessionGroup = (group, tasks = []) => {
   const match = (tasks ?? []).find(
     (task) =>
-      (group?.task_path && (task.path === group.task_path || task.relative_path === group.task_path)) ||
+      (group?.task_path &&
+        (task.path === group.task_path || task.relative_path === group.task_path)) ||
       (group?.task_id && task.id === group.task_id) ||
       (group?.task_ref && task.ref === group.task_ref)
   );
@@ -231,7 +238,8 @@ export const visibleSessionsForGroup = (
   { expanded = false, now = Date.now(), limits = EXECUTION_HISTORY_LIMITS } = {}
 ) => {
   const sessions = [...(group?.sessions ?? [])].reverse();
-  const cutoff = now - (limits.hideTerminalOlderThanMs ?? EXECUTION_HISTORY_LIMITS.hideTerminalOlderThanMs);
+  const cutoff =
+    now - (limits.hideTerminalOlderThanMs ?? EXECUTION_HISTORY_LIMITS.hideTerminalOlderThanMs);
   const filtered = sessions.filter((session) => {
     if (session?.role === 'current' || sessionIsActive(session)) return true;
     if (expanded) return true;
@@ -299,7 +307,8 @@ export const refreshStatusPresentation = ({
 export const sessionGroupProjectId = (group, tasks = []) => {
   const task = (tasks ?? []).find(
     (item) =>
-      (group?.task_path && (item.path === group.task_path || item.relative_path === group.task_path)) ||
+      (group?.task_path &&
+        (item.path === group.task_path || item.relative_path === group.task_path)) ||
       (group?.task_id && item.id === group.task_id) ||
       (group?.task_ref && item.ref === group.task_ref)
   );

@@ -122,6 +122,7 @@ func settingsSnapshot(cfg Config, dash *Dashboard, scanner *settings.Scanner) se
 	return settings.Build(settings.Input{
 		Version:            cfg.Version,
 		Addr:               cfg.Addr,
+		LaunchToken:        cfg.LaunchToken,
 		StartedAt:          started,
 		CoreRoot:           cfg.CoreRoot,
 		RuntimeRoot:        cfg.RuntimeRoot,

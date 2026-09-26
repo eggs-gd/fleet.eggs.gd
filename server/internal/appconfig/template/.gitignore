@@ -1,0 +1,5 @@
+.DS_Store
+/.env
+/core.local.yaml
+
+*.fleet-bak

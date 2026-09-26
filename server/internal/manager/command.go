@@ -38,9 +38,11 @@ var knownStatuses = map[string]string{
 
 var knownAssignees = map[string]bool{
 	"alex":       true,
+	"owner":      true,
 	"codex":      true,
 	"claude":     true,
 	"cursor":     true,
+	"gemini":     true,
 	"unassigned": true,
 }
 
@@ -146,7 +148,7 @@ func parseComment(lower, original string) (*Intent, *Failure) {
 		Kind:          KindComment,
 		Ref:           ref,
 		Comment:       comment,
-		CommentAuthor: "alex",
+		CommentAuthor: "owner",
 		RawTranscript: original,
 	}, nil
 }

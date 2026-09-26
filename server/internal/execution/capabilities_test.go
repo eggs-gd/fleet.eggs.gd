@@ -2,7 +2,6 @@ package execution
 
 import (
 	"testing"
-
 )
 
 const capabilityUnknown = CapabilityUnknown

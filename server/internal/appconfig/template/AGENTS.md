@@ -46,9 +46,11 @@ regardless of what the `_registry` looks like.
 7. Keep personal data local. Do not push secrets, private notes, raw voice
    dumps, tokens, or machine-specific transient files.
 8. Keep architecture light until the _registry proves the next need.
-9. In the MVP, the active Codex chat can be the AI Manager. Follow
-   `_docs/MANAGER.md` when turning user input into Inbox, Work, Project,
-   Fleet, or Archive files.
+9. The Manager may be a Claude, Codex, Cursor, or Gemini session whose
+   folder is this data root. The conversation stays in that provider's app.
+   Follow `_docs/MANAGER.md` when turning user input into Inbox, Work,
+   Project, Fleet, or Archive files. Read and update the board through Fleet
+   MCP, not by hand-parsing task Markdown.
 10. Chat output is not a completed task. Every task must produce or update a
     physical artifact in Data or the target repository before it can be marked
     `needs_review` or `done`.

@@ -38,8 +38,10 @@
     if (/(iPhone|iPad|Android)/i.test(ua)) return null;
     const source = `${hint} ${ua}`;
     if (/Mac/i.test(source)) return { os: 'macos', arch: 'arm64' };
-    if (/Win/i.test(source)) return { os: 'windows', arch: /ARM/i.test(source) ? 'arm64' : 'amd64' };
-    if (/(Linux|X11|CrOS)/i.test(source)) return { os: 'linux', arch: /(aarch64|arm)/i.test(source) ? 'arm64' : 'amd64' };
+    if (/Win/i.test(source))
+      return { os: 'windows', arch: /ARM/i.test(source) ? 'arm64' : 'amd64' };
+    if (/(Linux|X11|CrOS)/i.test(source))
+      return { os: 'linux', arch: /(aarch64|arm)/i.test(source) ? 'arm64' : 'amd64' };
     return null;
   }
 
@@ -52,10 +54,13 @@
   onMount(() => {
     detected = detect();
     const nav = navigator as Navigator & {
-      userAgentData?: { getHighEntropyValues?: (h: string[]) => Promise<{ architecture?: string }> };
+      userAgentData?: {
+        getHighEntropyValues?: (h: string[]) => Promise<{ architecture?: string }>;
+      };
     };
     nav.userAgentData?.getHighEntropyValues?.(['architecture']).then((v) => {
-      if (detected?.os === 'macos' && v.architecture === 'x86') detected = { os: 'macos', arch: 'amd64' };
+      if (detected?.os === 'macos' && v.architecture === 'x86')
+        detected = { os: 'macos', arch: 'amd64' };
     });
 
     fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {

@@ -221,7 +221,7 @@ tasks, notes, and decisions together.
 Examples:
 
 ```text
-Work/eggs-gd-prod/tasks/2026-07-31-career-wizard-vacancy-statuses.md
+Work/acme-web/tasks/2026-07-31-billing-portal-invoice-statuses.md
 Work/audiophile/tasks/2026-08-01-review-jivemax-build-notes.md
 Work/core-eggs-gd/tasks/2026-08-02-add-work-index-generator.md
 ```
@@ -360,12 +360,12 @@ Slug rules:
 Example:
 
 ```text
-Title: Show vacancy statuses in the Career Wizard web UI
-Project: eggs-gd-prod
-Repository: eGGs.gd.prod/career-wizard
-id: work-2026-07-31-career-wizard-vacancy-statuses
+Title: Show invoice statuses in the Billing Portal web UI
+Project: acme-web
+Repository: acme/billing-portal
+id: work-2026-07-31-billing-portal-invoice-statuses
 ref: CORE-10
-file: Work/eggs-gd-prod/tasks/2026-07-31-career-wizard-vacancy-statuses.md
+file: Work/acme-web/tasks/2026-07-31-billing-portal-invoice-statuses.md
 ```
 
 ## Project Resolution Rules
@@ -387,8 +387,8 @@ When the user mentions a project name:
 
 Examples:
 
-- "Career Wizard" resolves to `project: eggs-gd-prod` and repository
-  `eGGs.gd.prod/career-wizard`.
+- "Billing Portal" resolves to `project: acme-web` and repository
+  `acme/billing-portal`.
 - "BubblettHell sonar" resolves to `project: bubbletthell-sonar` and repository
   `BubblettHell_Sonar`.
 - "Audiophile" resolves to workspace project `audiophile`; nested repositories
@@ -410,8 +410,8 @@ Write aliases into the relevant `Work/<project-id>/PROJECT.md` frontmatter:
 
 ```yaml
 aliases:
-  - Career Wizard
-  - career-wizard
+  - Billing Portal
+  - billing-portal
 ```
 
 If the alias points to a specific repository inside a workspace, add a
@@ -419,7 +419,7 @@ repository alias note in the workspace card:
 
 ```yaml
 repository_aliases:
-  Career Wizard: eGGs.gd.prod/career-wizard
+  Billing Portal: acme/billing-portal
 ```
 
 After adding an alias, append an `## Activity Log` entry to the workspace card
@@ -569,46 +569,46 @@ Do not bury project-specific facts in this document unless they are examples.
 Raw voice input:
 
 ```text
-мужик, додай задачу в Career Wizard, щоб він навчився показувати в вебі статуси вакансій
+додай задачу в Billing Portal, щоб він показував у вебі статуси рахунків
 ```
 
 Expected Work item:
 
 ```yaml
-title: Show vacancy statuses in the Career Wizard web UI
+title: Show invoice statuses in the Billing Portal web UI
 type: feature
 status: backlog
 priority: 5
-project: eggs-gd-prod
+project: acme-web
 repositories:
-  - eGGs.gd.prod/career-wizard
+  - acme/billing-portal
 assignee: unassigned
 source: voice
 ```
 
-The Work item should link the `eggs-gd-prod` workspace card and explain that
-`career-wizard` was selected from the workspace repository list.
+The Work item should link the `acme-web` workspace card and explain that
+`billing-portal` was selected from the workspace repository list.
 
 Workspace-level exception:
 
 ```text
-винеси спільні компоненти в kit у eggs.gd-prod
+винеси спільні компоненти в ui-kit у acme-web
 ```
 
 Expected Work item:
 
 ```yaml
-title: Extract shared components into the eggs.gd kit
+title: Extract shared components into the UI kit
 type: feature
 status: backlog
 priority: 5
-project: eggs-gd-prod
+project: acme-web
 repositories:
-  - eGGs.gd.prod/eGGs.gd.kit
+  - acme/ui-kit
 assignee: unassigned
 source: voice
 ```
 
-This stays on the `eggs-gd-prod` workspace project only because the requested
+This stays on the `acme-web` workspace project only because the requested
 work spans shared workspace structure. If the user named one concrete app,
 resolve to that app's repository-backed project instead.

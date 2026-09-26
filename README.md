@@ -49,7 +49,11 @@ make build
 make test
 make check
 make serve
+make site
 ```
+
+`make`, `make build`, and `make check` do not build `site/`. `make site` runs
+`npm run check` and `npm run build` in `site/`.
 
 By default `make serve` points `--root` at `../Data` (a sibling directory,
 a separate clone of the Data repo — a dev convenience only) and serves the

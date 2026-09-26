@@ -34,13 +34,15 @@
 <section class="settings-block" aria-label="Workers">
   <h3>Workers</h3>
   <p class="settings-lede">
-    Registered executor providers only. Save writes overlay enabled/executable/routing.
-    Recheck probes discovery and does not write core.local.yaml.
+    Registered executor providers only. Save writes overlay enabled/executable/routing. Recheck
+    probes discovery and does not write core.local.yaml.
   </p>
   <div class="settings-row">
     <span class="settings-key">Discovery</span>
     <span class="settings-val">
-      <button type="button" class="settings-btn" disabled={dirty} on:click={onRecheck}>Recheck</button>
+      <button type="button" class="settings-btn" disabled={dirty} on:click={onRecheck}
+        >Recheck</button
+      >
     </span>
   </div>
   {#if dirty}
@@ -48,11 +50,17 @@
   {/if}
   {#each agents.providers || [] as agent (agent.id)}
     <article class="settings-item settings-item--click" class:is-open={openId === agent.id}>
-      <button type="button" class="settings-item-head settings-item-head--btn" on:click={() => toggle(agent.id)}>
+      <button
+        type="button"
+        class="settings-item-head settings-item-head--btn"
+        on:click={() => toggle(agent.id)}
+      >
         <span class={`status-dot-inline is-${statusTone(agent)}`}></span>
         <strong>{agent.name}</strong>
         <span class="settings-pill">{statusLabel(agent)}</span>
-        <span class="settings-item-meta">{agent.effective_executable?.value || agent.expected || ''}</span>
+        <span class="settings-item-meta"
+          >{agent.effective_executable?.value || agent.expected || ''}</span
+        >
       </button>
       {#if openId === agent.id}
         <div class="settings-item-body">
@@ -69,7 +77,9 @@
               </label>
             </span>
           </div>
-          <p class="settings-hint">{fieldHint(agent.enabled)} · disable does not stop live sessions</p>
+          <p class="settings-hint">
+            {fieldHint(agent.enabled)} · disable does not stop live sessions
+          </p>
           <div class="settings-row">
             <span class="settings-key">Configured executable</span>
             <span class="settings-val">
@@ -98,7 +108,10 @@
             <p class="settings-warn">{agent.error}</p>
           {/if}
           {#if agent.status === 'non_canonical'}
-            <p class="settings-warn">Non-canonical installation. Core will not silently use a ChatGPT.app bundle as the standalone CLI.</p>
+            <p class="settings-warn">
+              Non-canonical installation. Core will not silently use a ChatGPT.app bundle as the
+              standalone CLI.
+            </p>
           {/if}
           {#if agent.detected_executables?.length}
             <p class="settings-lede">Detected executables</p>
@@ -120,7 +133,9 @@
             value={draft.agents?.[agent.id]?.routingInstructions || ''}
             on:input={(e) => onUpdate(agent.id, { routingInstructions: e.target.value })}
           ></textarea>
-          <p class="settings-hint">{fieldHint(agent.routing_instructions)} · empty Save keeps Fleet Best At</p>
+          <p class="settings-hint">
+            {fieldHint(agent.routing_instructions)} · empty Save keeps Fleet Best At
+          </p>
         </div>
       {/if}
     </article>

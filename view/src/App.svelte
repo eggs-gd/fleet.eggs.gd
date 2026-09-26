@@ -42,6 +42,7 @@
     saveThemePref,
     saveAutoRefreshMs
   } from './lib/layoutPrefs.js';
+  import { apiFetch } from './lib/api.js';
   import { applyTheme, watchSystemTheme } from './lib/theme.js';
   import ArchiveView from './ArchiveView.svelte';
   import CreateTaskModal from './CreateTaskModal.svelte';
@@ -57,10 +58,9 @@
   import SplitGutter from './SplitGutter.svelte';
   import SettingsView from './SettingsView.svelte';
   import TaskList from './TaskList.svelte';
+  import { isOperatorAssignee, operatorAssignee } from './lib/operator.js';
   import { isSettingsNav } from './lib/settingsNav.js';
   import TaskModal from './TaskModal.svelte';
-
-  const CURRENT_USER = 'alex';
 
   let data = null;
   let error = '';
@@ -137,7 +137,7 @@
       }, REFRESH_BUSY_DELAY_MS);
     }
     try {
-      const response = await fetch('/api/state', { cache: 'no-store' });
+      const response = await apiFetch('/api/state', { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to load Core state (${response.status})`);
       }
@@ -174,7 +174,8 @@
   function updateTaskInState(updatedTask, fallbackPath = '') {
     if (!data) return;
     const sameOrphan = (orphan) =>
-      (fallbackPath && (orphan.task_path === fallbackPath || orphan.task_path === updatedTask.relative_path)) ||
+      (fallbackPath &&
+        (orphan.task_path === fallbackPath || orphan.task_path === updatedTask.relative_path)) ||
       (updatedTask.relative_path && orphan.task_path === updatedTask.relative_path) ||
       (updatedTask.id && orphan.task_id === updatedTask.id) ||
       (updatedTask.ref && orphan.task_ref === updatedTask.ref);
@@ -184,7 +185,7 @@
       orphaned_tasks:
         updatedTask.status && updatedTask.status !== 'doing'
           ? (data.orphaned_tasks ?? []).filter((orphan) => !sameOrphan(orphan))
-          : data.orphaned_tasks ?? []
+          : (data.orphaned_tasks ?? [])
     };
     if (selectedTask && sameTaskRecord(selectedTask, updatedTask, fallbackPath)) {
       selectedTask = { ...selectedTask, ...updatedTask };
@@ -199,7 +200,7 @@
   }
 
   async function patchTask(path, patch) {
-    const response = await fetch('/api/tasks', {
+    const response = await apiFetch('/api/tasks', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path, ...patch })
@@ -214,14 +215,16 @@
       ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
       ...(patch.assignee !== undefined ? { assignee: patch.assignee } : {}),
       ...(patch.depends_on !== undefined ? { depends_on: patch.depends_on } : {}),
-      ...(patch.project ? { project: patch.project, project_id: updatedTask.project_id || patch.project } : {})
+      ...(patch.project
+        ? { project: patch.project, project_id: updatedTask.project_id || patch.project }
+        : {})
     };
     updateTaskInState(localTask, path);
     return localTask;
   }
 
   async function createTask(payload) {
-    const response = await fetch('/api/tasks', {
+    const response = await apiFetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -239,7 +242,7 @@
     if (targetStatus) {
       payload.target_status = targetStatus;
     }
-    const response = await fetch('/api/sessions/control', {
+    const response = await apiFetch('/api/sessions/control', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -269,7 +272,7 @@
           status === 'blocked'
             ? `Marked blocked from orphaned runtime state: ${orphan.blocking_reason || orphan.reason || 'runtime session is not active'}`
             : `Resolved orphaned runtime state by moving task to ${status}.`,
-        comment_author: 'alex'
+        comment_author: operatorAssignee
       });
       await loadData();
     } catch (err) {
@@ -352,7 +355,12 @@
       return;
     }
     globalNav = nav;
-    if (nav === 'work' && activeView !== 'board' && activeView !== 'archive' && activeView !== PROJECT_SETTINGS_VIEW) {
+    if (
+      nav === 'work' &&
+      activeView !== 'board' &&
+      activeView !== 'archive' &&
+      activeView !== PROJECT_SETTINGS_VIEW
+    ) {
       activeView = 'board';
     }
   }
@@ -404,7 +412,8 @@
     const comment = draftComment.trim();
     // blocked -> needs_review is operator recovery; require a review reason.
     if (selectedTask.status === 'blocked' && draftStatus === 'needs_review' && !comment) {
-      editError = 'Add a review comment explaining why this blocked task is ready for needs_review.';
+      editError =
+        'Add a review comment explaining why this blocked task is ready for needs_review.';
       return;
     }
     saving = true;
@@ -419,7 +428,7 @@
         depends_on: parseDependsOnDraft(draftDependsOn),
         body: draftBody,
         comment,
-        comment_author: 'alex'
+        comment_author: operatorAssignee
       };
       if (nextProject && nextProject !== currentProject) {
         const project = projects.find((item) => item.id === nextProject);
@@ -455,7 +464,12 @@
   }
 
   async function transitionTask(task, status) {
-    if (!task?.path || !status || !canTransitionStatus(task.status, status, data?.status_transitions)) return;
+    if (
+      !task?.path ||
+      !status ||
+      !canTransitionStatus(task.status, status, data?.status_transitions)
+    )
+      return;
     const previous = task;
     try {
       actionError = '';
@@ -486,7 +500,7 @@
 
   async function loadManagerSetup() {
     try {
-      const response = await fetch('/api/manager/setup', { cache: 'no-store' });
+      const response = await apiFetch('/api/manager/setup', { cache: 'no-store' });
       if (!response.ok) return;
       const body = await response.json();
       managerSetupNeeded = Boolean(body?.needed);
@@ -525,36 +539,72 @@
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
     null;
-  $: assignees = ['all', ...Array.from(new Set(tasks.map((task) => assigneeLabel(task.assignee)))).sort()];
-  $: visibleTasks = tasks.filter((task) => {
-    const identityMatch = selectedProjectId
-      ? taskProjectId(task) === selectedProjectId
-      : !selectedWorkspaceId || task.workspace_id === selectedWorkspaceId;
-    const haystack = `${task.ref} ${task.title} ${task.type} ${task.project_id} ${task.project} ${task.repositories?.join(' ') ?? ''}`.toLowerCase();
-    const queryMatch = !query.trim() || haystack.includes(query.trim().toLowerCase());
-    return identityMatch && queryMatch;
-  }).sort(taskSort === 'priority' ? taskPickupCompare : taskUpdatedCompare);
+  $: assignees = [
+    'all',
+    ...Array.from(new Set(tasks.map((task) => assigneeLabel(task.assignee)))).sort()
+  ];
+  $: visibleTasks = tasks
+    .filter((task) => {
+      const identityMatch = selectedProjectId
+        ? taskProjectId(task) === selectedProjectId
+        : !selectedWorkspaceId || task.workspace_id === selectedWorkspaceId;
+      const haystack =
+        `${task.ref} ${task.title} ${task.type} ${task.project_id} ${task.project} ${task.repositories?.join(' ') ?? ''}`.toLowerCase();
+      const queryMatch = !query.trim() || haystack.includes(query.trim().toLowerCase());
+      return identityMatch && queryMatch;
+    })
+    .sort(taskSort === 'priority' ? taskPickupCompare : taskUpdatedCompare);
   $: activeTasks = visibleTasks.filter((task) => !isArchivedStatus(task.status));
   $: archivedTasks = visibleTasks.filter((task) => isArchivedStatus(task.status));
   $: liveSessions = [...runtimeSessions, ...orphanedTasks];
   $: backlogTasks = visibleTasks.filter((task) => taskInBacklog(task, liveSessions));
   $: fixedChips = [
     { id: 'all', label: 'All', count: backlogTasks.length },
-    { id: 'open', label: 'Open', count: backlogTasks.filter((task) => task.status !== 'done').length },
-    { id: 'rework', label: 'Rework', count: backlogTasks.filter((task) => task.status === 'needs_rework').length },
-    { id: 'mine', label: 'Mine', count: backlogTasks.filter((task) => task.assignee === CURRENT_USER).length },
-    { id: 'high', label: 'High', count: backlogTasks.filter((task) => priorityValue(task) <= 2).length },
+    {
+      id: 'open',
+      label: 'Open',
+      count: backlogTasks.filter((task) => task.status !== 'done').length
+    },
+    {
+      id: 'rework',
+      label: 'Rework',
+      count: backlogTasks.filter((task) => task.status === 'needs_rework').length
+    },
+    {
+      id: 'mine',
+      label: 'Mine',
+      count: backlogTasks.filter((task) => isOperatorAssignee(task.assignee)).length
+    },
+    {
+      id: 'high',
+      label: 'High',
+      count: backlogTasks.filter((task) => priorityValue(task) <= 2).length
+    },
     { id: 'bug', label: 'Bug', count: backlogTasks.filter((task) => task.type === 'bug').length },
-    { id: 'feature', label: 'Feature', count: backlogTasks.filter((task) => task.type === 'feature').length }
+    {
+      id: 'feature',
+      label: 'Feature',
+      count: backlogTasks.filter((task) => task.type === 'feature').length
+    }
   ];
   // The Sidebar's Views list can set quickFilter to a value with no matching
   // toolbar chip (blocked/review/done/attention) — without this, the chip row
   // showed no active state at all while the list was silently filtered.
-  $: sidebarOnlyChipLabel = { blocked: 'Blocked', review: 'In Review', done: 'Done', attention: 'Needs Attention' }[quickFilter];
+  $: sidebarOnlyChipLabel = {
+    blocked: 'Blocked',
+    review: 'In Review',
+    done: 'Done',
+    attention: 'Needs Attention'
+  }[quickFilter];
   $: chips = sidebarOnlyChipLabel
-    ? [...fixedChips, { id: quickFilter, label: sidebarOnlyChipLabel, count: filteredActiveTasks.length }]
+    ? [
+        ...fixedChips,
+        { id: quickFilter, label: sidebarOnlyChipLabel, count: filteredActiveTasks.length }
+      ]
     : fixedChips;
-  $: listTasks = ['blocked', 'review', 'done', 'attention'].includes(quickFilter) ? activeTasks : backlogTasks;
+  $: listTasks = ['blocked', 'review', 'done', 'attention'].includes(quickFilter)
+    ? activeTasks
+    : backlogTasks;
   $: filteredActiveTasks = listTasks.filter((task) => {
     switch (quickFilter) {
       case 'open':
@@ -562,7 +612,7 @@
       case 'rework':
         return task.status === 'needs_rework';
       case 'mine':
-        return task.assignee === CURRENT_USER;
+        return isOperatorAssignee(task.assignee);
       case 'high':
         return priorityValue(task) <= 2;
       case 'bug':
@@ -576,7 +626,9 @@
       case 'done':
         return task.status === 'done';
       case 'attention':
-        return task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting;
+        return (
+          task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting
+        );
       default:
         return true;
     }
@@ -600,10 +652,7 @@
   {:else if !data}
     <section class="loading">Loading Core state…</section>
   {:else}
-    <div
-      class="app-shell"
-      style="--left-w: {leftWidth}px; --right-w: {rightWidth}px"
-    >
+    <div class="app-shell" style="--left-w: {leftWidth}px; --right-w: {rightWidth}px">
       <Sidebar
         {workspaces}
         {projects}
@@ -699,7 +748,7 @@
               {:else}
                 <TaskList
                   tasks={filteredActiveTasks}
-                  selectedTask={selectedTask}
+                  {selectedTask}
                   transitions={data.status_transitions}
                   onOpenTask={openTask}
                   onTransitionTask={transitionTask}
@@ -707,11 +756,11 @@
               {/if}
 
               <footer class="generated">
-                Generated {new Date(data.generated_at).toLocaleString()} from {data.registry.repositories_count} repositories.
+                Generated {new Date(data.generated_at).toLocaleString()} from {data.registry
+                  .repositories_count} repositories.
               </footer>
             </div>
           </div>
-
         </div>
 
         <SplitGutter axis="x" onDrag={dragRight} />

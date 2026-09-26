@@ -6,7 +6,9 @@
 
 <section class="settings-block" aria-label="Concurrency">
   <h3>Concurrency</h3>
-  <p class="settings-lede">Actual lock scopes from launch policy + session hub. Not a generic concurrency engine.</p>
+  <p class="settings-lede">
+    Actual lock scopes from launch policy + session hub. Not a generic concurrency engine.
+  </p>
   {#each workflow.concurrency || [] as scope (scope.scope)}
     <SettingsField label={scope.scope} value={String(scope.limit)} hint={scope.source} />
   {/each}
@@ -19,7 +21,10 @@
   <SettingsField label="Releases slot" value={workflow.hitl?.releases_slot ? 'yes' : 'no'} />
   <SettingsField label="Equals closed" value={workflow.hitl?.equals_closed ? 'yes' : 'no'} />
   <SettingsField label="Source" value={workflow.hitl?.source || '—'} />
-  <SettingsField label="If Finalizer published" value={workflow.hitl?.finalizer_if_published || '—'} />
+  <SettingsField
+    label="If Finalizer published"
+    value={workflow.hitl?.finalizer_if_published || '—'}
+  />
 </section>
 
 <section class="settings-block" aria-label="Runtime outcomes">

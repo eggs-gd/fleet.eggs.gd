@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -27,64 +28,66 @@ type FleetMCPStatus struct {
 }
 
 // ManagerMCPURL is the HTTP URL providers load for this process.
-func ManagerMCPURL(addr string) string {
+func ManagerMCPURL(addr, token string) string {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
 		addr = "127.0.0.1:8787"
 	}
+	base := "http://" + strings.TrimRight(addr, "/") + "/mcp"
 	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return "http://" + strings.TrimRight(addr, "/") + "/mcp"
+	if err == nil {
+		switch host {
+		case "", "0.0.0.0", "::", "[::]":
+			host = "127.0.0.1"
+		}
+		base = "http://" + net.JoinHostPort(host, port) + "/mcp"
 	}
-	switch host {
-	case "", "0.0.0.0", "::", "[::]":
-		host = "127.0.0.1"
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return base
 	}
-	return "http://" + net.JoinHostPort(host, port) + "/mcp"
+	return base + "?token=" + url.QueryEscape(token)
 }
 
-// EnsureManagerMCP writes the Fleet MCP server into the provider file at root
-// before a Manager session is created or adopted. Cursor is refused.
-func EnsureManagerMCP(root, agent, addr string) (FleetMCPStatus, error) {
+// EnsureManagerMCP writes the Fleet MCP server into every provider file at
+// root before a Manager session is created or adopted. Codex trust still
+// runs only when Codex is the selected Manager.
+func EnsureManagerMCP(root, agent, addr, token string) (FleetMCPStatus, error) {
 	agent = strings.TrimSpace(agent)
-	url := ManagerMCPURL(addr)
+	switch agent {
+	case "claude", "codex", "gemini", "cursor":
+	default:
+		return FleetMCPStatus{}, fmt.Errorf("unknown manager agent %q", agent)
+	}
+	url := ManagerMCPURL(addr, token)
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return FleetMCPStatus{}, err
 	}
-	switch agent {
-	case "claude":
-		path := filepath.Join(abs, ".mcp.json")
-		if err := writeClaudeManagerMCP(path, url); err != nil {
-			return FleetMCPStatus{}, err
-		}
-		return InspectManagerMCP(abs, agent, addr), nil
-	case "codex":
-		path := filepath.Join(abs, ".codex", "config.toml")
-		if err := writeCodexManagerMCP(path, url); err != nil {
-			return FleetMCPStatus{}, err
-		}
+	if err := writeClaudeManagerMCP(filepath.Join(abs, ".mcp.json"), url); err != nil {
+		return FleetMCPStatus{}, err
+	}
+	if err := writeCodexManagerMCP(filepath.Join(abs, ".codex", "config.toml"), url); err != nil {
+		return FleetMCPStatus{}, err
+	}
+	if err := writeGeminiManagerMCP(filepath.Join(abs, ".agents", "mcp_config.json"), url); err != nil {
+		return FleetMCPStatus{}, err
+	}
+	if err := writeCursorManagerMCP(filepath.Join(abs, ".cursor", "mcp.json"), url); err != nil {
+		return FleetMCPStatus{}, err
+	}
+	if agent == "codex" {
 		if err := trustCodexProject(abs); err != nil {
 			return FleetMCPStatus{}, err
 		}
-		return InspectManagerMCP(abs, agent, addr), nil
-	case "gemini":
-		path := filepath.Join(abs, ".agents", "mcp_config.json")
-		if err := writeGeminiManagerMCP(path, url); err != nil {
-			return FleetMCPStatus{}, err
-		}
-		return InspectManagerMCP(abs, agent, addr), nil
-	case "cursor":
-		return FleetMCPStatus{}, fmt.Errorf("cursor cannot be the manager")
-	default:
-		return FleetMCPStatus{}, fmt.Errorf("unknown manager agent %q", agent)
 	}
+	return InspectManagerMCP(abs, agent, addr, token), nil
 }
 
 // InspectManagerMCP reads the provider file without writing it.
-func InspectManagerMCP(root, agent, addr string) FleetMCPStatus {
+func InspectManagerMCP(root, agent, addr, token string) FleetMCPStatus {
 	agent = strings.TrimSpace(agent)
-	expected := ManagerMCPURL(addr)
+	expected := ManagerMCPURL(addr, token)
 	status := FleetMCPStatus{Provider: agent, ExpectedURL: expected}
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -102,6 +105,9 @@ func InspectManagerMCP(root, agent, addr string) FleetMCPStatus {
 	case "gemini":
 		status.Path = filepath.Join(abs, ".agents", "mcp_config.json")
 		status.URL = geminiManagerURL(status.Path)
+	case "cursor":
+		status.Path = filepath.Join(abs, ".cursor", "mcp.json")
+		status.URL = cursorManagerURL(status.Path)
 	default:
 		return status
 	}
@@ -114,49 +120,77 @@ func InspectManagerMCP(root, agent, addr string) FleetMCPStatus {
 }
 
 func writeClaudeManagerMCP(path, url string) error {
-	file := mcpFile{Servers: map[string]mcpEntry{}}
-	if data, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(data, &file)
-	} else if !os.IsNotExist(err) {
-		return err
-	}
-	if file.Servers == nil {
-		file.Servers = map[string]mcpEntry{}
-	}
-	file.Servers["manager"] = mcpEntry{Type: "http", URL: url}
-	data, err := json.MarshalIndent(file, "", "  ")
-	if err != nil {
-		return err
-	}
-	data = append(data, '\n')
-	return writePrivateFile(path, data)
+	return upsertMCPServer(path, "manager", struct {
+		Type string `json:"type"`
+		URL  string `json:"url"`
+	}{Type: "http", URL: url})
+}
+
+func writeCursorManagerMCP(path, url string) error {
+	return upsertMCPServer(path, "manager", struct {
+		URL string `json:"url"`
+	}{URL: url})
 }
 
 func writeGeminiManagerMCP(path, url string) error {
-	var file struct {
-		Servers map[string]struct {
-			HTTPURL string `json:"httpUrl"`
-		} `json:"mcpServers"`
-	}
-	if data, err := os.ReadFile(path); err == nil {
-		_ = json.Unmarshal(data, &file)
-	} else if !os.IsNotExist(err) {
+	return upsertMCPServer(path, "manager", struct {
+		HTTPURL string `json:"httpUrl"`
+	}{HTTPURL: url})
+}
+
+// upsertMCPServer sets mcpServers[name] in a provider JSON file. It keeps every
+// other key and server as it was, and refuses to touch a file it cannot parse
+// instead of replacing it.
+func upsertMCPServer(path, name string, entry any) error {
+	top := map[string]json.RawMessage{}
+	existing, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+		if len(strings.TrimSpace(string(existing))) > 0 {
+			if err := json.Unmarshal(existing, &top); err != nil {
+				return fmt.Errorf("%s is not valid JSON, refusing to overwrite it: %w", path, err)
+			}
+		}
+	case !os.IsNotExist(err):
 		return err
 	}
-	if file.Servers == nil {
-		file.Servers = map[string]struct {
-			HTTPURL string `json:"httpUrl"`
-		}{}
+	servers := map[string]json.RawMessage{}
+	if raw, ok := top["mcpServers"]; ok && string(raw) != "null" {
+		if err := json.Unmarshal(raw, &servers); err != nil {
+			return fmt.Errorf("%s: mcpServers is not an object, refusing to overwrite it: %w", path, err)
+		}
 	}
-	file.Servers["manager"] = struct {
-		HTTPURL string `json:"httpUrl"`
-	}{HTTPURL: url}
-	data, err := json.MarshalIndent(file, "", "  ")
+	encoded, err := json.Marshal(entry)
+	if err != nil {
+		return err
+	}
+	servers[name] = encoded
+	top["mcpServers"], err = json.Marshal(servers)
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(top, "", "  ")
 	if err != nil {
 		return err
 	}
 	data = append(data, '\n')
+	if err := backupOnce(path, existing); err != nil {
+		return err
+	}
 	return writePrivateFile(path, data)
+}
+
+// backupOnce keeps the first pre-Fleet copy of a provider file next to it, so a
+// user's own configuration can always be recovered.
+func backupOnce(path string, existing []byte) error {
+	if len(strings.TrimSpace(string(existing))) == 0 {
+		return nil
+	}
+	backup := path + ".fleet-bak"
+	if _, err := os.Stat(backup); err == nil {
+		return nil
+	}
+	return os.WriteFile(backup, existing, 0o600)
 }
 
 func writeCodexManagerMCP(path, url string) error {
@@ -168,6 +202,12 @@ func writeCodexManagerMCP(path, url string) error {
 	}
 	body := "url = " + strconv.Quote(url) + "\n"
 	next := upsertTOMLSection(existing, "[mcp_servers.manager]", body)
+	if next == existing {
+		return nil
+	}
+	if err := backupOnce(path, []byte(existing)); err != nil {
+		return err
+	}
 	return writePrivateFile(path, []byte(next))
 }
 
@@ -192,6 +232,9 @@ func trustCodexProject(absRoot string) error {
 		next += "\n\n"
 	}
 	next += header + "\ntrust_level = \"trusted\"\n"
+	if err := backupOnce(path, []byte(existing)); err != nil {
+		return err
+	}
 	return writePrivateFile(path, []byte(next))
 }
 
@@ -201,6 +244,22 @@ func claudeManagerURL(path string) string {
 		return ""
 	}
 	var file mcpFile
+	if json.Unmarshal(data, &file) != nil || file.Servers == nil {
+		return ""
+	}
+	return strings.TrimSpace(file.Servers["manager"].URL)
+}
+
+func cursorManagerURL(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	var file struct {
+		Servers map[string]struct {
+			URL string `json:"url"`
+		} `json:"mcpServers"`
+	}
 	if json.Unmarshal(data, &file) != nil || file.Servers == nil {
 		return ""
 	}
@@ -316,5 +375,9 @@ func writePrivateFile(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }

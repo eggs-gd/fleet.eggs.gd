@@ -8,13 +8,17 @@
   export let repositories = [];
 
   $: inspect = projectSettingsInspect(project, { workspaces, projects, repositories });
-  $: showNestCols = (inspect?.repositories || []).some((row) => row.nestedUnder || row.nests.length);
+  $: showNestCols = (inspect?.repositories || []).some(
+    (row) => row.nestedUnder || row.nests.length
+  );
 </script>
 
 {#if inspect}
   <section class="settings-block" aria-label="Project identity">
     <h3>Identity</h3>
-    <p class="settings-lede">Inspect-only facts from the board snapshot. Title, path, and tech stay in the header.</p>
+    <p class="settings-lede">
+      Inspect-only facts from the board snapshot. Title, path, and tech stay in the header.
+    </p>
     <SettingsField label="Kind" value={inspect.kind || '—'} />
     <SettingsField label="Source" value={inspect.source || '—'} />
     {#if inspect.status}
@@ -25,7 +29,10 @@
     {/if}
     <SettingsField label="PROJECT.md" value={inspect.projectMd || '—'} mono />
     {#if inspect.membership}
-      <SettingsField label="Workspace" value={`${inspect.membership.title} · ${inspect.membership.id}`} />
+      <SettingsField
+        label="Workspace"
+        value={`${inspect.membership.title} · ${inspect.membership.id}`}
+      />
     {/if}
     {#if inspect.parent}
       <SettingsField label="Parent" value={`${inspect.parent.title} · ${inspect.parent.id}`} />

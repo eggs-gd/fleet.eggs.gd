@@ -5,7 +5,7 @@ import { draftFromSnapshot, draftsEqual, patchFromDraft } from './settingsDraft.
 
 test('draft keeps overlay routing only', () => {
   const draft = draftFromSnapshot({
-    projects: { scan_root: { value: '/tmp/Projects' } },
+    projects: { scan_roots: ['/tmp/Projects'] },
     agents: {
       providers: [
         {
@@ -17,23 +17,23 @@ test('draft keeps overlay routing only', () => {
       ]
     }
   });
-  assert.equal(draft.scanRoot, '/tmp/Projects');
+  assert.deepEqual(draft.scanRoots, ['/tmp/Projects']);
   assert.equal(draft.agents.codex.executable, '/opt/codex');
   assert.equal(draft.agents.codex.routingInstructions, '');
 });
 
 test('patchFromDraft emits only changed overlay keys', () => {
   const baseline = {
-    scanRoot: '/a',
+    scanRoots: ['/a'],
     agents: { codex: { enabled: true, executable: '', routingInstructions: '' } }
   };
   const draft = {
-    scanRoot: '/b',
+    scanRoots: ['/b'],
     agents: { codex: { enabled: false, executable: '', routingInstructions: '' } }
   };
   assert.equal(draftsEqual(draft, baseline), false);
   assert.deepEqual(patchFromDraft(draft, baseline), {
-    scanRoot: '/b',
+    scanRoots: ['/b'],
     agents: { codex: { enabled: false } }
   });
 });
@@ -46,7 +46,9 @@ test('draft reads the bound manager session from the snapshot', () => {
 });
 
 test('draft leaves manager unbound when the snapshot has no session', () => {
-  const draft = draftFromSnapshot({ manager: { provider: 'none (HTTP Manager API)', session: null } });
+  const draft = draftFromSnapshot({
+    manager: { provider: 'none (HTTP Manager API)', session: null }
+  });
   assert.deepEqual(draft.manager, { agent: '', threadId: '' });
 });
 
@@ -56,5 +58,7 @@ test('patchFromDraft emits manager only when the binding changes', () => {
   assert.deepEqual(patchFromDraft(unchanged, baseline), {});
 
   const bound = { manager: { agent: 'claude', threadId: 'abc-123' } };
-  assert.deepEqual(patchFromDraft(bound, baseline), { manager: { agent: 'claude', threadId: 'abc-123' } });
+  assert.deepEqual(patchFromDraft(bound, baseline), {
+    manager: { agent: 'claude', threadId: 'abc-123' }
+  });
 });

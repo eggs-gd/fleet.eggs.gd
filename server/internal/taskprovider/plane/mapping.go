@@ -235,7 +235,7 @@ func stripHTML(text string) string {
 func formatCommentHTML(author string, text string) string {
 	author = strings.TrimSpace(author)
 	if author == "" {
-		author = "alex"
+		author = "owner"
 	}
 	return "<p>" + html.EscapeString(author) + ": " + html.EscapeString(strings.TrimSpace(text)) + "</p>"
 }

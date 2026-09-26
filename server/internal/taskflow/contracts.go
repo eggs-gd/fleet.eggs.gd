@@ -36,17 +36,17 @@ const (
 // RelativePath) are opaque storage identities; generic code must not parse
 // them as filesystem paths or Plane URLs.
 type Task struct {
-	SchemaVersion    int
-	ID               string
-	Ref              string
-	Title            string
-	Type             string
-	Status           Status
-	Priority         int
-	Project          string
-	ProjectID        string
-	WorkspaceID      string
-	Repositories     []string
+	SchemaVersion int
+	ID            string
+	Ref           string
+	Title         string
+	Type          string
+	Status        Status
+	Priority      int
+	Project       string
+	ProjectID     string
+	WorkspaceID   string
+	Repositories  []string
 	// DependsOn lists prerequisite refs/ids/locators that must be done before
 	// daemon launch (CORE-148). Empty means no hard dependency gate.
 	DependsOn        []string
@@ -107,11 +107,11 @@ type TransitionMeta struct {
 // Empty Status / Assignee / Project leave those fields unchanged. Priority, Body,
 // and DependsOn are pointers so callers can distinguish "omit" from "set".
 type PatchInput struct {
-	Status        Status
-	Priority      *int
-	Assignee      string
-	Project       string
-	Repository    string
+	Status     Status
+	Priority   *int
+	Assignee   string
+	Project    string
+	Repository string
 	// DependsOn replaces the hard launch dependency list when non-nil
 	// (CORE-148). An empty slice clears depends_on.
 	DependsOn     *[]string

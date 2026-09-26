@@ -25,15 +25,21 @@ func TestManagerSetupNeededOnlyOnFreshUnboundRoot(t *testing.T) {
 	}
 }
 
-func TestCreateManagerSessionRefusesCursorBeforeLaunch(t *testing.T) {
+func TestCreateManagerSessionBindsCursorWithoutLaunch(t *testing.T) {
 	root := t.TempDir()
 	started := false
-	_, _, err := createManagerSession(context.Background(), Config{CoreRoot: root, Addr: "127.0.0.1:8787"}, "cursor", "", func(context.Context, string, string) (string, error) {
+	status, _, err := createManagerSession(context.Background(), Config{CoreRoot: root, Addr: "127.0.0.1:8787"}, "cursor", "", func(context.Context, string, string) (string, error) {
 		started = true
 		return "nope", nil
 	})
-	if err == nil || started {
-		t.Fatalf("err = %v started = %v", err, started)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if started {
+		t.Fatal("cursor manager must not start a provider process")
+	}
+	if !status.Bound || status.Agent != "cursor" || status.ThreadID != "workspace" {
+		t.Fatalf("status = %#v", status)
 	}
 }
 
@@ -47,7 +53,7 @@ func TestCreateManagerSessionWritesMCPBeforeStart(t *testing.T) {
 			return "", errors.New(agent)
 		}
 		gotDir = workingDir
-		mcp := settings.InspectManagerMCP(workingDir, "codex", "127.0.0.1:8787")
+		mcp := settings.InspectManagerMCP(workingDir, "codex", "127.0.0.1:8787", "")
 		if !mcp.Matches {
 			return "", errors.New("mcp missing before start")
 		}

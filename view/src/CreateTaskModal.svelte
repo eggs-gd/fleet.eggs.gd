@@ -1,6 +1,6 @@
 <script>
   const taskTypes = ['feature', 'bug', 'research', 'review', 'maintenance', 'decision'];
-  const defaultAssignees = ['unassigned', 'alex', 'claude', 'codex', 'cursor'];
+  const defaultAssignees = ['unassigned', 'owner', 'alex', 'claude', 'codex', 'cursor', 'gemini'];
 
   export let projects = [];
   export let workspaces = [];
@@ -22,20 +22,30 @@
   let draftPriority = 5;
   let draftDependsOn = '';
 
-  $: sortedProjects = [...projects].sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
+  $: sortedProjects = [...projects].sort((a, b) =>
+    (a.title || a.id).localeCompare(b.title || b.id)
+  );
   $: selectedProject = sortedProjects.find((project) => project.id === draftProject) || null;
   $: repositoryOptions = selectedProject?.repositories?.length
     ? selectedProject.repositories
-    : workspaces.find((workspace) => workspace.id === (selectedProject?.workspace_id || draftProject))?.repositories || [];
+    : workspaces.find(
+        (workspace) => workspace.id === (selectedProject?.workspace_id || draftProject)
+      )?.repositories || [];
   $: assigneeOptions = Array.from(
     new Set([
       ...defaultAssignees,
       ...assignees.filter((assignee) => assignee && assignee !== 'all')
     ])
   );
-  $: statusOptions = statuses.length ? statuses : ['backlog', 'todo', 'needs_rework', 'doing', 'blocked', 'needs_review', 'done', 'archived'];
+  $: statusOptions = statuses.length
+    ? statuses
+    : ['backlog', 'todo', 'needs_rework', 'doing', 'blocked', 'needs_review', 'done', 'archived'];
   $: if (!draftProject && sortedProjects.length) {
-    const preferred = preferredProject && sortedProjects.find((project) => project.id === preferredProject || project.workspace_id === preferredProject);
+    const preferred =
+      preferredProject &&
+      sortedProjects.find(
+        (project) => project.id === preferredProject || project.workspace_id === preferredProject
+      );
     draftProject = preferred?.id || sortedProjects[0].id;
   }
   $: if (draftProject && repositoryOptions.length && !repositoryOptions.includes(draftRepository)) {
@@ -81,7 +91,13 @@
 </script>
 
 <section class="modal-backdrop" role="presentation" on:click={closeFromBackdrop}>
-  <div class="task-modal create-task-modal" role="dialog" aria-modal="true" aria-labelledby="create-task-title" tabindex="-1">
+  <div
+    class="task-modal create-task-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="create-task-title"
+    tabindex="-1"
+  >
     <header>
       <div>
         <p class="eyebrow">New task</p>

@@ -9,9 +9,12 @@ const SUCCESS_STATUSES = new Set(['succeeded', 'released', 'completed']);
 const LIVE_STATUSES = new Set(['queued', 'claimed', 'starting', 'running', 'resumable']);
 
 export const sessionStatus = (session) =>
-  String(session?.execution_status || session?.status || session?.execution_state || '').toLowerCase();
+  String(
+    session?.execution_status || session?.status || session?.execution_state || ''
+  ).toLowerCase();
 
-export const sessionWorkerOutcome = (session) => String(session?.result?.outcome || '').toLowerCase();
+export const sessionWorkerOutcome = (session) =>
+  String(session?.result?.outcome || '').toLowerCase();
 
 export const sessionOutcomeTone = (session, kind = 'closed') => {
   if (kind === 'orphan') return 'orphan';

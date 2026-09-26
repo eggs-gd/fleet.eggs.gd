@@ -26,7 +26,7 @@ provider mutation still follows the file-safe contract:
 - append mutation and index events;
 - unlock.
 
-Direct Markdown edits by Alex or external agents remain allowed. The Markdown
+Direct Markdown edits by the operator or external agents remain allowed. The Markdown
 change adapter (`fswalker` → `MarkdownProvider` reload → `TaskEvent`)
 reconciles them back into the in-memory projection and generated Work views.
 Plane (and future providers) use their own optimistic concurrency inside the
@@ -106,7 +106,7 @@ When resolving a user phrase to a Core project/repository:
 4. Exact repository name/path in `_registry/repositories.json`.
 5. Workspace group relationship in `_registry/project-groups.json`.
 6. High-confidence fuzzy match.
-7. Ask Alex or park in `backlog`/Inbox.
+7. Ask the operator or park in `backlog`/Inbox.
 
 When a new alias is learned with high confidence, persist it in the workspace
 card instead of keeping it only in chat.
@@ -122,7 +122,7 @@ assignee: codex
 Humans and AI agents are both workers. Valid MVP values are:
 
 ```text
-alex, codex, claude, cursor, gemini, unassigned
+owner, codex, claude, cursor, gemini, unassigned  # `alex` is a legacy alias of `owner`, still accepted
 ```
 
 `launch.agent` is deprecated for normal tasks. Leave it empty unless there is a
@@ -171,7 +171,7 @@ repositories:
   - <relative/repository/path>
 depends_on:
   - CORE-<number>   # optional; hard launch gate (see below)
-assignee: alex | codex | claude | cursor | gemini | unassigned
+assignee: owner | codex | claude | cursor | gemini | unassigned
 assignment_reason: <short reason>
 source: voice | text | url | file | chat | manager
 source_inbox: <inbox-id or empty>
@@ -206,7 +206,7 @@ Accepted dependency tokens:
 - opaque task locators / relative paths when useful internally.
 
 A dependency is satisfied only when the prerequisite task status is `done`.
-`needs_review` is **not** enough — Alex must accept the prerequisite before
+`needs_review` is **not** enough — the operator must accept the prerequisite before
 dependents may auto-launch. Missing or self-referential dependencies stay
 unresolved.
 
@@ -244,11 +244,11 @@ Canonical statuses:
 | Status | Meaning |
 |---|---|
 | `backlog` | Structured task, not prioritized for worker pickup. |
-| `needs_rework` | Failed Alex review; unfinished work returned to the worker queue before normal todo. |
+| `needs_rework` | Failed operator review; unfinished work returned to the worker queue before normal todo. |
 | `todo` | Ready for active worker pickup, not started. |
 | `doing` | A human/agent has started work. |
 | `blocked` | Cannot proceed without missing info, approval, access, lock/session conflict, or failed launch. |
-| `needs_review` | Worker produced physical artifacts; Alex should review before done/commit. |
+| `needs_review` | Worker produced physical artifacts; the operator should review before done/commit. |
 | `done` | Reviewed/accepted complete. |
 | `archived` | No longer relevant or intentionally kept only for history. |
 
@@ -269,7 +269,7 @@ Transition rules:
 
 - Moving `backlog -> todo` is the readiness signal. Do not add a separate
   readiness boolean.
-- Moving `needs_review -> needs_rework` means Alex rejected the produced
+- Moving `needs_review -> needs_rework` means the operator rejected the produced
   artifacts and the same task needs fixes. This is not a new task.
 - `needs_rework` is picked before normal `todo` for the same assignee.
 - Manually woken workers may move their claimed task to `doing`, `blocked`, or
@@ -277,15 +277,15 @@ Transition rules:
 - Daemon-launched workers must report a result payload and leave final task
   lifecycle transition to the runtime/orchestrator after execution reaches a
   terminal state.
-- Bot-produced work must stop at `needs_review`; Alex moves it to `done`.
+- Bot-produced work must stop at `needs_review`; the operator moves it to `done`.
 - Returning `needs_review -> todo` must add a `## Review Comments` entry.
 - `todo -> doing` is the durable task-level lock before real agent launch.
 - `doing -> needs_rework` is allowed for manual/orphan resolution when a
-  restarted runtime cannot continue the previous execution and Alex wants the
+  restarted runtime cannot continue the previous execution and the operator wants the
   same worker to retry with review context.
-- `doing -> done` is allowed only for Alex/operator resolution of orphaned or
+- `doing -> done` is allowed only for the operator/operator resolution of orphaned or
   externally completed work. Bot-produced work still stops at `needs_review`.
-- `blocked -> needs_review` is an operator/manual recovery path only: when Alex
+- `blocked -> needs_review` is an operator/manual recovery path only: when the operator
   has verified that physical artifacts already exist (or the blocker was
   infrastructure/visibility rather than missing work) and wants review without
   a fake re-execution. Prefer a `## Review Comments` reason. Automated

@@ -28,7 +28,8 @@
       class:project-mark--space={hasChildren}
       class:project-mark--project={!hasChildren}
       style="background: {projectColor(node.project.id)}"
-    >{projectInitial(node.project.title, node.project.id)}</span>
+      >{projectInitial(node.project.title, node.project.id)}</span
+    >
     <span class="sidebar-project-title">{node.project.title || node.project.id}</span>
     <span class="sidebar-project-count">{node.taskCount}</span>
     {#if hasChildren}

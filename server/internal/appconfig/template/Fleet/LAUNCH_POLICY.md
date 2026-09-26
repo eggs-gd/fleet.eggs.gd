@@ -46,7 +46,7 @@ assignee must wait while the first is still waiting for visible-session
 registration. When provider startup fails, Core releases the slot and requeues
 waiting candidates.
 
-Example: if Claude is working on `eGGs.gd.prod/career-wizard`, Codex should not
+Example: if Claude is working on `acme/billing-portal`, Codex should not
 start another task against the same repository. Another task in the same
 workspace should also wait unless the operator explicitly allows parallel work.
 

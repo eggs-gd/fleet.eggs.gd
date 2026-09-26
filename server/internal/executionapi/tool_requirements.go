@@ -15,13 +15,13 @@ const (
 
 // Canonical required tool names (MCP / agent tool surface).
 const (
-	ToolGoDiagnostics     = "go_diagnostics"
-	ToolGoVulncheck       = "go_vulncheck"
-	ToolSvelteAutofixer   = "svelte-autofixer"
-	ToolListSections      = "list-sections"
-	ToolGetDocumentation  = "get-documentation"
-	ToolFindPatterns      = "find_patterns"
-	ToolFindSimilarCode   = "find_similar_code"
+	ToolGoDiagnostics    = "go_diagnostics"
+	ToolGoVulncheck      = "go_vulncheck"
+	ToolSvelteAutofixer  = "svelte-autofixer"
+	ToolListSections     = "list-sections"
+	ToolGetDocumentation = "get-documentation"
+	ToolFindPatterns     = "find_patterns"
+	ToolFindSimilarCode  = "find_similar_code"
 )
 
 // RequirementInput is the task/repo context used to select required tools.

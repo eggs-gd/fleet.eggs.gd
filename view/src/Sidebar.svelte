@@ -1,8 +1,18 @@
 <script>
-  import { isAccordionOpen, updateAccordionOpen, workspaceAccordionKey } from './lib/dashboardState.js';
+  import {
+    isAccordionOpen,
+    updateAccordionOpen,
+    workspaceAccordionKey
+  } from './lib/dashboardState.js';
   import { SETTINGS_SECTIONS } from './lib/settingsNav.js';
   import { favoriteIds } from './lib/favorites.js';
-  import { buildSidebarTree, projectColor, projectInitial, projectOpenCount } from './lib/projectTree.js';
+  import {
+    buildSidebarTree,
+    projectColor,
+    projectInitial,
+    projectOpenCount
+  } from './lib/projectTree.js';
+  import { isOperatorAssignee } from './lib/operator.js';
   import { operatorPause } from './lib/taskDisplay.js';
   import Icon from './Icon.svelte';
   import SidebarBranch from './SidebarBranch.svelte';
@@ -28,7 +38,6 @@
   export let themePref = 'system';
   export let onThemeChange = () => {};
 
-  const CURRENT_USER = 'alex';
   let treeEl;
 
   $: tree = buildSidebarTree(workspaces, projects, tasks);
@@ -41,22 +50,35 @@
       id: 'mine',
       label: 'Assigned to me',
       icon: 'users',
-      count: tasks.filter((task) => task.assignee === CURRENT_USER).length
+      count: tasks.filter((task) => isOperatorAssignee(task.assignee)).length
     },
     {
       id: 'attention',
       label: 'Needs attention',
       icon: 'help-circle',
-      count: tasks.filter((task) => task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting).length
+      count: tasks.filter(
+        (task) =>
+          task.status === 'blocked' || task.status === 'needs_review' || operatorPause(task).waiting
+      ).length
     },
-    { id: 'blocked', label: 'Blocked', icon: 'x-circle', count: tasks.filter((task) => task.status === 'blocked').length },
+    {
+      id: 'blocked',
+      label: 'Blocked',
+      icon: 'x-circle',
+      count: tasks.filter((task) => task.status === 'blocked').length
+    },
     {
       id: 'review',
       label: 'In review',
       icon: 'check-circle',
       count: tasks.filter((task) => task.status === 'needs_review').length
     },
-    { id: 'done', label: 'Done', icon: 'checks-circle', count: tasks.filter((task) => task.status === 'done').length },
+    {
+      id: 'done',
+      label: 'Done',
+      icon: 'checks-circle',
+      count: tasks.filter((task) => task.status === 'done').length
+    },
     {
       id: 'archived',
       label: 'Archived',
@@ -95,10 +117,20 @@
   </div>
 
   <div class="sidebar-rail">
-    <button type="button" class="sidebar-rail-item" class:active={globalNav === 'work'} on:click={() => onSelectNav('work')}>
+    <button
+      type="button"
+      class="sidebar-rail-item"
+      class:active={globalNav === 'work'}
+      on:click={() => onSelectNav('work')}
+    >
       <Icon name="home" size={16} /> Work
     </button>
-    <button type="button" class="sidebar-rail-item" class:active={globalNav === 'settings'} on:click={() => onSelectNav('settings')}>
+    <button
+      type="button"
+      class="sidebar-rail-item"
+      class:active={globalNav === 'settings'}
+      on:click={() => onSelectNav('settings')}
+    >
       <Icon name="gear" size={16} /> Settings
     </button>
   </div>
@@ -124,7 +156,12 @@
   {:else if globalNav === 'work'}
     <div class="sidebar-section sidebar-section--projects">
       <p class="sidebar-section-title">Projects</p>
-      <button type="button" class="sidebar-all" class:active={!selectedProjectId && !selectedWorkspaceId} on:click={onSelectAll}>
+      <button
+        type="button"
+        class="sidebar-all"
+        class:active={!selectedProjectId && !selectedWorkspaceId}
+        on:click={onSelectAll}
+      >
         <span>All projects</span>
         <span class="sidebar-view-count">{projects.length}</span>
       </button>
@@ -137,7 +174,11 @@
             class:active={selectedProjectId === project.id}
             on:click={() => onSelectProject(project.id)}
           >
-            <span class="project-mark project-mark--project" style="background: {projectColor(project.id)}">{projectInitial(project.title, project.id)}</span>
+            <span
+              class="project-mark project-mark--project"
+              style="background: {projectColor(project.id)}"
+              >{projectInitial(project.title, project.id)}</span
+            >
             <span class="sidebar-project-title">{project.title || project.id}</span>
             <span class="sidebar-project-count">{projectOpenCount(tasks, project.id)}</span>
           </button>
@@ -160,7 +201,11 @@
                 aria-expanded={wsOpen}
                 on:click={() => activateWorkspace(node.workspace.id, wsKey, wsOpen)}
               >
-                <span class="project-mark project-mark--space" style="background: {projectColor(node.workspace.id)}">{projectInitial(node.workspace.title, node.workspace.id)}</span>
+                <span
+                  class="project-mark project-mark--space"
+                  style="background: {projectColor(node.workspace.id)}"
+                  >{projectInitial(node.workspace.title, node.workspace.id)}</span
+                >
                 <span class="sidebar-project-title">{node.workspace.title}</span>
                 <span class="sidebar-project-count">{node.taskCount}</span>
                 <span class="tree-toggle" class:is-open={wsOpen} aria-hidden="true">
@@ -194,11 +239,18 @@
             <button
               type="button"
               class="sidebar-project sidebar-project--root"
-              class:active={selectedProjectId === node.leafProject.id || selectedWorkspaceId === node.workspace.id}
+              class:active={selectedProjectId === node.leafProject.id ||
+                selectedWorkspaceId === node.workspace.id}
               on:click={() => onSelectProject(node.leafProject.id)}
             >
-              <span class="project-mark project-mark--project" style="background: {projectColor(node.leafProject.id)}">{projectInitial(node.leafProject.title, node.leafProject.id)}</span>
-              <span class="sidebar-project-title">{node.leafProject.title || node.leafProject.id}</span>
+              <span
+                class="project-mark project-mark--project"
+                style="background: {projectColor(node.leafProject.id)}"
+                >{projectInitial(node.leafProject.title, node.leafProject.id)}</span
+              >
+              <span class="sidebar-project-title"
+                >{node.leafProject.title || node.leafProject.id}</span
+              >
               <span class="sidebar-project-count">{node.taskCount}</span>
             </button>
           {/if}
@@ -213,7 +265,12 @@
       <ul class="sidebar-views">
         {#each views as view (view.id)}
           <li>
-            <button type="button" class="sidebar-view" class:active={quickView === view.id} on:click={() => onSelectView(view.id)}>
+            <button
+              type="button"
+              class="sidebar-view"
+              class:active={quickView === view.id}
+              on:click={() => onSelectView(view.id)}
+            >
               <Icon name={view.icon} size={15} />
               <span class="sidebar-view-title">{view.label}</span>
               <span class="sidebar-view-count">{view.count}</span>
