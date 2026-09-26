@@ -13,7 +13,7 @@ Chat history is not a source of truth. Durable results are files in this tree.
 
 | Concern | Where it lives |
 |---|---|
-| Refs (`CORE-`, `INBOX-`, `LIFE-`), monotonic, never reused | `_registry/counters.json`, allocated by the tools |
+| Task refs (`TAG-N`, the tag comes from the project card) and `INBOX-N`, monotonic, never reused | `_registry/counters.json`, allocated by the tools |
 | Task ids, filenames, slugs, defaults, dependency cycles | task tools (`manager_command`, `manager_validate`) |
 | Status meanings, transitions, priority order, Definition Of Done | `TASK_LIFECYCLE.md` |
 | Project resolution and aliases | `manager_resolve_project`, `manager_project` |

@@ -64,12 +64,6 @@ func (b *Board) Snapshot() Snapshot {
 		workspaces = append(workspaces, workspace)
 	}
 	sort.Slice(workspaces, func(i, j int) bool {
-		if workspaces[i].ID == "_life" {
-			return true
-		}
-		if workspaces[j].ID == "_life" {
-			return false
-		}
 		return workspaces[i].Title < workspaces[j].Title
 	})
 
@@ -78,12 +72,6 @@ func (b *Board) Snapshot() Snapshot {
 		projects = append(projects, project)
 	}
 	sort.Slice(projects, func(i, j int) bool {
-		if projects[i].WorkspaceID == "_life" && projects[j].WorkspaceID != "_life" {
-			return true
-		}
-		if projects[j].WorkspaceID == "_life" && projects[i].WorkspaceID != "_life" {
-			return false
-		}
 		if projects[i].WorkspaceID != projects[j].WorkspaceID {
 			return projects[i].WorkspaceID < projects[j].WorkspaceID
 		}

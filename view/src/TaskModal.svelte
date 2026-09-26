@@ -153,7 +153,7 @@
 
     <label class="body-editor depends-editor">
       <span>Depends on (hard launch blockers)</span>
-      <input bind:value={draftDependsOn} placeholder="CORE-144, CORE-145" spellcheck="false" />
+      <input bind:value={draftDependsOn} placeholder="FLET-144, FLET-145" spellcheck="false" />
       <p class="depends-hint">
         Comma-separated prerequisite refs. Daemon will not claim/launch this task until each
         dependency is <code>done</code>. Leave empty for no gate. Waiting stays in launch evaluation
@@ -247,7 +247,7 @@
 
     {#if blockedReason(task)}
       <section class="blocked-detail">
-        <span>Needs Alex</span>
+        <span>Needs you</span>
         <p>{blockedReason(task)}</p>
       </section>
     {/if}

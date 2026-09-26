@@ -169,7 +169,7 @@ controls.
 - Do not route `status: backlog` tasks into active worker pickup. Backlog is the
   owner-controlled pre-priority queue.
 - For active `todo` pickup, choose by priority: `1` is highest, `5` is lowest,
-  then natural `CORE-*` ref order.
+  then natural ref order.
 - Do not start or pick up work that violates `Fleet/LAUNCH_POLICY.md`.
 - Record why a non-obvious assignee was chosen in the Work item's `## Handoff`
   or `## Project Resolution`.

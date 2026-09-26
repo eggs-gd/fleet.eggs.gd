@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:ui-state": "node --test src/lib/dashboardState.test.mjs src/lib/projectTree.test.mjs src/lib/taskTags.test.mjs src/lib/sessionOutcome.test.mjs src/lib/statusTransitions.test.mjs src/lib/theme.test.mjs src/lib/settingsNav.test.mjs src/lib/settingsDraft.test.mjs src/lib/projectSettings.test.mjs",
+    "test:ui-state": "node --test src/lib/dashboardState.test.mjs src/lib/projectTree.test.mjs src/lib/taskTags.test.mjs src/lib/sessionOutcome.test.mjs src/lib/statusTransitions.test.mjs src/lib/theme.test.mjs src/lib/settingsNav.test.mjs src/lib/settingsDraft.test.mjs src/lib/projectSettings.test.mjs src/lib/operator.test.mjs",
     "test:technology-display": "node --test src/lib/technologyDisplay.test.mjs",
     "format": "prettier --write src",
     "format:check": "prettier --check src"

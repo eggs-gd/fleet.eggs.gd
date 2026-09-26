@@ -27,15 +27,18 @@ workspace card instead of keeping it only in chat.
 assignee: codex
 ```
 
-Humans and AI agents are both workers. Valid MVP values are:
+Humans and AI agents are both workers. Valid assignees are:
 
 ```text
-owner, codex, claude, cursor, gemini, unassigned
+unassigned
+claude, codex, cursor, gemini        (AI agents)
+<name>                               (a person with a Fleet/<name>.md file)
 ```
 
-`owner` is the human operator — see `Fleet/owner.md`. Rename both the
-value and that file to your own name/slug if you prefer; nothing in the
-rest of this tree hardcodes the literal word `owner`.
+The template ships `Fleet/owner.md`, so `owner` is a valid assignee. Rename
+that file to your own name if you prefer. Nothing in the app hardcodes a
+person's name. `owner` is only the author label the app puts on comments made
+on the person's behalf.
 
 `launch.agent` is deprecated for normal tasks. Leave it empty unless there
 is a documented real use case where the launch process must start a
@@ -74,7 +77,7 @@ Required frontmatter for schema version `1`:
 ```yaml
 schema_version: 1
 id: work-<yyyy-mm-dd>-<slug>
-ref: CORE-<number>
+ref: <TAG>-<number>
 title: Human-readable task title
 type: feature | bug | research | review | maintenance | decision
 status: backlog | needs_rework | todo | doing | blocked | needs_review | done | archived
@@ -83,8 +86,8 @@ project: <project-id>
 repositories:
   - <relative/repository/path>
 depends_on:
-  - CORE-<number>   # optional; hard launch gate (see below)
-assignee: owner | codex | claude | cursor | gemini | unassigned
+  - <TAG>-<number>   # optional; hard launch gate (see below)
+assignee: <person> | codex | claude | cursor | gemini | unassigned
 assignment_reason: <short reason>
 source: voice | text | url | file | chat | manager
 source_inbox: <inbox-id or empty>
@@ -105,6 +108,27 @@ Runtime/API may expose derived fields that are not frontmatter, including
 `workspace_id` and `project_id`. Do not hand-edit derived fields into task
 cards.
 
+## Refs And Project Tags
+
+Every project has a short **tag** in its `Work/<project-id>/PROJECT.md`
+frontmatter, and every task ref is `<TAG>-<number>`:
+
+```yaml
+tag: "FLET"
+```
+
+- The scanner gives a project without a tag one: four letters made from its id
+  (first letters, initials, consonants), or a seeded sequence of letters when
+  those are taken. The same project always gets the same tag.
+- Change it by editing `tag:` in the card: 2 to 6 capital letters or digits,
+  starting with a letter, and not `INBOX`. Tags are unique across projects. A
+  duplicate or malformed tag is reported as a problem and left as written.
+- Numbers count per tag in `_registry/counters.json` and are never reused. A
+  task keeps its ref if the project's tag changes later. Only new tasks use the
+  new tag.
+- Refs created before tags existed use the legacy `CORE-` prefix and stay valid.
+- `INBOX-<number>` is the global Inbox ref space.
+
 ### Task dependencies (`depends_on`)
 
 Optional frontmatter list of prerequisite tasks, treated as a hard gate,
@@ -112,12 +136,12 @@ not advisory Markdown prose:
 
 ```yaml
 depends_on:
-  - CORE-144
+  - FLET-144
 ```
 
 Accepted dependency tokens:
 
-- human refs such as `CORE-144` (case-insensitive);
+- human refs such as `FLET-144` (case-insensitive);
 - canonical task `id` values;
 - opaque task locators / relative paths when useful internally.
 
@@ -211,7 +235,7 @@ explicit maintenance.
 - `needs_rework` is picked before `todo` for the same assignee, even when
   the `todo` task has a numerically higher priority.
 - Within the same status and assignee queue, pickup order is priority
-  ascending, then natural `CORE-*` ref order.
+  ascending, then natural ref order (the number within a tag).
 - Workers do not pick up `backlog` tasks. A worker opens a `todo` task; if
   the context is not enough, it sets `blocked`, writes the missing question
   into the task card (not only into chat), and asks the operator.
@@ -259,3 +283,6 @@ How a worker reaches `needs_review` or `blocked` depends on how it started:
 When a task returns from `needs_review` to `needs_rework`, a `## Review
 Comments` entry says what must change. Workers treat review comments as
 active instructions.
+
+A task assigned to a person is closed by that person's own confirmation and
+needs no artifact. The artifact rule governs work done by AI workers.

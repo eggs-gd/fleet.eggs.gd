@@ -11,26 +11,33 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 )
 
-// CardReport lists what MaintainCards changed.
+// CardReport lists what MaintainCards changed and what it could not fix.
 type CardReport struct {
 	Created  []string
 	Repaired []string
+	// Tagged lists the projects that got a new ref tag.
+	Tagged []string
+	// Problems are cards a person has to fix: a duplicate or malformed tag, or a
+	// card without frontmatter that the registry does not know.
+	Problems []string
 }
 
 // MaintainCards keeps Work/<id>/PROJECT.md in step with the registry, without
 // rewriting what people and the Manager wrote. It creates a missing card,
 // restores a missing frontmatter block, makes `aliases` a block list, and
-// syncs the `repositories` list. The body, aliases, default_assignee and the
-// Activity Log are never touched. Cards for ids the registry does not know
-// (such as Work/_life) are left alone. A registry that has not been scanned yet
-// is not an error.
+// syncs the `repositories` list. Every card also gets a ref `tag` when it has
+// none (see assignTags). The body, aliases, default_assignee and the Activity
+// Log are never touched. Cards for ids the registry does not know are kept
+// except for their tag. A registry that has not been scanned yet is not an
+// error.
 func MaintainCards(registryDir, workDir string) (CardReport, error) {
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
 	var report CardReport
 	projects, err := BuildWorkspaces(registryDir)
 	if errors.Is(err, fs.ErrNotExist) {
-		return report, nil
-	}
-	if err != nil {
+		projects = nil
+	} else if err != nil {
 		return report, fmt.Errorf("read registry: %w", err)
 	}
 	for _, project := range projects {
@@ -65,7 +72,7 @@ func MaintainCards(registryDir, workDir string) (CardReport, error) {
 		}
 		report.Repaired = append(report.Repaired, project.ID)
 	}
-	return report, nil
+	return assignTags(workDir, report)
 }
 
 func repairCard(existing, rendered string, project Workspace) (string, bool, error) {

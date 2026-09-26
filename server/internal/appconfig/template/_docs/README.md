@@ -16,4 +16,3 @@ Reusable Markdown templates live in `_docs/templates/` (e.g.
   their files live.
 - `OPERATING_MODEL.md` — how Manager, workers, manual wakeup, daemon
   direction, and no-auto-commit policy fit together.
-- `PERSONAL_SPACE.md` — Life workspace rules for `Work/_life/`.

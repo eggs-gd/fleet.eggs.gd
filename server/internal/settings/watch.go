@@ -54,10 +54,13 @@ func (s *Scanner) maintain(coreRoot string, full bool) {
 	if s == nil {
 		return
 	}
-	_, err := projectscan.MaintainCards(filepath.Join(coreRoot, "_registry"), filepath.Join(coreRoot, "Work"))
-	if err != nil {
+	report, err := projectscan.MaintainCards(filepath.Join(coreRoot, "_registry"), filepath.Join(coreRoot, "Work"))
+	switch {
+	case err != nil:
 		s.Health.Fail("workspace", err)
-	} else {
+	case len(report.Problems) > 0:
+		s.Health.Fail("workspace", errors.New(strings.Join(report.Problems, "; ")))
+	default:
 		s.Health.OK("workspace")
 	}
 	if !full {

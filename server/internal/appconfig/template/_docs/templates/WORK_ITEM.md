@@ -1,7 +1,7 @@
 ---
 schema_version: 1
 id: work-YYYY-MM-DD-slug
-ref: CORE-N
+ref: TAG-N
 title: "Human-readable task title"
 type: feature
 status: backlog

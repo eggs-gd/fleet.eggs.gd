@@ -2,7 +2,7 @@
 
 The human operator of this workspace. A fresh workspace uses assignee
 `owner`. Rename this file and that assignee value together if you prefer
-your own slug. The app accepts `owner` and `alex`.
+your own slug. Anyone with a `Fleet/<name>.md` file can be assigned tasks.
 
 ## Best At
 

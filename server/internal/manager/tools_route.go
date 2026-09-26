@@ -345,6 +345,13 @@ func firstOrEmpty(values []string) string {
 	return values[0]
 }
 
+// knownAssignee reports whether name may hold a task: unassigned, an agent, or
+// a person in the Fleet roster.
+func (s *Service) knownAssignee(name string) bool {
+	name = strings.ToLower(strings.TrimSpace(name))
+	return name == "unassigned" || isWorker(name) || workfiles.HumanWorker(s.DataRoot, name)
+}
+
 func isWorker(name string) bool {
 	for _, agent := range workerAgents {
 		if agent == name {

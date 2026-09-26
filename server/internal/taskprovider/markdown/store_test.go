@@ -120,15 +120,15 @@ updated_at: 2026-08-01T10:00:00+03:00
 ## Review Comments
 
 - 2026-08-01T10:00:00+03:00 — claude: First blocker.
-- 2026-08-01T10:01:00+03:00 — claude: Alex, please choose the launch mode before I continue.
-- 2026-08-01T10:02:00+03:00 — alex: Ask me what to do next.
+- 2026-08-01T10:01:00+03:00 — claude: Operator, please choose the launch mode before I continue.
+- 2026-08-01T10:02:00+03:00 — owner: Ask me what to do next.
 `)
 
 	task, err := LoadTaskFile(root, taskPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if task.BlockedReason != "Alex, please choose the launch mode before I continue." {
+	if task.BlockedReason != "Operator, please choose the launch mode before I continue." {
 		t.Fatalf("blocked reason = %q", task.BlockedReason)
 	}
 }

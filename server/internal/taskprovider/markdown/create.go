@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/projecttag"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
@@ -14,6 +15,9 @@ func (p *Provider) CreateFromRequest(req tasklifecycle.TaskCreateRequest) (taskl
 	normalized, err := tasklifecycle.NormalizeTaskCreateRequest(req)
 	if err != nil {
 		return tasklifecycle.Task{}, err
+	}
+	if !tasklifecycle.KnownAssignee(p.root, normalized.Assignee) {
+		return tasklifecycle.Task{}, fmt.Errorf("unknown assignee %q: use unassigned, an agent, or a person with a Fleet/<name>.md file", normalized.Assignee)
 	}
 	workProjectID := workProjectDirID(normalized.Project)
 	if err := validateProjectForCreate(p.root, workProjectID); err != nil {
@@ -23,7 +27,11 @@ func (p *Provider) CreateFromRequest(req tasklifecycle.TaskCreateRequest) (taskl
 	// dashboard project picker exposes a nested project id.
 	normalized.Project = workProjectID
 
-	ref, err := tasklifecycle.AllocateNextWorkRef(p.root)
+	tag, err := projecttag.ForProject(p.root, normalized.Project)
+	if err != nil {
+		return tasklifecycle.Task{}, err
+	}
+	ref, err := tasklifecycle.AllocateNextRef(p.root, tag)
 	if err != nil {
 		return tasklifecycle.Task{}, err
 	}

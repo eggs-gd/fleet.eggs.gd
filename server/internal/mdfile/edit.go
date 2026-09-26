@@ -3,7 +3,13 @@ package mdfile
 import (
 	"errors"
 	"strings"
+	"sync"
 )
+
+// EditMu serializes read-modify-write cycles on Markdown files that more than
+// one part of the server edits, such as a project card (the scanner adds its
+// tag while a Manager tool adds an alias). Hold it from the read to the write.
+var EditMu sync.Mutex
 
 // The helpers below edit the leading frontmatter block of a Markdown text and
 // leave everything else byte for byte as it was.

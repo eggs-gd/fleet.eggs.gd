@@ -10,6 +10,7 @@ import (
 type Workspace struct {
 	ID           string            `json:"id"`
 	Title        string            `json:"title"`
+	Tag          string            `json:"tag,omitempty"`
 	Kind         string            `json:"kind"`
 	ReviewStatus string            `json:"review_status"`
 	Status       string            `json:"status"`
@@ -110,6 +111,7 @@ func LoadWorkspaceFile(root, workspaceFile string) (Workspace, error) {
 	return Workspace{
 		ID:           id,
 		Title:        mdfile.Scalar(fm, "title", id),
+		Tag:          mdfile.Scalar(fm, "tag", ""),
 		Kind:         mdfile.Scalar(fm, "kind", "workspace"),
 		ReviewStatus: mdfile.Scalar(fm, "review_status", "draft"),
 		Status:       mdfile.Scalar(fm, "status", "discovered"),

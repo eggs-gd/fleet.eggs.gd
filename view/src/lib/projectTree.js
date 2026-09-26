@@ -3,8 +3,6 @@ import { taskProjectId } from './taskDisplay.js';
 const byRelevance = (aCount, bCount, aId, bId, aTitle, bTitle) => {
   const diff = bCount - aCount;
   if (diff) return diff;
-  if (aId === '_life') return -1;
-  if (bId === '_life') return 1;
   return String(aTitle || '').localeCompare(String(bTitle || ''));
 };
 

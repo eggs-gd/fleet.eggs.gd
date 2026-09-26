@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
 // ValidProjectID rejects ids that would leave Work/.
@@ -27,6 +28,8 @@ func projectCard(root, project string) string {
 // line. Repeating an alias, note, or decision writes nothing. A project
 // without a card is an error: this does not invent projects.
 func AddProjectNote(root, project, kind, text string, now time.Time) (path string, wrote bool, err error) {
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
 	path = projectCard(root, project)
 	body, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -77,15 +80,9 @@ func ProjectAliases(root, project string) ([]string, error) {
 	return aliases, err
 }
 
-// HumanWorker reports whether Fleet/<name>.md exists: a person the operator
-// registered as a worker.
+// HumanWorker reports whether name is a person in the Fleet roster.
 func HumanWorker(root, name string) bool {
-	name = strings.TrimSpace(name)
-	if strings.TrimSpace(root) == "" || !ValidProjectID(name) {
-		return false
-	}
-	info, err := os.Stat(filepath.Join(root, "Fleet", name+".md"))
-	return err == nil && !info.IsDir()
+	return tasklifecycle.RosterPerson(root, name)
 }
 
 // DefaultAssignee reads default_assignee from the project card, or "".

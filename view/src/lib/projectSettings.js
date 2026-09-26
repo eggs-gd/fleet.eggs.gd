@@ -90,6 +90,7 @@ export const projectSettingsInspect = (
   }
 
   return {
+    tag: workspace?.tag || item.tag || '',
     kind: item.kind || '',
     source: item.source || '',
     status: item.status || '',

@@ -142,7 +142,7 @@ same assignee, Core must pick deterministically:
 
 1. `needs_rework` before `todo`.
 2. Lower numeric `priority` first: `1` before `2`, then `3`, `4`, `5`.
-3. Natural `CORE-*` ref order inside the same priority.
+3. Natural ref order inside the same priority.
 4. Stable file path order only as a final tie-breaker.
 
 Missing priority is treated as `5`.

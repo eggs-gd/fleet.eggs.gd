@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/projecttag"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider"
@@ -55,9 +56,9 @@ type Provider struct {
 }
 
 // New builds a Plane-backed taskprovider.Provider. coreRoot is needed only
-// to allocate CORE-N refs from the same Core-wide _registry/counters.json
-// counter the Markdown adapter uses (refs must never collide between
-// providers — see tasklifecycle.AllocateNextWorkRef).
+// to allocate refs from the tag of the mapped Core project and the same
+// _registry/counters.json the Markdown adapter uses (refs must never collide
+// between providers — see tasklifecycle.AllocateNextRef).
 func New(settings providerconfig.PlaneSettings, apiToken string, coreRoot string) *Provider {
 	client := NewClient(ClientConfig{
 		BaseURL:   settings.BaseURL,
@@ -209,19 +210,26 @@ func (p *Provider) Load(locator string) (Task, error) {
 }
 
 // CreateFromRequest validates req with the same rules the Markdown adapter
-// uses (tasklifecycle.NormalizeTaskCreateRequest), allocates a Core-wide
-// ref, and creates the corresponding Plane work item with that ref recorded
+// uses (tasklifecycle.NormalizeTaskCreateRequest), allocates a ref from the
+// tag of the Core project this Plane project is mapped to, and creates the corresponding Plane work item with that ref recorded
 // in external_id/external_source.
 func (p *Provider) CreateFromRequest(req TaskCreateRequest) (Task, error) {
 	normalized, err := tasklifecycle.NormalizeTaskCreateRequest(req)
 	if err != nil {
 		return Task{}, err
 	}
+	if !tasklifecycle.KnownAssignee(p.coreRoot, normalized.Assignee) {
+		return Task{}, fmt.Errorf("unknown assignee %q: use unassigned, an agent, or a person with a Fleet/<name>.md file", normalized.Assignee)
+	}
 	if normalized.Project != "" && !strings.EqualFold(normalized.Project, p.settings.CoreProject) {
 		return Task{}, fmt.Errorf("plane: project %q is not served by this provider (configured for %q)", normalized.Project, p.settings.CoreProject)
 	}
 
-	ref, err := tasklifecycle.AllocateNextWorkRef(p.coreRoot)
+	tag, err := projecttag.ForProject(p.coreRoot, p.settings.CoreProject)
+	if err != nil {
+		return Task{}, err
+	}
+	ref, err := tasklifecycle.AllocateNextRef(p.coreRoot, tag)
 	if err != nil {
 		return Task{}, err
 	}

@@ -19,6 +19,7 @@
     <p class="settings-lede">
       Inspect-only facts from the board snapshot. Title, path, and tech stay in the header.
     </p>
+    <SettingsField label="Ref tag" value={inspect.tag || 'assigned on the next scan'} mono />
     <SettingsField label="Kind" value={inspect.kind || '—'} />
     <SettingsField label="Source" value={inspect.source || '—'} />
     {#if inspect.status}

@@ -267,8 +267,11 @@ func (task *Task) ClearLaunchWaiting() {
 	task.ResolveLaunchEvaluation()
 }
 
+// OperatorAuthor is the comment author for anything the person did.
+const OperatorAuthor = "owner"
+
 // DeriveBlockedReason picks the operator-facing explanation for a "blocked"
-// task from its comments/launch-evaluation state: the most recent non-Alex
+// task from its comments/launch-evaluation state: the most recent non-operator
 // comment, falling back to the most recent comment, a launch-wait reason, a
 // failed launch gate, or the task summary. Exported so every provider
 // (MarkdownProvider, Plane) derives blocked_reason with identical rules.
@@ -278,7 +281,7 @@ func DeriveBlockedReason(task Task) string {
 	}
 	for i := len(task.Comments) - 1; i >= 0; i-- {
 		author := strings.ToLower(strings.TrimSpace(task.Comments[i].Author))
-		if author == "alex" || author == "owner" {
+		if author == OperatorAuthor {
 			continue
 		}
 		if text := strings.TrimSpace(task.Comments[i].Text); text != "" {

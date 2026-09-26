@@ -23,7 +23,7 @@ Data
 `-- .cursor/     Fleet MCP and Manager rules for Cursor
 ```
 
-This template is the generic bootstrap. An operator's Data copy may diverge from it. The human profile here is `owner`; an existing Data root may still use `alex`. Aligning worker notes between the two trees is not required for bootstrap.
+This template is the generic bootstrap. An operator's Data copy may diverge from it. The human worker here is `owner`. A person is a worker, and can be assigned tasks, when `Fleet/<name>.md` exists.
 
 The Manager is a Claude, Codex, Cursor, or Gemini session whose folder is
 this directory. The conversation stays in that provider's app. Each provider

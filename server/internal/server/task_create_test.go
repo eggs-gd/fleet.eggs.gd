@@ -19,7 +19,7 @@ import (
 func TestCreateFromRequestWritesTaskIncrementsCounterAndRefreshesIndex(t *testing.T) {
 	root := t.TempDir()
 	projectDir := filepath.Join(root, "Work", "core-eggs-gd")
-	writeTestFile(t, filepath.Join(projectDir, "PROJECT.md"), "# Core\n")
+	writeTestFile(t, filepath.Join(projectDir, "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
   "work_ref_prefix": "CORE",
   "next_work_ref": 42,
@@ -86,13 +86,13 @@ func TestCreateFromRequestWritesTaskIncrementsCounterAndRefreshesIndex(t *testin
 		t.Fatal(err)
 	}
 	var counters struct {
-		NextWorkRef int `json:"next_work_ref"`
+		Next map[string]int `json:"next"`
 	}
 	if err := json.Unmarshal(data, &counters); err != nil {
 		t.Fatal(err)
 	}
-	if counters.NextWorkRef != 43 {
-		t.Fatalf("next_work_ref = %d, want 43", counters.NextWorkRef)
+	if counters.Next["CORE"] != 43 {
+		t.Fatalf("next CORE = %d, want 43", counters.Next["CORE"])
 	}
 
 	index, err := os.ReadFile(filepath.Join(root, "Work", "INDEX.md"))

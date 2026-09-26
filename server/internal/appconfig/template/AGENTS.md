@@ -52,9 +52,10 @@ regardless of what the `_registry` looks like.
    the Manager skills in `.agents/skills` and the Fleet MCP tools. Do not
    hand-parse or hand-edit task Markdown. `_docs/MANAGER.md` is the human
    reference for the Markdown shape, not the Manager's instructions.
-10. Chat output is not a completed task. Every task must produce or update a
-    physical artifact in Data or the target repository before it can be marked
-    `needs_review` or `done`.
+10. Chat output is not a completed task. Every task an AI worker does must
+    produce or update a physical artifact in Data or the target repository
+    before it can be marked `needs_review` or `done`. A task assigned to a
+    person is closed by that person and needs no artifact.
 11. Before launching or picking up agent work, check `Fleet/LAUNCH_POLICY.md`.
     During the MVP, do not run more than one agent against the same project or
     repository.

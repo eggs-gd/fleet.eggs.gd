@@ -6,6 +6,12 @@ source code, build tooling, and engineering documentation — it ships to an
 operator as a built binary; it has no knowledge of any specific operator's
 data and makes no assumptions about where that data lives on their disk.
 
+Fleet manages work, not artifacts. A task lives in Fleet, and the work
+happens in a **workspace**: a folder that can hold code, documents, research,
+or anything an AI worker or a person can work on. Code is the most developed
+kind of workspace today, not the only one. A task assigned to a person needs no
+artifact at all.
+
 An operator's own Inbox/Work/Fleet/Archive content and generated
 `_registry` state — their **Data** — is a separate, independent repository
 with no dependency in either direction; nothing here references its

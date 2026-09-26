@@ -8,8 +8,12 @@ import (
 )
 
 var (
-	refPattern = regexp.MustCompile(`(?i)\b(?:CORE|INBOX|LIFE)-(\d+)\b`)
-	// Matches "задача 57", "таска 57", "task 57", "core 57". Go's RE2 \b is
+	// refPattern matches a full ref: a project tag, a dash, a number (FLET-12,
+	// CORE-57, INBOX-3).
+	refPattern      = regexp.MustCompile(`(?i)\b([A-Z][A-Z0-9]{1,5})-(\d+)\b`)
+	assigneePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+	// Matches "задача 57", "таска 57", "task 57", "core 57". A bare number means
+	// a legacy CORE ref: tasks created since project tags exist need the full ref. Go's RE2 \b is
 	// ASCII-only word-boundary (based on [0-9A-Za-z_]), so it never matches
 	// before/after Cyrillic letters — "задача"/"таска" would silently never
 	// match with \b. \p{L}/\p{N} boundaries below are Unicode-aware; RE2 has
@@ -34,16 +38,6 @@ var knownStatuses = map[string]string{
 	"done":         "done",
 	"archived":     "archived",
 	"archive":      "archived",
-}
-
-var knownAssignees = map[string]bool{
-	"alex":       true,
-	"owner":      true,
-	"codex":      true,
-	"claude":     true,
-	"cursor":     true,
-	"gemini":     true,
-	"unassigned": true,
 }
 
 // ParseFastPath attempts deterministic intent extraction without an LLM.
@@ -104,7 +98,7 @@ func parseShow(lower, original string) (*Intent, *Failure) {
 			// Tight incomplete command → ambiguous. Free-form "show me …" falls through to LLM.
 			rest := strings.TrimSpace(lower[len("show "):])
 			if rest == "" || rest == "task" || rest == "the task" {
-				return nil, &Failure{Code: FailureAmbiguousCommand, Message: "show command needs a CORE-* ref or 'board'"}
+				return nil, &Failure{Code: FailureAmbiguousCommand, Message: "show command needs a task ref such as FLET-12 or 'board'"}
 			}
 			return nil, nil
 		}
@@ -120,7 +114,7 @@ func parseMove(lower, original string) (*Intent, *Failure) {
 
 	ref := extractRef(original)
 	if ref == "" {
-		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "move/status command needs a CORE-* ref"}
+		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "move/status command needs a task ref such as FLET-12"}
 	}
 	status := extractStatusAfterTo(lower)
 	if status == "" {
@@ -135,7 +129,7 @@ func parseComment(lower, original string) (*Intent, *Failure) {
 	}
 	ref := extractRef(original)
 	if ref == "" {
-		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "comment command needs a CORE-* ref"}
+		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "comment command needs a task ref such as FLET-12"}
 	}
 	comment := ""
 	if idx := strings.Index(original, ":"); idx >= 0 {
@@ -159,7 +153,7 @@ func parseAssign(lower, original string) (*Intent, *Failure) {
 	}
 	ref := extractRef(original)
 	if ref == "" {
-		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "assign command needs a CORE-* ref"}
+		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "assign command needs a task ref such as FLET-12"}
 	}
 	assignee := ""
 	if idx := strings.LastIndex(lower, " to "); idx >= 0 {
@@ -168,7 +162,7 @@ func parseAssign(lower, original string) (*Intent, *Failure) {
 		assignee = strings.TrimSpace(lower[idx+1:])
 	}
 	assignee = strings.Trim(assignee, ".")
-	if !knownAssignees[assignee] {
+	if !assigneePattern.MatchString(assignee) {
 		return nil, &Failure{Code: FailureAmbiguousCommand, Message: fmt.Sprintf("unknown assignee %q", assignee)}
 	}
 	return &Intent{Kind: KindAssigneeChange, Ref: ref, Assignee: assignee, RawTranscript: original}, nil
@@ -180,7 +174,7 @@ func parsePriority(lower, original string) (*Intent, *Failure) {
 	}
 	ref := extractRef(original)
 	if ref == "" {
-		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "priority command needs a CORE-* ref"}
+		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "priority command needs a task ref such as FLET-12"}
 	}
 	priority, ok := extractPriority(lower)
 	if !ok {
@@ -195,7 +189,7 @@ func parseCancel(lower, original string) (*Intent, *Failure) {
 	}
 	ref := extractRef(original)
 	if ref == "" {
-		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "cancel/archive command needs a CORE-* ref"}
+		return nil, &Failure{Code: FailureAmbiguousCommand, Message: "cancel/archive command needs a task ref such as FLET-12"}
 	}
 	confirm := strings.Contains(lower, " confirm") || strings.HasSuffix(lower, " confirm")
 	if !confirm {
@@ -208,9 +202,8 @@ func parseCancel(lower, original string) (*Intent, *Failure) {
 }
 
 func extractRef(text string) string {
-	if match := refPattern.FindStringSubmatch(text); len(match) == 2 {
-		prefix := strings.ToUpper(match[0][:strings.Index(match[0], "-")])
-		return prefix + "-" + match[1]
+	if match := refPattern.FindStringSubmatch(text); len(match) == 3 {
+		return strings.ToUpper(match[1]) + "-" + match[2]
 	}
 	if match := looseRefPattern.FindStringSubmatch(text); len(match) == 2 {
 		return "CORE-" + match[1]

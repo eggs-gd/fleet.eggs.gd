@@ -54,8 +54,8 @@ Required Core framework rules:
   produced a partial or likely-incorrect result that needs another pass.
   Use "failed" if you could not accomplish the task at all. "artifacts" and
   "tests" are optional but should list what you actually changed/ran.
-- Alex is the default closer for bot-produced work - after Core applies
-  needs_review/blocked from your reported outcome, Alex decides done or
+- The operator is the default closer for bot-produced work - after Core applies
+  needs_review/blocked from your reported outcome, the operator decides done or
   needs_rework, not you. Never finalize task status yourself.
 - Do not manually edit generated/service index files such as Work/INDEX.md.
 - Core daemon/finalizer refreshes derived files and generated indexes.

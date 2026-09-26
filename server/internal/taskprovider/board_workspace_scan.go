@@ -23,12 +23,6 @@ func loadIndexWorkspaces(root string, workDir string) ([]board.Workspace, error)
 		workspaces = append(workspaces, workspace)
 	}
 	sort.Slice(workspaces, func(i, j int) bool {
-		if workspaces[i].ID == "_life" {
-			return true
-		}
-		if workspaces[j].ID == "_life" {
-			return false
-		}
 		return strings.ToLower(workspaces[i].Title) < strings.ToLower(workspaces[j].Title)
 	})
 	return workspaces, nil

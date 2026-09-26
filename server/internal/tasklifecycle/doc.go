@@ -9,7 +9,7 @@
 //     ExecutionState, WorkerResult;
 //   - status transition rules (status_transition.go);
 //   - pickup/priority ordering (priority.go);
-//   - create-request normalization and Core-wide CORE-N ref allocation
+//   - create-request normalization and per-tag ref allocation (TAG-N)
 //     (task_create.go);
 //   - patch/create request types (patch.go);
 //   - launch validation gates (validate.go);
@@ -29,6 +29,6 @@
 // internal/taskprovider/markdown (MarkdownProvider). That package implements
 // taskprovider.Provider and exposes Flow() as taskflow.TaskProvider.
 //
-// Domain helpers NormalizeTaskCreateRequest, AllocateNextWorkRef, and
+// Domain helpers NormalizeTaskCreateRequest, AllocateNextRef, and
 // DeriveBlockedReason stay here so Plane and Markdown share identical rules.
 package tasklifecycle

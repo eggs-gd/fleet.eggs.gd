@@ -63,12 +63,6 @@ func loadIndexWorkspaces(root string, workDir string) ([]board.Workspace, error)
 		workspaces = append(workspaces, workspace)
 	}
 	sort.Slice(workspaces, func(i, j int) bool {
-		if workspaces[i].ID == "_life" {
-			return true
-		}
-		if workspaces[j].ID == "_life" {
-			return false
-		}
 		return strings.ToLower(workspaces[i].Title) < strings.ToLower(workspaces[j].Title)
 	})
 	return workspaces, nil
@@ -86,7 +80,7 @@ func renderWorkIndex(tasks []tasklifecycle.Task, workspaces []board.Workspace, p
 	}
 	out.WriteString("\n")
 
-	writeTaskSection(&out, "Needs Review", "Tasks have produced physical artifacts and wait for Alex review.", tasks, "needs_review")
+	writeTaskSection(&out, "Needs Review", "Tasks have produced physical artifacts and wait for the operator's review.", tasks, "needs_review")
 	writeTaskSection(&out, "Needs Rework", "Tasks returned from review and picked before normal todo work.", tasks, "needs_rework")
 	writeTaskSection(&out, "Todo", "Tasks are ready for active worker pickup.", tasks, "todo")
 	writeTaskSection(&out, "Doing", "Tasks are currently being worked on.", tasks, "doing")

@@ -21,4 +21,4 @@ Inbox items stay in `Inbox/items/`. Promotion to Work updates the Inbox
 frontmatter and creates a linked Work item; it does not move the Inbox file.
 
 Raw captures use short refs like `INBOX-1`. Promoted Work tasks get separate
-refs like `CORE-10`.
+refs like `FLET-10`.

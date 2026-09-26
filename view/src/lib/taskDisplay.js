@@ -34,7 +34,6 @@ export const hasProjectTasks = (tasks, workspaceId) =>
   tasks.some((task) => task.workspace_id === workspaceId);
 
 export const workspaceRank = (tasks, workspace) => {
-  if (workspace.id === '_life') return 0;
   return hasProjectTasks(tasks, workspace.id) ? 1 : 2;
 };
 

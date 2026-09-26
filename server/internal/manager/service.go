@@ -235,6 +235,13 @@ func (s *Service) addComment(ctx context.Context, intent Intent, path string) Re
 }
 
 func (s *Service) patchAssignee(ctx context.Context, intent Intent, path string) Response {
+	if !s.knownAssignee(intent.Assignee) {
+		return failResponse(Failure{
+			Code:        FailureValidation,
+			Message:     fmt.Sprintf("unknown assignee %q", intent.Assignee),
+			Suggestions: append([]string{"unassigned"}, workerAgents...),
+		})
+	}
 	task, err := patchViaService(ctx, s.Tasks, intent.Ref, taskflow.PatchInput{
 		Assignee: intent.Assignee,
 		Actor:    "manager",

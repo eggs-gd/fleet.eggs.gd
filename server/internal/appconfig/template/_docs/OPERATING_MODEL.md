@@ -94,7 +94,7 @@ The worker should:
 11. Open the linked repository path.
 12. If multiple `todo` tasks are available for the worker, pick the lowest
     numeric priority first: `1` before `2`, then `3`, `4`, `5`.
-13. If priority is tied, pick by natural `CORE-*` ref order.
+13. If priority is tied, pick by natural ref order.
 14. Set task `status: doing` in the canonical task card. Do not edit
     `Work/INDEX.md`; Core runtime or the shared mutation layer refreshes
     generated views.

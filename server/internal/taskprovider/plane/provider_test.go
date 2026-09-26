@@ -233,6 +233,7 @@ func newTestProvider(t *testing.T, baseURL string) *Provider {
 	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(counters), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeProjectCard(t, root, "CORE")
 
 	settings := providerconfig.PlaneSettings{
 		Workspace:   "eggs_gd",
@@ -413,6 +414,7 @@ func newTestProviderNoProjectID(t *testing.T, baseURL string) *Provider {
 	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(counters), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	writeProjectCard(t, root, "CORE")
 
 	settings := providerconfig.PlaneSettings{
 		Workspace:   "eggs_gd",
@@ -490,5 +492,56 @@ func TestWorkItemIDFromLocator(t *testing.T) {
 	}
 	if _, err := workItemIDFromLocator(""); err == nil {
 		t.Fatal("expected empty locator to error")
+	}
+}
+
+// writeProjectCard gives the mapped Core project a card with a ref tag, which is
+// where the Plane provider takes the prefix of new refs from.
+func writeProjectCard(t *testing.T, root, tag string) {
+	t.Helper()
+	dir := filepath.Join(root, "Work", "core-eggs-gd")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	card := "---\nid: core-eggs-gd\ntag: \"" + tag + "\"\n---\n\n# Core\n"
+	if err := os.WriteFile(filepath.Join(dir, "PROJECT.md"), []byte(card), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProvider_CreateTakesTheTagOfTheMappedCoreProject(t *testing.T) {
+	fake := newFakePlane()
+	server := fake.server(t)
+	defer server.Close()
+	provider := newTestProvider(t, server.URL)
+	writeProjectCard(t, provider.coreRoot, "PLNE")
+
+	created, err := provider.CreateFromRequest(tasklifecycle.TaskCreateRequest{
+		Title: "Tagged", Request: "r", Project: "core-eggs-gd", Assignee: "claude", Type: "feature",
+	})
+	if err != nil {
+		t.Fatalf("CreateFromRequest: %v", err)
+	}
+	if created.Ref != "PLNE-1" {
+		t.Fatalf("ref = %q, want PLNE-1", created.Ref)
+	}
+}
+
+func TestProvider_CreateFailsWhenTheMappedProjectHasNoTag(t *testing.T) {
+	fake := newFakePlane()
+	server := fake.server(t)
+	defer server.Close()
+	provider := newTestProvider(t, server.URL)
+	if err := os.WriteFile(filepath.Join(provider.coreRoot, "Work", "core-eggs-gd", "PROJECT.md"), []byte("---\nid: core-eggs-gd\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := provider.CreateFromRequest(tasklifecycle.TaskCreateRequest{
+		Title: "Untagged", Request: "r", Project: "core-eggs-gd", Assignee: "claude", Type: "feature",
+	})
+	if err == nil || !strings.Contains(err.Error(), "no tag yet") {
+		t.Fatalf("err = %v", err)
+	}
+	if len(fake.items) != 0 {
+		t.Fatal("a Plane work item was created for a task with no ref")
 	}
 }

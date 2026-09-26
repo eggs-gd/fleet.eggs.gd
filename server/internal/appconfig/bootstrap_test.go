@@ -45,7 +45,7 @@ func TestEnsureDataRootCreatesTemplateForFreshRoot(t *testing.T) {
 		"_docs/TASK_LIFECYCLE.md",
 		"_docs/MANAGER.md",
 		"_docs/OPERATING_MODEL.md",
-		"_docs/PERSONAL_SPACE.md",
+		"_registry/counters.json",
 		"_docs/templates/WORK_ITEM.md",
 	} {
 		if _, err := os.Stat(filepath.Join(root, want)); err != nil {

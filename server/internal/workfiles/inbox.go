@@ -126,6 +126,8 @@ func ReadInbox(root, ref string) (InboxItem, error) {
 
 // MarkPromoted records the task an item became.
 func MarkPromoted(root, ref, taskRef string, now time.Time) error {
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
 	item, err := ReadInbox(root, ref)
 	if err != nil {
 		return err

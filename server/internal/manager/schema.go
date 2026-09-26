@@ -43,11 +43,11 @@ const IntentJSONSchema = `{
     },
     "assignee": {
       "type": "string",
-      "enum": ["alex", "owner", "codex", "claude", "cursor", "gemini", "unassigned"]
+      "description": "unassigned, an agent (claude, codex, cursor, gemini), or a person listed as Fleet/<name>.md."
     },
     "ref": {
       "type": "string",
-      "pattern": "^(CORE|INBOX|LIFE)-[0-9]+$"
+      "pattern": "^[A-Z][A-Z0-9]{1,5}-[0-9]+$"
     },
     "comment": { "type": "string" },
     "comment_author": { "type": "string" },

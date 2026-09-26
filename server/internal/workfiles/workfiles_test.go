@@ -59,14 +59,20 @@ func TestCaptureNumbersAndPromote(t *testing.T) {
 		t.Fatalf("list = %v", refs)
 	}
 	counters, _ := os.ReadFile(filepath.Join(root, "_registry", "counters.json"))
-	if !strings.Contains(string(counters), `"next_inbox_ref": 12`) {
+	if !strings.Contains(string(counters), `"INBOX": 12`) {
 		t.Fatalf("counter not advanced: %s", counters)
 	}
 }
 
-func TestCaptureFailsWithoutCounters(t *testing.T) {
-	if _, _, err := CaptureInbox(t.TempDir(), "note", testNow); err == nil {
-		t.Fatal("capture succeeded without _registry/counters.json")
+func TestCaptureCreatesTheCountersFileFromTheTree(t *testing.T) {
+	root := t.TempDir()
+	ref, _, err := CaptureInbox(root, "first note", testNow)
+	if err != nil || ref != "INBOX-1" {
+		t.Fatalf("capture = %q, %v", ref, err)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, "_registry", "counters.json"))
+	if err != nil || !strings.Contains(string(raw), `"INBOX": 2`) {
+		t.Fatalf("counters = %s, %v", raw, err)
 	}
 }
 

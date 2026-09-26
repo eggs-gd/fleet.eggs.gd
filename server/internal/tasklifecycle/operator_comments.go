@@ -52,7 +52,7 @@ func ProviderErrorComment(pe *ProviderError, ctx ProviderErrorContext) string {
 	if ctx.LogPath != "" {
 		comment += "\n\nSession log: `" + ctx.LogPath + "`"
 	}
-	comment += "\n\nMove this task to `needs_rework` or `todo` after the fix for an operator-approved retry, or to `needs_review` if Alex has already verified the artifacts."
+	comment += "\n\nMove this task to `needs_rework` or `todo` after the fix for an operator-approved retry, or to `needs_review` if the operator has already verified the artifacts."
 	return comment
 }
 
@@ -208,6 +208,6 @@ func StaleProviderSessionComment(pe *ProviderError, ctx ProviderErrorContext, fa
 		comment = ProviderErrorComment(pe, ctx)
 	}
 	comment += "\n\nCore marked this execution `" + executionStatus + "` during startup reconciliation so this task is no longer guarded by a stale resumable session."
-	comment += "\n\nAlex can inspect the task artifacts/logs and move this task to `needs_review`, `needs_rework`, or `todo` as appropriate."
+	comment += "\n\nThe operator can inspect the task artifacts/logs and move this task to `needs_review`, `needs_rework`, or `todo` as appropriate."
 	return comment
 }

@@ -12,6 +12,7 @@ func TestRuntimeCreateAndPatchTaskUseTaskService(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), `---
 id: core-eggs-gd
+tag: "CORE"
 title: Core
 kind: standalone_repository
 status: draft

@@ -1,17 +1,13 @@
 package tasklifecycle
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"unicode"
 )
-
-var workRefCounterMu sync.Mutex
 
 // DefaultTaskType is used when frontmatter/API omit type. "todo" is a status,
 // not a task type — legacy type:todo values normalize to this.
@@ -36,16 +32,6 @@ func NormalizeTaskType(taskType string) string {
 	return taskType
 }
 
-var taskAssignees = map[string]bool{
-	"alex":       true,
-	"owner":      true,
-	"codex":      true,
-	"claude":     true,
-	"cursor":     true,
-	"gemini":     true,
-	"unassigned": true,
-}
-
 // TaskCreateRequest is the dashboard/API payload for creating a new Work item.
 type TaskCreateRequest struct {
 	Title            string `json:"title"`
@@ -60,16 +46,6 @@ type TaskCreateRequest struct {
 	// DependsOn lists prerequisite refs that must be done before launch
 	// (CORE-148). Optional; empty means no hard dependency gate.
 	DependsOn []string `json:"depends_on"`
-}
-
-type workRefCounters struct {
-	WorkRefPrefix  string   `json:"work_ref_prefix"`
-	NextWorkRef    int      `json:"next_work_ref"`
-	InboxRefPrefix string   `json:"inbox_ref_prefix"`
-	NextInboxRef   int      `json:"next_inbox_ref"`
-	LifeRefPrefix  string   `json:"life_ref_prefix"`
-	NextLifeRef    int      `json:"next_life_ref"`
-	Notes          []string `json:"notes"`
 }
 
 // NormalizeTaskCreateRequest validates and fills in defaults for a
@@ -116,11 +92,12 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 		return TaskCreateRequest{}, fmt.Errorf("unknown task type %q", req.Type)
 	}
 
+	req.Assignee = strings.ToLower(strings.TrimSpace(req.Assignee))
 	if req.Assignee == "" {
-		req.Assignee = "unassigned"
+		req.Assignee = Unassigned
 	}
-	if !taskAssignees[req.Assignee] {
-		return TaskCreateRequest{}, fmt.Errorf("unknown assignee %q", req.Assignee)
+	if !ValidAssigneeName(req.Assignee) {
+		return TaskCreateRequest{}, fmt.Errorf("assignee %q is not a valid name", req.Assignee)
 	}
 
 	priority := 5
@@ -134,7 +111,7 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 
 	if req.AssignmentReason == "" {
 		if req.Assignee == "unassigned" {
-			req.AssignmentReason = "Created from the backoffice dashboard; left unassigned until Alex routes it."
+			req.AssignmentReason = "Created from the backoffice dashboard; left unassigned until it is routed."
 		} else {
 			req.AssignmentReason = fmt.Sprintf("Assigned to %s from the backoffice dashboard.", req.Assignee)
 		}
@@ -143,61 +120,6 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 	req.DependsOn = NormalizeDependsOn(req.DependsOn)
 
 	return req, nil
-}
-
-// AllocateNextWorkRef allocates the next Core-wide CORE-N ref from
-// _registry/counters.json. Refs are Core-wide, not provider-scoped, so every
-// provider that creates tasks against the same Core root must allocate from
-// this single counter.
-func AllocateNextWorkRef(root string) (string, error) {
-	return allocateRef(root, func(c *workRefCounters) (string, string, *int) {
-		return c.WorkRefPrefix, "CORE", &c.NextWorkRef
-	}, "next_work_ref")
-}
-
-// AllocateNextInboxRef allocates the next INBOX-N ref from the same counters
-// file.
-func AllocateNextInboxRef(root string) (string, error) {
-	return allocateRef(root, func(c *workRefCounters) (string, string, *int) {
-		return c.InboxRefPrefix, "INBOX", &c.NextInboxRef
-	}, "next_inbox_ref")
-}
-
-func allocateRef(root string, pick func(*workRefCounters) (prefix, fallback string, next *int), field string) (string, error) {
-	workRefCounterMu.Lock()
-	defer workRefCounterMu.Unlock()
-
-	path := filepath.Join(root, "_registry", "counters.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read counters: %w", err)
-	}
-
-	var counters workRefCounters
-	if err := json.Unmarshal(data, &counters); err != nil {
-		return "", fmt.Errorf("parse counters: %w", err)
-	}
-	prefix, fallback, next := pick(&counters)
-	if *next < 1 {
-		return "", fmt.Errorf("counters %s must be >= 1", field)
-	}
-	prefix = strings.TrimSpace(prefix)
-	if prefix == "" {
-		prefix = fallback
-	}
-
-	ref := fmt.Sprintf("%s-%d", prefix, *next)
-	*next++
-
-	encoded, err := json.MarshalIndent(counters, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	encoded = append(encoded, '\n')
-	if err := writeCountersAtomic(path, encoded); err != nil {
-		return "", fmt.Errorf("write counters: %w", err)
-	}
-	return ref, nil
 }
 
 func writeCountersAtomic(path string, data []byte) error {

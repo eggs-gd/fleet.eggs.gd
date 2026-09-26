@@ -15,7 +15,7 @@ import (
 
 func TestTaskFlowProviderCreateUpdateCommentTransition(t *testing.T) {
 	root := t.TempDir()
-	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "# Core\n")
+	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
   "work_ref_prefix": "CORE",
   "next_work_ref": 102,
@@ -105,7 +105,7 @@ func TestTaskFlowProviderCreateUpdateCommentTransition(t *testing.T) {
 
 func TestCreateFromRequestDefaultsAndValidates(t *testing.T) {
 	root := t.TempDir()
-	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "# Core\n")
+	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
   "work_ref_prefix": "CORE",
   "next_work_ref": 7,

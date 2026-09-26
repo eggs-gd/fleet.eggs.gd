@@ -1,6 +1,6 @@
 <script>
   const taskTypes = ['feature', 'bug', 'research', 'review', 'maintenance', 'decision'];
-  const defaultAssignees = ['unassigned', 'owner', 'alex', 'claude', 'codex', 'cursor', 'gemini'];
+  const defaultAssignees = ['unassigned', 'owner', 'claude', 'codex', 'cursor', 'gemini'];
 
   export let projects = [];
   export let workspaces = [];
@@ -178,7 +178,7 @@
 
     <label class="body-editor depends-editor">
       <span>Depends on (optional hard blockers)</span>
-      <input bind:value={draftDependsOn} placeholder="CORE-144, CORE-145" spellcheck="false" />
+      <input bind:value={draftDependsOn} placeholder="FLET-144, FLET-145" spellcheck="false" />
       <p class="depends-hint">
         Prerequisite refs that must reach <code>done</code> before daemon launch. Written as
         <code>depends_on</code> frontmatter — not advisory prose.
@@ -187,7 +187,7 @@
 
     <p class="create-hint">
       Creates a durable Markdown task under <code>Work/&lt;project&gt;/tasks/</code> with the next
-      <code>CORE-*</code> ref. Defaults stay off the launch queue (<code>backlog</code>) and do not
+      <code>TAG-N</code> ref. Defaults stay off the launch queue (<code>backlog</code>) and do not
       commit, push, or open a PR.
     </p>
 

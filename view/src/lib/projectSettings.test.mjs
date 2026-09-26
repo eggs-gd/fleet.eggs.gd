@@ -132,3 +132,9 @@ test('nested project shows workspace membership and enriches git nesting from re
 test('missing item is empty inspect', () => {
   assert.equal(projectSettingsInspect(null), null);
 });
+
+test('inspect shows the ref tag from the workspace card', () => {
+  const workspace = { id: 'eggs-gd', title: 'Eggs', tag: 'EGGS', path: 'Work/eggs-gd/PROJECT.md' };
+  assert.equal(projectSettingsInspect(workspace, { workspaces: [workspace] }).tag, 'EGGS');
+  assert.equal(projectSettingsInspect({ id: 'bare' }, {}).tag, '');
+});
