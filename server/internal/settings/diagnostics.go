@@ -126,9 +126,6 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 			issues = append(issues, Issue{Severity: "warn", Code: "mcp_undetected", Message: "MCP " + server.Name + " not detected. Expected: " + server.Expected, Section: "integrations"})
 		}
 	}
-	if projects.TaskBackend.Plane != nil && projects.TaskBackend.Plane.TokenEnv != "" && !projects.TaskBackend.Plane.TokenEnvSet {
-		issues = append(issues, Issue{Severity: "warn", Code: "plane_token_env_unset", Message: "Process env " + projects.TaskBackend.Plane.TokenEnv + " is empty. If secrets live in .env, core serve does not load that file.", Section: "projects"})
-	}
 	if sessions.Orphaned > 0 {
 		issues = append(issues, Issue{Severity: "warn", Code: "orphaned_sessions", Message: fmt.Sprintf("%d orphaned sessions (%d resumable)", sessions.Orphaned, sessions.OrphanedResumable), Section: "diagnostics"})
 	}

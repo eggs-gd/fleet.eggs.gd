@@ -9,9 +9,10 @@ import (
 )
 
 type PatchRequest struct {
-	ScanRoots *[]string             `json:"scanRoots"`
-	Agents    map[string]AgentPatch `json:"agents"`
-	Manager   *ManagerPatch         `json:"manager"`
+	ScanRoots      *[]string             `json:"scanRoots"`
+	SessionTimeout *string               `json:"sessionTimeout"`
+	Agents         map[string]AgentPatch `json:"agents"`
+	Manager        *ManagerPatch         `json:"manager"`
 }
 
 type AgentPatch struct {
@@ -66,6 +67,9 @@ func MergeOverlay(base Overlay, patch PatchRequest) Overlay {
 	if patch.ScanRoots != nil {
 		out.ScanRoots = normalizeScanRoots(*patch.ScanRoots)
 	}
+	if patch.SessionTimeout != nil {
+		out.SessionTimeout = strings.TrimSpace(*patch.SessionTimeout)
+	}
 	for id, item := range patch.Agents {
 		cur := out.Agents[id]
 		if item.Enabled != nil {
@@ -105,6 +109,9 @@ func MergeOverlay(base Overlay, patch PatchRequest) Overlay {
 }
 
 func ValidateOverlay(overlay Overlay) (warnings []string, err error) {
+	if _, err := ResolveServeTimeout(false, 0, overlay); err != nil {
+		return nil, err
+	}
 	for _, root := range normalizeScanRoots(overlay.ScanRoots) {
 		if err := ValidateScanRoot(root); err != nil {
 			return nil, err

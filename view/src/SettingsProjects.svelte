@@ -31,7 +31,7 @@
   <p class="settings-lede">
     Each path is a directory of git checkouts. Save, then the running server watches all of them and refreshes the registry when repositories appear or disappear.
     Rescan runs a pass now. Recheck is for agents, not this tree.
-    Per-project repositories and PROJECT.md open from the tools icon on that project's header.
+    Per-project repositories and PROJECT.md open from the Settings tab on that project.
   </p>
   {#each scanRoots as root, index (index)}
     <div class="settings-row">
@@ -123,19 +123,6 @@
   <SettingsField label="Active" value={projects.task_backend?.active || '—'} />
   <SettingsField label="Config file" value={projects.task_backend?.config_file || '—'} mono />
   <SettingsField label="Exists" value={projects.task_backend?.config_file_exists ? 'yes' : 'no'} />
-  <SettingsField label="Implementations in code" value={(projects.task_backend?.implementations || []).join(', ')} />
-  {#if projects.task_backend?.plane}
-    <p class="settings-lede">Plane (declared in config, not a fake selector)</p>
-    <SettingsField label="Active" value={projects.task_backend.plane.active ? 'yes' : 'no'} />
-    <SettingsField label="Workspace" value={projects.task_backend.plane.workspace || '—'} />
-    <SettingsField label="Base URL" value={projects.task_backend.plane.base_url || '—'} mono />
-    <SettingsField label="Token env" value={projects.task_backend.plane.token_env || '—'} />
-    <SettingsField label="Token env set" value={projects.task_backend.plane.token_env_set ? 'yes' : 'no'} />
-    <SettingsField label="Core project" value={projects.task_backend.plane.core_project || '—'} />
-    {#if projects.task_backend.plane.notes}
-      <p class="settings-hint">{projects.task_backend.plane.notes}</p>
-    {/if}
-  {/if}
 </section>
 
 {#if projects.notes?.length}

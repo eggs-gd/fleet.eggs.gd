@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
 )
@@ -16,9 +17,10 @@ var knownAgentIDs = []string{"claude", "codex", "cursor", "gemini"}
 // Overlay is the gitignored machine overlay merged above core.config.yaml
 // and below process environment.
 type Overlay struct {
-	ScanRoots []string
-	Agents    map[string]AgentOverlay
-	Manager   ManagerOverlay
+	ScanRoots      []string
+	SessionTimeout string
+	Agents         map[string]AgentOverlay
+	Manager        ManagerOverlay
 }
 
 type AgentOverlay struct {
@@ -103,6 +105,33 @@ func (o Overlay) localAgents() map[string]providers.LocalAgent {
 	return out
 }
 
+const DefaultSessionTimeout = 10 * time.Minute
+
+// ResolveServeTimeout uses an explicit --session-timeout when the flag was
+// passed. Otherwise it uses core.local.yaml, then the default. The overlay
+// value applies on the next serve; a running process keeps the timeout it
+// started with.
+func ResolveServeTimeout(flagSet bool, flagValue time.Duration, overlay Overlay) (time.Duration, error) {
+	if flagSet {
+		if flagValue <= 0 {
+			return 0, fmt.Errorf("session-timeout must be positive")
+		}
+		return flagValue, nil
+	}
+	raw := strings.TrimSpace(overlay.SessionTimeout)
+	if raw == "" {
+		return DefaultSessionTimeout, nil
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s sessionTimeout: %w", OverlayFileName, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("%s sessionTimeout must be positive", OverlayFileName)
+	}
+	return d, nil
+}
+
 func (o Overlay) Agent(id string) AgentOverlay {
 	if o.Agents == nil {
 		return AgentOverlay{}
@@ -111,7 +140,7 @@ func (o Overlay) Agent(id string) AgentOverlay {
 }
 
 func (o Overlay) clone() Overlay {
-	out := Overlay{ScanRoots: append([]string{}, o.ScanRoots...), Agents: map[string]AgentOverlay{}, Manager: o.Manager}
+	out := Overlay{ScanRoots: append([]string{}, o.ScanRoots...), SessionTimeout: o.SessionTimeout, Agents: map[string]AgentOverlay{}, Manager: o.Manager}
 	for id, agent := range o.Agents {
 		out.Agents[id] = agent
 	}

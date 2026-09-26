@@ -11,6 +11,8 @@
   export let scanDirty = false;
   export let onScanRoots = () => {};
   export let onRescan = () => {};
+  export let sessionTimeout = '';
+  export let onSessionTimeout = () => {};
   export let themePref = 'system';
   export let onThemeChange = () => {};
   export let refreshMs = 5000;
@@ -29,7 +31,24 @@
   <SettingsField label="Uptime" value={general.uptime || '—'} />
   <SettingsField label="Host" value={general.host || '—'} />
   <SettingsField label="API endpoint" value={general.api_endpoint || '—'} mono />
-  <SettingsField label="Session timeout" value={general.session_timeout || '—'} hint="Idle attention threshold, not a total session cap." />
+  <SettingsField label="Session timeout" value={general.session_timeout || '—'} hint="Running process. Idle attention threshold, not a total session cap." />
+  <div class="settings-row">
+    <span class="settings-key">Saved timeout</span>
+    <span class="settings-val">
+      <input
+        class="settings-input"
+        value={sessionTimeout}
+        placeholder="10m"
+        on:input={(e) => onSessionTimeout(e.target.value)}
+      />
+    </span>
+  </div>
+  <p class="settings-hint">
+    Written to core.local.yaml. New sessions use it after restart. An explicit --session-timeout overrides the file.
+    {#if general.session_timeout_config?.overridden_by}
+      This process was started with {general.session_timeout_config.overridden_by}.
+    {/if}
+  </p>
 </section>
 
 <SettingsDataRoot />

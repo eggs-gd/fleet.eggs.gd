@@ -58,17 +58,8 @@ func TestBuildReadModelDoesNotLeakSecretsOrInventProviders(t *testing.T) {
 	if snap.Projects.TaskBackend.Active != "markdown" {
 		t.Fatalf("active backend = %q", snap.Projects.TaskBackend.Active)
 	}
-	if snap.Projects.TaskBackend.Plane == nil {
-		t.Fatal("plane declaration from yaml should be visible")
-	}
-	if snap.Projects.TaskBackend.Plane.TokenEnv != "PLANE_API_TOKEN" {
-		t.Fatalf("token env = %q", snap.Projects.TaskBackend.Plane.TokenEnv)
-	}
-	if !snap.Projects.TaskBackend.Plane.TokenEnvSet {
-		t.Fatal("token env is set in this test")
-	}
-	if snap.Projects.TaskBackend.Plane.Active {
-		t.Fatal("markdown is active; plane must not look selected")
+	if snap.Projects.TaskBackend.Plane != nil || snap.Projects.TaskBackend.PlaneDeclared {
+		t.Fatal("task-provider details outside markdown must stay out of Settings")
 	}
 	if !snap.Projects.MultiRootSupported {
 		t.Fatal("multi-root scan must be supported")
@@ -121,6 +112,9 @@ func TestBuildReadModelDoesNotLeakSecretsOrInventProviders(t *testing.T) {
 	}
 	if strings.Contains(string(payload), secret) {
 		t.Fatal("Settings JSON leaked PLANE_API_TOKEN value")
+	}
+	if strings.Contains(strings.ToLower(string(payload)), "plane") {
+		t.Fatal("Settings JSON still mentions plane")
 	}
 }
 

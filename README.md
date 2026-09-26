@@ -33,7 +33,8 @@ on an operator's machine.
 App
 |-- server/    Go backend (task orchestration, project scan, agent launch, HTTP API)
 |-- view/      Svelte/Vite dashboard frontend
-|-- _docs/     architecture notes, plans, decisions (engineering-facing)
+|-- site/      static SvelteKit landing (GitHub Pages)
+|-- _docs/     roadmaps, specs, and architecture notes
 |-- AGENTS.md  canonical agent instruction file for this tree
 `-- Makefile   build/serve/test entry points
 ```

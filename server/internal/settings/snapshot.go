@@ -15,21 +15,22 @@ import (
 
 // Input is live process + board/runtime state used to build Snapshot.
 type Input struct {
-	Version         string
-	Addr            string
-	StartedAt       time.Time
-	CoreRoot        string
-	RuntimeRoot     string
-	DryRun          bool
-	SessionTimeout  time.Duration
-	Workspaces      []board.Workspace
-	Projects        []board.Project
-	Registry        board.RegistryInfo
-	Tasks           []tasklifecycle.Task
-	RuntimeSessions []executionapi.RuntimeSession
-	SessionGroups   []execution.SessionGroup
-	OrphanedTasks   []execution.OrphanedTask
-	Scan            ScanStatus
+	Version            string
+	Addr               string
+	StartedAt          time.Time
+	CoreRoot           string
+	RuntimeRoot        string
+	DryRun             bool
+	SessionTimeout     time.Duration
+	SessionTimeoutFlag bool
+	Workspaces         []board.Workspace
+	Projects           []board.Project
+	Registry           board.RegistryInfo
+	Tasks              []tasklifecycle.Task
+	RuntimeSessions    []executionapi.RuntimeSession
+	SessionGroups      []execution.SessionGroup
+	OrphanedTasks      []execution.OrphanedTask
+	Scan               ScanStatus
 }
 
 // Build returns the Settings inspect model with overlay merged for display.
@@ -49,7 +50,7 @@ func Build(in Input) Snapshot {
 	flow := workflowSnapshot()
 	snap := Snapshot{
 		GeneratedAt:  now.Format(time.RFC3339),
-		General:      inspectGeneral(in, now),
+		General:      inspectGeneral(in, overlay, now),
 		Projects:     projects,
 		Agents:       agents,
 		Manager:      manager,
@@ -61,7 +62,7 @@ func Build(in Input) Snapshot {
 	return snap
 }
 
-func inspectGeneral(in Input, now time.Time) General {
+func inspectGeneral(in Input, overlay Overlay, now time.Time) General {
 	launch := "live"
 	status := "ok"
 	if in.DryRun {
@@ -84,16 +85,17 @@ func inspectGeneral(in Input, now time.Time) General {
 		version = "unknown"
 	}
 	return General{
-		Version:        version,
-		BuildHash:      gitHash(in.CoreRoot),
-		RuntimeStatus:  status,
-		LaunchMode:     launch,
-		StartedAt:      started,
-		Uptime:         uptime,
-		Host:           host,
-		APIEndpoint:    endpoint,
-		ListenAddr:     in.Addr,
-		SessionTimeout: in.SessionTimeout.String(),
+		Version:              version,
+		BuildHash:            gitHash(in.CoreRoot),
+		RuntimeStatus:        status,
+		LaunchMode:           launch,
+		StartedAt:            started,
+		Uptime:               uptime,
+		Host:                 host,
+		APIEndpoint:          endpoint,
+		ListenAddr:           in.Addr,
+		SessionTimeout:       in.SessionTimeout.String(),
+		SessionTimeoutConfig: sessionTimeoutField(overlay, in.SessionTimeoutFlag),
 		AutoRefresh: ClientPref{
 			Value:         "browser localStorage core.autoRefreshMs",
 			Source:        "layoutPrefs.js",
@@ -120,6 +122,23 @@ func inspectGeneral(in Input, now time.Time) General {
 			"Resume of resumable sessions is classified at bootstrap (attach vs orphaned-but-resumable), not an ask/off/on setting.",
 		},
 	}
+}
+
+func sessionTimeoutField(overlay Overlay, flagSet bool) Field {
+	configured := strings.TrimSpace(overlay.SessionTimeout)
+	field := Field{
+		Value:    configured,
+		Source:   SourceDefault,
+		Writable: true,
+		Warning:  "Idle attention threshold, not a total session cap. New sessions use the saved value after restart.",
+	}
+	if configured != "" {
+		field.Source = SourceLocal
+	}
+	if flagSet {
+		field.OverriddenBy = "core serve --session-timeout"
+	}
+	return field
 }
 
 func launchValue(dryRun bool) string {

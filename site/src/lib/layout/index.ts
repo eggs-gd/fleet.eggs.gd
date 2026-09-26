@@ -1,0 +1,12 @@
+export { default as Section } from './Section.svelte';
+export { default as SectionTag } from './SectionTag.svelte';
+export { default as SectionTitle } from './SectionTitle.svelte';
+export { default as SectionSubtitle } from './SectionSubtitle.svelte';
+export { default as SectionText } from './SectionText.svelte';
+export { default as SectionFoot } from './SectionFoot.svelte';
+export { default as Plaque } from './Plaque.svelte';
+export { default as Split } from './Split.svelte';
+export { default as Stack } from './Stack.svelte';
+export { default as ScaleLock } from './ScaleLock.svelte';
+export type { Size } from './size';
+export { isSize, spaceVar } from './size';

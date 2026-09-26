@@ -120,21 +120,22 @@ func settingsSnapshot(cfg Config, dash *Dashboard, scanner *settings.Scanner) se
 		scan = scanner.Status()
 	}
 	return settings.Build(settings.Input{
-		Version:         cfg.Version,
-		Addr:            cfg.Addr,
-		StartedAt:       started,
-		CoreRoot:        cfg.CoreRoot,
-		RuntimeRoot:     cfg.RuntimeRoot,
-		DryRun:          cfg.DryRun,
-		SessionTimeout:  cfg.SessionTimeout,
-		Workspaces:      state.Workspaces,
-		Projects:        state.Projects,
-		Registry:        state.Registry,
-		Tasks:           state.Tasks,
-		RuntimeSessions: state.RuntimeSessions,
-		SessionGroups:   state.SessionGroups,
-		OrphanedTasks:   state.OrphanedTasks,
-		Scan:            scan,
+		Version:            cfg.Version,
+		Addr:               cfg.Addr,
+		StartedAt:          started,
+		CoreRoot:           cfg.CoreRoot,
+		RuntimeRoot:        cfg.RuntimeRoot,
+		DryRun:             cfg.DryRun,
+		SessionTimeout:     cfg.SessionTimeout,
+		SessionTimeoutFlag: cfg.SessionTimeoutFlag,
+		Workspaces:         state.Workspaces,
+		Projects:           state.Projects,
+		Registry:           state.Registry,
+		Tasks:              state.Tasks,
+		RuntimeSessions:    state.RuntimeSessions,
+		SessionGroups:      state.SessionGroups,
+		OrphanedTasks:      state.OrphanedTasks,
+		Scan:               scan,
 	})
 }
 

@@ -3,4 +3,8 @@ view/dist/
 view/.vite/
 view/public/core-data.json
 
+site/node_modules/
+site/.svelte-kit/
+site/build/
+
 .DS_Store

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOverlayRoundTripAndAtomicSave(t *testing.T) {
@@ -42,6 +43,36 @@ func TestOverlayRoundTripAndAtomicSave(t *testing.T) {
 	}
 	if agent.RoutingInstructions != "Use for repo implementation." {
 		t.Fatalf("routing = %q", agent.RoutingInstructions)
+	}
+}
+
+func TestSessionTimeoutRoundTripAndFlagOverride(t *testing.T) {
+	root := t.TempDir()
+	original := Overlay{SessionTimeout: "30m"}
+	if err := SaveOverlay(root, original); err != nil {
+		t.Fatal(err)
+	}
+	got, err := LoadOverlay(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SessionTimeout != "30m" {
+		t.Fatalf("sessionTimeout = %q", got.SessionTimeout)
+	}
+	fromFile, err := ResolveServeTimeout(false, time.Minute, got)
+	if err != nil || fromFile != 30*time.Minute {
+		t.Fatalf("overlay timeout = %s err=%v", fromFile, err)
+	}
+	fromFlag, err := ResolveServeTimeout(true, 5*time.Minute, got)
+	if err != nil || fromFlag != 5*time.Minute {
+		t.Fatalf("flag timeout = %s err=%v", fromFlag, err)
+	}
+	fallback, err := ResolveServeTimeout(false, 0, Overlay{})
+	if err != nil || fallback != DefaultSessionTimeout {
+		t.Fatalf("default timeout = %s err=%v", fallback, err)
+	}
+	if _, err := ResolveServeTimeout(false, 0, Overlay{SessionTimeout: "nope"}); err == nil {
+		t.Fatal("expected invalid sessionTimeout")
 	}
 }
 

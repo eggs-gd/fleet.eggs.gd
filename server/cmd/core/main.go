@@ -13,6 +13,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/runtimedb"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/server"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider/markdown"
 )
 
@@ -132,6 +133,12 @@ func serve(args []string) {
 	if *live {
 		fmt.Fprintln(os.Stderr, "warning: --live is deprecated; core serve is live by default")
 	}
+	sessionTimeoutFlag := false
+	flags.Visit(func(f *flag.Flag) {
+		if f.Name == "session-timeout" {
+			sessionTimeoutFlag = true
+		}
+	})
 
 	coreRoot, rootSource, err := appconfig.ResolveDataRoot(*root)
 	if err != nil {
@@ -164,16 +171,26 @@ func serve(args []string) {
 		log.Fatal(err)
 	}
 
+	overlay, err := settings.LoadOverlay(coreRoot)
+	if err != nil {
+		log.Fatal(err)
+	}
+	timeout, err := settings.ResolveServeTimeout(sessionTimeoutFlag, *sessionTimeout, overlay)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	cfg := server.Config{
-		Addr:           *addr,
-		CoreRoot:       coreRoot,
-		DataRootSource: rootSource,
-		RuntimeRoot:    runtimeRoot,
-		BackofficeDir:  staticDir,
-		DryRun:         *dryRun,
-		SessionTimeout: *sessionTimeout,
-		Version:         version,
-		DataRootCreated: created,
+		Addr:               *addr,
+		CoreRoot:           coreRoot,
+		DataRootSource:     rootSource,
+		RuntimeRoot:        runtimeRoot,
+		BackofficeDir:      staticDir,
+		DryRun:             *dryRun,
+		SessionTimeout:     timeout,
+		SessionTimeoutFlag: sessionTimeoutFlag,
+		Version:            version,
+		DataRootCreated:    created,
 	}
 	if err := server.Serve(cfg); err != nil {
 		log.Fatal(err)

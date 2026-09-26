@@ -27,8 +27,8 @@
   let baseline = null;
   let draft = null;
 
-  $: scanKey = draft ? `${JSON.stringify(draft.scanRoots)}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}` : '';
-  $: baseKey = baseline ? `${JSON.stringify(baseline.scanRoots)}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}` : '';
+  $: scanKey = draft ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}` : '';
+  $: baseKey = baseline ? `${JSON.stringify(baseline.scanRoots)}|${baseline.sessionTimeout || ''}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}` : '';
   $: dirty = Boolean(draft && baseline && scanKey !== baseKey);
 
   function acceptSnapshot(next) {
@@ -187,6 +187,8 @@
         scanRoots={draft.scanRoots}
         scanDirty={JSON.stringify(draft.scanRoots) !== JSON.stringify(baseline.scanRoots)}
         onScanRoots={(value) => (draft = { ...draft, scanRoots: value })}
+        sessionTimeout={draft.sessionTimeout || ''}
+        onSessionTimeout={(value) => (draft = { ...draft, sessionTimeout: value })}
         onRescan={rescan}
         {themePref}
         {onThemeChange}

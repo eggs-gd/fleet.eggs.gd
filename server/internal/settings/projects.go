@@ -105,36 +105,14 @@ func inspectTaskBackend(root string) TaskBackend {
 		Active:           "markdown",
 		ConfigFile:       cfgPath,
 		ConfigFileExists: fileExists(cfgPath),
-		Implementations:  []string{"markdown", "plane"},
+		Implementations:  []string{"markdown"},
 	}
 	if err != nil {
 		backend.Active = "error"
 		return backend
 	}
-	backend.Active = loaded.Type
-	plane := loaded.Plane
-	declared := loaded.Type == "plane" || plane.Workspace != "" || plane.TokenEnv != "" || plane.CoreProject != ""
-	backend.PlaneDeclared = declared
-	if !declared && loaded.Type != "plane" {
-		return backend
-	}
-	tokenEnv := stringsOr(plane.TokenEnv, "PLANE_API_TOKEN")
-	backend.Plane = &PlaneInspect{
-		Workspace:   plane.Workspace,
-		BaseURL:     plane.BaseURL,
-		TokenEnv:    tokenEnv,
-		TokenEnvSet: os.Getenv(tokenEnv) != "",
-		CoreProject: plane.CoreProject,
-		Repository:  plane.Repository,
-		StatusMap:   plane.StatusMap,
-		Active:      loaded.Type == "plane",
-		Notes:       "Token value is never included. token_env_set is whether the named env var is non-empty.",
-	}
-	if loaded.Type != "plane" {
-		backend.Plane.Notes += " Plane fields are present in " + providerconfig.ConfigFileName + " but taskProvider.type is markdown, so Plane is not the active backend."
-	}
-	if fileExists(filepath.Join(root, ".env")) {
-		backend.Plane.Notes += " .env exists under the Core root, but core serve does not load it. token_env_set is the process environment, not the file."
+	if loaded.Type == "markdown" || loaded.Type == "" {
+		backend.Active = "markdown"
 	}
 	return backend
 }
@@ -179,11 +157,4 @@ func pathWritable(path string) bool {
 		return false
 	}
 	return info.Mode().Perm()&0o200 != 0
-}
-
-func stringsOr(value, fallback string) string {
-	if value != "" {
-		return value
-	}
-	return fallback
 }

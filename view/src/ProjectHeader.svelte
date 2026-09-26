@@ -13,10 +13,16 @@
   export let onRefresh = () => {};
   export let refreshing = false;
 
-  $: views = [
-    { id: 'board', label: 'Tasks' },
-    { id: 'archive', label: 'Archive' }
-  ];
+  $: views = project
+    ? [
+        { id: 'board', label: 'Tasks' },
+        { id: 'archive', label: 'Archive' },
+        { id: PROJECT_SETTINGS_VIEW, label: 'Settings' }
+      ]
+    : [
+        { id: 'board', label: 'Tasks' },
+        { id: 'archive', label: 'Archive' }
+      ];
 
   $: primaryRemote = project ? techRepositories(project).map((repo) => repo.remote).find(Boolean) || '' : '';
   $: primaryRemoteUrl = repoWebUrl(primaryRemote);
@@ -39,15 +45,6 @@
           on:click={() => toggleFavorite(project.id)}
         >
           <Icon name="star" size={17} filled={isFavorite} />
-        </button>
-        <button
-          type="button"
-          class="project-header-favorite"
-          class:is-active={activeView === PROJECT_SETTINGS_VIEW}
-          title="Project settings"
-          on:click={() => onChangeView(PROJECT_SETTINGS_VIEW)}
-        >
-          <Icon name="gear" size={16} />
         </button>
         <h2>{project.title || project.id}</h2>
         {#if project.relative_path || project.path}

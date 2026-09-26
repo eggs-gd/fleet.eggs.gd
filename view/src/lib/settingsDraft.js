@@ -12,6 +12,7 @@ export function draftFromSnapshot(snapshot) {
   }
   return {
     scanRoots: Array.isArray(snapshot?.projects?.scan_roots) ? [...snapshot.projects.scan_roots] : [],
+    sessionTimeout: snapshot?.general?.session_timeout_config?.value || '',
     agents,
     manager: {
       agent: snapshot?.manager?.session ? snapshot.manager.provider || '' : '',
@@ -24,6 +25,9 @@ export function patchFromDraft(draft, baseline) {
   const patch = {};
   if (JSON.stringify(draft?.scanRoots || []) !== JSON.stringify(baseline?.scanRoots || [])) {
     patch.scanRoots = draft.scanRoots || [];
+  }
+  if ((draft?.sessionTimeout || '') !== (baseline?.sessionTimeout || '')) {
+    patch.sessionTimeout = draft.sessionTimeout || '';
   }
   const agents = {};
   for (const id of Object.keys(draft?.agents || {})) {

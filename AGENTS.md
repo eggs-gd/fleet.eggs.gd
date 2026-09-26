@@ -2,7 +2,7 @@
 
 This file is the canonical agent instruction file for the **App**
 repository (`fleet.eggs.gd` — the Core tool itself: `server`
-Go backend + `view` Svelte frontend). `CLAUDE.md`,
+Go backend, `view` Svelte dashboard, and `site` static landing). `CLAUDE.md`,
 `.cursor/rules/agents.mdc`, and `.gemini/settings.json` all point here
 instead of duplicating these rules — keep durable rules in this file only.
 
@@ -453,9 +453,32 @@ No generic execution step may parse Markdown or receive filesystem paths as its 
 
 The exact package and file names are intentionally not specified because the repository is being refactored. Preserve these responsibility boundaries, but map them onto the simplest structure supported by the current code.
 
+## Site
+
+`site/` is the public landing inside this repository, not a second repo.
+MCP config, this file, and GitHub Actions stay at the App root. Pages
+deploys from `App/.github/workflows/pages.yml` and publishes `site/build`.
+
+The landing is static SvelteKit (`@sveltejs/adapter-static`). It does not
+grow a backend, auth, CMS, or the dashboard. Dashboard identity is the
+style source: thin rules, muted surfaces, small radii. Read
+`site/README.md`, `site/DESIGN.md`, and `site/IMPLEMENTATION.md` before
+changing the landing direction.
+
+From `site/`, before finishing landing work:
+
+```sh
+npm run check
+npm run build
+```
+
+Keep route modules TypeScript. Do not start a long-running dev server
+unless asked. If a browser preview is used, inspect desktop and mobile
+widths.
+
 ## Svelte frontend
 
-The UI is small — don't bring in React-world enterprise patterns:
+The dashboard in `view/` is small — don't bring in React-world enterprise patterns:
 
 - No Redux / heavy state management. Built-in Svelte stores are enough.
 - One component = one file; don't split into presentational/container if the component is already short.

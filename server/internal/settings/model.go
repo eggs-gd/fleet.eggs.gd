@@ -40,20 +40,21 @@ type BoolField struct {
 }
 
 type General struct {
-	Version        string        `json:"version"`
-	BuildHash      string        `json:"build_hash,omitempty"`
-	RuntimeStatus  string        `json:"runtime_status"`
-	LaunchMode     string        `json:"launch_mode"`
-	StartedAt      string        `json:"started_at,omitempty"`
-	Uptime         string        `json:"uptime,omitempty"`
-	Host           string        `json:"host,omitempty"`
-	APIEndpoint    string        `json:"api_endpoint,omitempty"`
-	ListenAddr     string        `json:"listen_addr,omitempty"`
-	SessionTimeout string        `json:"session_timeout"`
-	AutoRefresh    ClientPref    `json:"auto_refresh"`
-	Theme          ClientPref    `json:"theme"`
-	Startup        []StartupFact `json:"startup"`
-	Notes          []string      `json:"notes"`
+	Version              string        `json:"version"`
+	BuildHash            string        `json:"build_hash,omitempty"`
+	RuntimeStatus        string        `json:"runtime_status"`
+	LaunchMode           string        `json:"launch_mode"`
+	StartedAt            string        `json:"started_at,omitempty"`
+	Uptime               string        `json:"uptime,omitempty"`
+	Host                 string        `json:"host,omitempty"`
+	APIEndpoint          string        `json:"api_endpoint,omitempty"`
+	ListenAddr           string        `json:"listen_addr,omitempty"`
+	SessionTimeout       string        `json:"session_timeout"`
+	SessionTimeoutConfig Field         `json:"session_timeout_config"`
+	AutoRefresh          ClientPref    `json:"auto_refresh"`
+	Theme                ClientPref    `json:"theme"`
+	Startup              []StartupFact `json:"startup"`
+	Notes                []string      `json:"notes"`
 }
 
 type ClientPref struct {
@@ -109,7 +110,7 @@ type TaskBackend struct {
 	ConfigFile       string        `json:"config_file"`
 	ConfigFileExists bool          `json:"config_file_exists"`
 	Implementations  []string      `json:"implementations"`
-	PlaneDeclared    bool          `json:"plane_declared"`
+	PlaneDeclared    bool          `json:"plane_declared,omitempty"`
 	Plane            *PlaneInspect `json:"plane,omitempty"`
 }
 

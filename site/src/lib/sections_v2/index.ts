@@ -1,0 +1,13 @@
+export { default as HeroSection } from './HeroSection.svelte';
+export { default as ManagerLoopSection } from './ManagerLoopSection.svelte';
+export { default as ManagerPlaque } from './ManagerPlaque.svelte';
+export { default as TaskShapingPlaque } from './TaskShapingPlaque.svelte';
+export { default as LifecyclePlaque } from './LifecyclePlaque.svelte';
+export { default as OrchestratorSection } from './OrchestratorSection.svelte';
+export { default as WorkersSection } from './WorkersSection.svelte';
+export { default as HumanWorkerSection } from './HumanWorkerSection.svelte';
+export { default as NeedsAttentionSection } from './NeedsAttentionSection.svelte';
+export { default as RemoteHitlSection } from './RemoteHitlSection.svelte';
+export { default as DashboardSection } from './DashboardSection.svelte';
+export { default as CloseSection } from './CloseSection.svelte';
+export { default as InstallSection } from './InstallSection.svelte';

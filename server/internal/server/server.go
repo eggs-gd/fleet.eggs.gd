@@ -18,16 +18,17 @@ import (
 )
 
 type Config struct {
-	Addr           string
-	CoreRoot       string
-	DataRootSource string
-	RuntimeRoot    string
-	BackofficeDir  string
-	DryRun         bool
-	SessionTimeout time.Duration
-	Version          string
-	StartedAt        time.Time
-	DataRootCreated  bool
+	Addr               string
+	CoreRoot           string
+	DataRootSource     string
+	RuntimeRoot        string
+	BackofficeDir      string
+	DryRun             bool
+	SessionTimeout     time.Duration
+	SessionTimeoutFlag bool
+	Version            string
+	StartedAt          time.Time
+	DataRootCreated    bool
 }
 
 func Serve(cfg Config) error {

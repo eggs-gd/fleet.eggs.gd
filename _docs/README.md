@@ -1,12 +1,30 @@
 # Docs (App)
 
-Architecture notes, decisions, and plans for the Core tool itself
-(`server` + `view`). Operator-facing docs about
+Product roadmaps, specs, and engineering notes for this repository
+(`server`, `view`, and `site`). Operator-facing docs about
 Inbox/Work/Fleet/Archive conventions live in the configured Data root's
-`_docs/`, not in this repository.
+`_docs/`, not here.
 
-Use this directory for explanations that are too detailed for the root
-README but still important for future humans and agents.
+Сирі нотатки в `raw/` — джерело, з них не працюємо.
+
+Позначки в роадмапах і ТЗ:
+
+- **готово** — є в репозиторії зараз
+- **частково** — шматок є, решта відсутня
+- **немає** — описано, в репозиторії цього немає
+- **поза релізом** — свідомо не зараз
+
+Роадмап ставить пункт у порядок і лінкує спеку. Спека — єдине місце, де розписано, що саме робити.
+
+## Роадмапи
+
+- [App](roadmaps/app.md) — застосунок Fleet і його цикл
+- [Site](roadmaps/site.md) — публічний сайт і лендінг
+- [Release](roadmaps/release.md) — порядок випуску, контракт дистрибуції і те, що не входить
+
+## Спеки
+
+- [Windows](specs/windows.md)
 
 ## Engineering / Architecture
 
