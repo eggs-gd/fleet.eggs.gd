@@ -44,6 +44,47 @@ type Service struct {
 	controlsMu sync.Mutex
 	controls   map[string]chan SessionControlRequest
 	logger     *l.Logger
+
+	// inflight counts the goroutines that carry a launch from start to finish:
+	// the session runners, and the launches a finished session wakes up.
+	inflight sync.WaitGroup
+}
+
+// spawn runs f on its own goroutine and counts it, so WaitIdle can tell when
+// every launch has finished.
+func (s *Service) spawn(f func()) {
+	s.inflight.Add(1)
+	go func() {
+		defer s.inflight.Done()
+		f()
+	}()
+}
+
+// spawnRunner starts a session runner. The session and task are passed by value
+// to the goroutine, as `go run(ctx, session, task, opts)` would.
+func (s *Service) spawnRunner(run func(context.Context, RuntimeSession, Task, RunnerOptions), ctx context.Context, session RuntimeSession, task Task) {
+	opts := s.runnerOptions()
+	s.spawn(func() { run(ctx, session, task, opts) })
+}
+
+// WaitIdle waits until every launch Fleet started has finished, including the
+// task update that ends it, and reports whether that happened within timeout.
+// A session that runs until its context is cancelled keeps it busy. Tests use
+// it to know a launch is over; an empty session list cannot tell them, because
+// the session is already gone from it while the task update is still being
+// written.
+func (s *Service) WaitIdle(timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		s.inflight.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
 }
 
 type ServiceOptions struct {
@@ -101,7 +142,7 @@ func NewService(opts ServiceOptions) *Service {
 		logger:           logger,
 	}
 	onDependencySatisfied = func(task Task) {
-		go s.RequeueDependentsOf(context.Background(), task)
+		s.spawn(func() { s.RequeueDependentsOf(context.Background(), task) })
 	}
 	sessionRoot := opts.Config.RuntimeRoot
 	if sessionRoot == "" {

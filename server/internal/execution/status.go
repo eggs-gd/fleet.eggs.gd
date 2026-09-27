@@ -114,7 +114,9 @@ func (s *Service) AnnotateTask(task tasklifecycle.Task) tasklifecycle.Task {
 					l.String("message", message))
 			}
 			if updated.LaunchEvaluation.Waiting == nil && s.cfg.AllowsProcessStart() {
-				go s.requeueAfterStaleWaitCleared(updated, before)
+				// The goroutine gets copies: `updated` is written again below.
+				cleared, wasWaiting := updated, before
+				s.spawn(func() { s.requeueAfterStaleWaitCleared(cleared, wasWaiting) })
 			}
 		}
 		updated.Execution = s.hub.executionForTask(updated)

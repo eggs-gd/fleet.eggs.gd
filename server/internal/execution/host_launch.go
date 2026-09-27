@@ -143,19 +143,19 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 	})
 
 	if claimed.LaunchEvaluation.Backend == BackendBackgroundRemote {
-		go RunBackgroundRemoteSession(ctx, session, claimed, s.runnerOptions())
+		s.spawnRunner(RunBackgroundRemoteSession, ctx, session, claimed)
 		return
 	}
 	if claimed.LaunchEvaluation.Backend == BackendCodexAppServer {
-		go RunCodexAppServerSession(ctx, session, claimed, s.runnerOptions())
+		s.spawnRunner(RunCodexAppServerSession, ctx, session, claimed)
 		return
 	}
 	if claimed.LaunchEvaluation.Backend == BackendCursorVisible {
-		go RunCursorVisibleSession(ctx, session, claimed, s.runnerOptions())
+		s.spawnRunner(RunCursorVisibleSession, ctx, session, claimed)
 		return
 	}
 	if claimed.LaunchEvaluation.Backend == BackendGeminiHeadless {
-		go RunGeminiHeadlessSession(ctx, session, claimed, s.runnerOptions())
+		s.spawnRunner(RunGeminiHeadlessSession, ctx, session, claimed)
 		return
 	}
 
@@ -186,7 +186,9 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 		s.logger.Info("agent process started", l.String("task", taskLabel(&claimed)), l.String("claim_id", session.ClaimID), l.Int("process_id", session.ProcessID))
 	}
 
-	go s.waitLaunchSession(ctx, process, session, claimed)
+	s.spawn(func(session RuntimeSession, claimed Task) func() {
+		return func() { s.waitLaunchSession(ctx, process, session, claimed) }
+	}(session, claimed))
 }
 
 func (s *Service) runnerOptions() RunnerOptions {

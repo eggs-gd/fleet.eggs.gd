@@ -2492,7 +2492,7 @@ exit 1
 			app.Exec.RemoveSession(session.ClaimID)
 		}
 	}
-	waitForNoActiveRuntimeSessions(t, app)
+	waitForSessionsRemoved(t, app)
 	time.Sleep(150 * time.Millisecond)
 }
 
@@ -2756,7 +2756,7 @@ exit 1
 			app.Exec.RemoveSession(session.ClaimID)
 		}
 	}
-	waitForNoActiveRuntimeSessions(t, app)
+	waitForSessionsRemoved(t, app)
 	// A session goroutine racing this test's own teardown can still be
 	// mid-atomic-write (temp file created, rename pending) in Work/ when the
 	// function returns, which makes t.TempDir()'s own RemoveAll fail with
@@ -3276,9 +3276,22 @@ func allowCoreVisibleLaunch(markdown string) string {
 	return strings.Replace(markdown, "launch:\n---", "launch:\n  mode: "+execution.LaunchModeAllowCoreVisible+"\n---", 1)
 }
 
+// waitForLaunchesToEnd waits until every launch has finished, including the task
+// update that ends it. Looking at the session list is not enough: a session
+// leaves it before its task is updated, and it is not in it yet when the launch
+// has only just been started.
+func waitForLaunchesToEnd(t *testing.T, app *App) {
+	t.Helper()
+
+	if !app.Exec.WaitIdle(15 * time.Second) {
+		t.Fatalf("a launch was still running after 15s: sessions=%#v", app.State().RuntimeSessions)
+	}
+}
+
 func waitForNoRuntimeSessions(t *testing.T, app *App) {
 	t.Helper()
 
+	waitForLaunchesToEnd(t, app)
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if len(app.State().RuntimeSessions) == 0 {
@@ -3306,6 +3319,16 @@ func waitForRuntimeState(t *testing.T, app *App, ok func(State) bool) State {
 }
 
 func waitForNoActiveRuntimeSessions(t *testing.T, app *App) {
+	t.Helper()
+
+	waitForLaunchesToEnd(t, app)
+	waitForSessionsRemoved(t, app)
+}
+
+// waitForSessionsRemoved waits until no runtime session is active. It does not
+// wait for launches to end: the tests that use it on their own tear down fake
+// providers that block on a gate, whose runners are not expected to return.
+func waitForSessionsRemoved(t *testing.T, app *App) {
 	t.Helper()
 
 	deadline := time.Now().Add(10 * time.Second)
@@ -3478,19 +3501,12 @@ func firstSessionLog(t *testing.T, root string) string {
 	return execution.ReadSessionLog(root, records[0].LogPath)
 }
 
-// waitForLaunchToFinish waits until the launched task has moved out of todo and
-// doing and no runtime session is left. An empty session list alone proves
-// nothing: it is also empty in the moment before the launch registers its
-// session. The caller's assertions report anything that is still wrong.
+// waitForLaunchToFinish waits until the launch of the task at taskPath is over.
+// The caller's assertions report what is still wrong.
 func waitForLaunchToFinish(t *testing.T, app *App, root string, taskPath string, timeout time.Duration) {
 	t.Helper()
 
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		task, err := markdown.LoadTaskFile(root, taskPath)
-		if err == nil && task.Status != "todo" && task.Status != "doing" && len(app.State().RuntimeSessions) == 0 {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
+	if !app.Exec.WaitIdle(timeout) {
+		t.Logf("launch of %s was still running after %s", taskPath, timeout)
 	}
 }

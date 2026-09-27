@@ -27,7 +27,8 @@ func (s *Service) HandleLaunchResult(ctx context.Context, task Task) {
 				l.String("dry_run", strconv.FormatBool(s.cfg.DryRun)))
 		}
 		if s.cfg.AllowsProcessStart() {
-			go s.launchNextForAssignee(ctx, task.LaunchEvaluation.Agent)
+			agent := task.LaunchEvaluation.Agent
+			s.spawn(func() { s.launchNextForAssignee(ctx, agent) })
 		}
 	case LaunchLogSkipped:
 		if !decision.Routine && s.logger != nil {
@@ -100,7 +101,8 @@ func (s *Service) LaunchPendingTasks(ctx context.Context) {
 			l.Int("assignees", len(assignees)))
 	}
 	for agent := range assignees {
-		go s.launchNextForAssignee(ctx, agent)
+		agent := agent
+		s.spawn(func() { s.launchNextForAssignee(ctx, agent) })
 	}
 }
 
@@ -211,7 +213,8 @@ func (s *Service) RequeueDependentsOf(ctx context.Context, completed Task) {
 		}
 	}
 	for agent := range assignees {
-		go s.launchNextForAssignee(ctx, agent)
+		agent := agent
+		s.spawn(func() { s.launchNextForAssignee(ctx, agent) })
 	}
 }
 
