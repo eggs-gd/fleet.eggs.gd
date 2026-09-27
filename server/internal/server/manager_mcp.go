@@ -19,7 +19,7 @@ import (
 // Distributed as a URL, not a spawned subprocess: an operator's .mcp.json
 // just needs "type": "http", "url": "http://<addr>/mcp" — no Go toolchain,
 // no path to an App source checkout, works identically on any machine
-// running a built App binary. See ../../_docs/MANAGER_MCP.md.
+// running a built App binary. See ../../_docs/MANAGER.md.
 func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "core-manager", Version: "0.0.1"}, nil)
 

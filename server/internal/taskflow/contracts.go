@@ -1,10 +1,8 @@
 // Package taskflow defines the canonical application contracts for Core task
-// orchestration (CORE-100) and the serialized TaskService implementation
-// (CORE-101).
+// orchestration and the serialized TaskService implementation.
 //
-// These types are the compile-checked target shapes documented in
-// _docs/TASK_FLOW_ARCHITECTURE.md. Follow-up tasks CORE-102…CORE-107 continue
-// wiring providers and callers onto Service. This package must not import
+// These types are the compile-checked contracts documented in
+// _docs/ARCHITECTURE.md. This package must not import
 // Markdown, Plane, fswalker, or manager packages — providers and callers
 // depend inward on these contracts.
 //
@@ -358,7 +356,7 @@ var allowedStatusTransitions = map[Status]map[Status]bool{
 }
 
 // MapExecutionOutcomeToStatus is the Contour 3 Finalizer decision table for
-// ReportExecution (_docs/TASK_FLOW_CONTOURS.md §6.2). Bot-produced completed
+// ReportExecution (_docs/AGENT_LAUNCHER.md). Bot-produced completed
 // work stops at needs_review. cancelled maps to blocked (not pickup) —
 // Fleet/LAUNCH_POLICY.md does not choose a return-to-pickup rule for MVP.
 func MapExecutionOutcomeToStatus(outcome ExecutionOutcome) (Status, bool) {

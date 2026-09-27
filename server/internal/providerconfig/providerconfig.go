@@ -82,7 +82,7 @@ type PlaneSettings struct {
 	// live in this Plane project — also the default lookup key used to find
 	// the matching Plane project when ProjectID is unset. The first Plane
 	// adapter supports mapping exactly one Core project to one Plane
-	// project; see _docs/PLANE_MULTI_PROJECT_MAPPING.md for the N:N design.
+	// project (_docs/PLANE_TASK_PROVIDER.md, Limits).
 	CoreProject string
 	// Repository is the single repository (relative path, matching
 	// _registry/repositories.json shape) that Plane-backed tasks under

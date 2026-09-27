@@ -9,7 +9,7 @@ import (
 )
 
 // registerDashboardRoutes wires the backoffice dashboard REST surface
-// (CORE-114 / _docs/TASK_FLOW_CONTOURS.md §7).
+// (_docs/ARCHITECTURE.md).
 //
 // Dashboard uses only:
 //

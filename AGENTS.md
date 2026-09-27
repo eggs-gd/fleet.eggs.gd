@@ -1,7 +1,7 @@
 # Agent Instructions — App
 
 This file is the canonical agent instruction file for the **App**
-repository (`fleet.eggs.gd` — the Core tool itself: `server`
+repository (`fleet.eggs.gd` — the Fleet tool itself: `server`
 Go backend, `view` Svelte dashboard, and `site` static landing). Codex reads
 this file from the repository root. `CLAUDE.md`, `GEMINI.md`,
 `.gemini/settings.json`, and `.cursor/rules/agents.mdc` all point here
@@ -363,8 +363,8 @@ Finalizer
 HTTP server
 ```
 
-The exact package and type names may evolve during refactoring.
 The architectural requirement is that these services have independent responsibilities and lifecycles.
+`_docs/ARCHITECTURE.md` maps them onto the current packages.
 Do not create runtime concepts such as `Contour`, `Topology`, or named pipeline sections merely to describe the architecture. The separation must be visible in actual ownership and startup code.
 
 ### Control flows
@@ -452,7 +452,7 @@ No generic execution step may parse Markdown or receive filesystem paths as its 
 - Agents return execution results; they do not directly control task lifecycle.
 - New code should replace or delete obsolete paths, not merely add another layer beside them.
 
-The exact package and file names are intentionally not specified because the repository is being refactored. Preserve these responsibility boundaries, but map them onto the simplest structure supported by the current code.
+Preserve these responsibility boundaries. `_docs/ARCHITECTURE.md` maps them onto the current packages.
 
 ## Site
 
@@ -463,7 +463,7 @@ deploys from `App/.github/workflows/pages.yml` and publishes `site/build`.
 The landing is static SvelteKit (`@sveltejs/adapter-static`). It does not
 grow a backend, auth, CMS, or the dashboard. Dashboard identity is the
 style source: thin rules, muted surfaces, small radii. Read
-`site/README.md`, `site/DESIGN.md`, and `site/IMPLEMENTATION.md` before
+`site/README.md`, `site/DESIGN.md`, and `site/LANDING-v3.md` before
 changing the landing direction.
 
 From `site/`, before finishing landing work:

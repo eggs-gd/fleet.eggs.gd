@@ -7,7 +7,7 @@ import (
 )
 
 // ContourName is the independent Contour 1 entry point for task management
-// (_docs/TASK_FLOW_CONTOURS.md §3). Unlike change-detection and execution
+// (_docs/ARCHITECTURE.md). Unlike change-detection and execution
 // contours, Contour 1 is request/response: Human → Manager → TaskService.
 const ContourName = "task_management"
 

@@ -1,13 +1,13 @@
-# Agent Tool Usage Evidence (CORE-120)
+# Agent tool evidence
 
-Core captures compact evidence that required agent tools were actually invoked
-during a runtime session. This closes the visibility loop after sessions became
-dashboard-visible: The operator can see whether an agent followed `AGENTS.md` tool
-policy, instead of trusting transcript claims or a worker `tests[]` self-report.
+Fleet records compact evidence that the tools a task requires were actually
+called during a session. The operator sees whether an agent followed the
+tool policy in `AGENTS.md`, instead of trusting a transcript claim or the
+worker's own `tests[]`.
 
 ## What is stored
 
-Each `RuntimeSession` may include `tool_usage`:
+A runtime session may carry `tool_usage`:
 
 ```json
 {
@@ -28,102 +28,62 @@ Each `RuntimeSession` may include `tool_usage`:
 }
 ```
 
-Constraints:
+The list of calls and the summaries are capped. Full transcripts stay in the
+session log. A worker's `outcome` or `tests` prose is never accepted as the
+only evidence.
 
-- Evidence is compact (capped call list + short summaries).
-- Full transcripts stay in `~/.fleet/_registry/sessions/<claim_id>.log` only.
-- Worker JSON `outcome` / `tests` prose is **not** accepted as sole evidence.
+## Which tools are required
 
-## How required tools are selected
+`executionapi.SelectRequirementProfiles` picks profiles deterministically from
+the task type and path or content signals.
 
-Profiles are chosen deterministically from task type + path/content signals
-(`executionapi.SelectRequirementProfiles`):
-
-| Profile | When selected | Required tools |
+| Profile | Selected when | Required tool |
 |---|---|---|
-| `go` | `.go`, `server`, `go test` / `go.mod` signals; Core-tree coding tasks default here when unclear | `go_diagnostics` |
-| `svelte` | `.svelte`, `view`, SvelteKit signals | `svelte-autofixer` |
-| `architecture` | `research` / review-ish tasks, or refactor/architecture/boundary wording | `find_patterns` |
-| `mcp_docs` | Svelte work or explicit MCP/docs-tool wording | `list-sections` |
+| `go` | `.go`, `server/`, `go test`, `go.mod` signals. Coding tasks inside the Fleet source tree default here when signals are weak. | `go_diagnostics` |
+| `svelte` | `.svelte`, `view/`, SvelteKit signals | `svelte-autofixer` |
+| `architecture` | `research` and review tasks, or refactor, architecture and boundary wording | `find_patterns` |
+| `mcp_docs` | Svelte work, or explicit MCP or documentation-tool wording | `list-sections` |
 
-Aliases (soft satisfaction):
+`list-sections` is also satisfied by `get-documentation`, and `find_patterns`
+by `search_patterns` or `get_pattern_details`. Tools not in a profile, such as
+`find_similar_code`, are recorded when observed.
 
-- `list-sections` may be satisfied by `get-documentation`
-- `find_patterns` may be satisfied by `search_patterns` / `get_pattern_details`
-
-Future tools such as `find_similar_code` are recognized when observed, and can
-be added to a profile without changing the persistence shape.
-
-Non-Core repositories (for example `eggs-gd-prod` / career-wizard) do **not**
-inherit the Go default just because the task type is `feature`/`bug`. They only
-get `go_diagnostics` when Go path signals are present.
+Repositories outside the Fleet source tree do not inherit the Go default. They
+get `go_diagnostics` only when Go path signals are present.
 
 ## How evidence is captured
 
-Observation sources (provider streams / logs):
-
-1. **Codex app-server** — `item/started` / `item/completed` JSON-RPC params
-   with MCP/tool item types.
-2. **Claude background** — transcript text scanned for `tool_use` /
-   `CallMcpTool`-style invocations.
-3. **Cursor CLI stdout log** — `~/.fleet/_registry/sessions/<claim_id>.log` scanned for
-   the same structured patterns. Important: `cursor-agent` usually prints only
-   the final assistant text + worker JSON to stdout, **not** per-tool events.
-4. **Cursor agent transcript (CORE-140)** — when `cursor_chat_id` is known, Core
-   also reads
-   `~/.cursor/projects/<slug>/agent-transcripts/<chat_id>/<chat_id>.jsonl`
-   and extracts `tool_use` / `CallMcpTool` entries. This is the real Cursor
-   observation channel.
-
-On launch, Core seeds `required` / `missing` from the task context. During the
-session and again at finalization, observed calls merge into `used` and
+At launch, `required` and `missing` are seeded from the task. During the
+session and again at finalization, observed calls are merged into `used` and
 `missing` is recomputed.
 
-## CORE-140 findings: why plaques showed `req X missing X`
+| Provider | Source |
+|---|---|
+| Codex | `item/started` and `item/completed` JSON-RPC items with tool types |
+| Claude | the polled transcript, scanned for `tool_use` and `CallMcpTool` entries |
+| Cursor | the session log, and the agent transcript `~/.cursor/projects/<slug>/agent-transcripts/<chat_id>/<chat_id>.jsonl` when `cursor_chat_id` is known |
 
-Two separate issues stacked:
+Cursor's stdout normally holds only the final answer and the worker JSON, not
+per-tool events, so the transcript file is the real channel.
 
-1. **Dashboard presentation (fixed)** — Runtime Sessions / Execution History
-   rendered every required tool as `req {tool}` **and** every unmet tool as
-   `missing {tool}`. When a tool was required and still missing (the common
-   Cursor case), the plaque literally read `req go_diagnostics missing
-   go_diagnostics`. That was not duplicate storage; it was duplicate chips.
-   The UI now shows one chip per required tool (`missing X` or `req X`).
+A daemon-launched session may have no MCP servers configured at all. Then a
+required tool cannot be called, and "missing" is correct.
 
-2. **Cursor observation gap (fixed)** — For daemon-launched Cursor sessions,
-   scanning only the stdout session log almost never finds MCP evidence, so
-   `missing` stayed equal to `required` even when the agent used tools.
-   Transcript JSONL scanning closes that gap when Cursor wrote tool_use events.
+## Where it shows
 
-3. **Real MCP availability (still open, see CORE-32)** — Daemon Cursor sessions
-   often have an empty MCP server catalog (`GetMcpTools` → no servers). In that
-   case `go_diagnostics` / `svelte-autofixer` cannot be invoked at all, so
-   missing evidence is correct. Wiring MCP profiles into launch remains
-   CORE-32; this task does not claim MCP is healthy for Cursor.
-
-4. **Over-broad Go default (narrowed)** — Coding tasks outside the Core tree
-   previously defaulted to requiring `go_diagnostics` with no Go signals
-   (career-wizard Python bugs showed the same warning). Default Go now applies
-   only when the task/repo context looks like Core.
-
-## Dashboard / review surfacing
-
-- Runtime Sessions and Execution History show required / used chips (one status
-  chip per required tool; no duplicate missing list).
-- Missing required tools highlight as a warning on the session card.
-- Task modal shows `execution.tool_warning` when the annotated session is
-  missing required tools.
-- Finalizer soft gate: when publishing a worker `completed` result, Core appends
-  the missing-tool warning into the Finalizer comment summary. This does **not**
-  block `needs_review` yet — hard mechanical gates belong to CORE-117.
+- Session cards and the session detail show one chip per required tool
+  (`req X` or `missing X`), and a warning when a required tool is missing.
+- The task modal shows the warning of its session.
+- When a worker reports `completed`, the finalizer adds the missing-tool
+  warning to its comment. This does not block `needs_review`.
 
 ## Code map
 
 | Area | Path |
 |---|---|
-| Model + extract + requirements | `server/internal/executionapi/tool_*.go` |
+| Model, extraction, requirements | `server/internal/executionapi/tool_*.go` |
 | Cursor transcript discovery | `server/internal/executionapi/cursor_transcript.go` |
 | Session wiring | `server/internal/execution/tool_usage.go` |
 | Provider observation | `server/internal/execution/providers/runtime.go` |
-| Finalizer soft warning | `server/internal/execution/execution_result.go`, `host_finalize.go` |
-| Dashboard | `view/src/RuntimeSessions.svelte`, `ExecutionHistory.svelte`, `TaskModal.svelte` |
+| Finalizer warning | `server/internal/execution/execution_result.go`, `host_finalize.go` |
+| Dashboard | `view/src/SessionCard.svelte`, `SessionDetail.svelte`, `SessionModal.svelte`, `TaskModal.svelte`, `lib/taskDisplay.js` |

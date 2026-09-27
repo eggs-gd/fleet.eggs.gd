@@ -1,40 +1,22 @@
-# Plane Task Provider
+# Plane task provider
 
-Plane is an optional second `TaskProvider` behind the same application
-contract as Markdown (`taskflow.TaskProvider` / `TaskService`). Markdown
-remains the default until Plane is explicitly configured and verified.
-
-Architectural boundaries: `_docs/TASK_FLOW_ARCHITECTURE.md`.
-
-## When to use it
-
-Use Plane when the operator wants board state in
-[app.plane.so/eggs_gd](https://app.plane.so/eggs_gd/) instead of (or as a
-trial alongside migrating away from) `Work/*/tasks/*.md` files.
-
-Do **not** treat Plane as a second parallel board while Markdown is still
-the active provider — Core runs exactly one task provider at a time.
+Plane is an optional `TaskProvider` behind the same contract as Markdown
+(`taskflow.TaskProvider`, see [ARCHITECTURE](ARCHITECTURE.md)). Markdown is the
+default. Exactly one provider is active, so Plane is not a second board next to
+Markdown.
 
 ## Config
 
-Optional root-level `core.config.yaml`. Absent file = Markdown (unchanged).
-
-```yaml
-taskProvider:
-  type: markdown
-```
-
-or:
+An optional `core.config.yaml` in the data root. No file means Markdown.
 
 ```yaml
 taskProvider:
   type: plane
-  workspace: eggs_gd
+  workspace: my-workspace
   baseUrl: https://api.plane.so
   tokenEnv: PLANE_API_TOKEN
-  project: <plane-project-uuid>
-  coreProject: core-eggs-gd
-  repository: core.eggs.gd
+  coreProject: my-project
+  repository: my-repo
 statusMap:
   backlog: Backlog
   todo: Todo
@@ -50,92 +32,90 @@ statusMap:
 |---|---|
 | `type` | `markdown` (default) or `plane` |
 | `workspace` | Plane workspace slug |
-| `baseUrl` | API base; defaults to `https://api.plane.so` |
-| `tokenEnv` | **Name** of the env var holding the API token (never the token itself) |
-| `project` | Plane project UUID for Core-managed work items |
-| `coreProject` | Core project id (`Work/<id>`) mapped to that Plane project |
+| `baseUrl` | API base, default `https://api.plane.so` |
+| `tokenEnv` | **Name** of the environment variable holding the API token, never the token |
+| `coreProject` | The Fleet project (`Work/<id>`) whose tasks live in this Plane project |
+| `project` | Optional Plane project UUID. When absent, Fleet finds the Plane project whose identifier or name equals `coreProject` (case-insensitive) |
 | `repository` | Optional single launch repository for Plane-backed tasks |
-| `statusMap` | Optional Core status → Plane workflow state **name** overrides |
+| `statusMap` | Optional Fleet status → Plane workflow state **name**; a status not listed maps to a state with the same name |
 
-Secrets stay local (Ground Rule 7): export the token, do not commit it.
+Keep the token out of files:
 
 ```bash
 export PLANE_API_TOKEN=plane_api_...
 make serve
 ```
 
-Loader: `server/internal/providerconfig`.
+The loader is `server/internal/providerconfig`.
 
-## Metadata placement
+## Refs
 
-Deliberate mix — Plane owns durable board fields; Core owns execution
-runtime:
+A new Plane-backed task gets a ref from the tag of its `coreProject`
+(`<TAG>-<number>`, counters in `_registry/counters.json`). The ref is stored as
+the work item's `external_id` with `external_source=core`. If the project has
+no tag, task creation fails with an explanation rather than creating a task
+without a ref.
 
-| Core concept | Plane / local home |
+## What lives where
+
+Plane owns the durable board fields. Fleet keeps execution state local.
+
+| Fleet concept | Plane or local home |
 |---|---|
-| `CORE-N` ref | Plane `external_id` + `external_source=core` |
-| Title / body | Work item name / description |
-| Status lifecycle | Plane workflow state (via `statusMap` or identity names) |
-| Priority 1–5 | Plane `urgent/high/medium/low/none` |
-| Assignee (`claude`/`codex`/…) | Label `core:assignee:<name>` (not Plane member UUIDs) |
-| Task type | Label `core:type:<type>` |
-| Comments / review notes | Plane work-item comments (`author: text` in HTML) |
-| Project / workspace / repository | Configured `coreProject` + optional `repository` on the provider |
-| Sessions, locks, launch evaluation, logs | Local `_registry/` only — never mirrored into Plane |
+| Ref | `external_id` + `external_source=core` |
+| Title, body | work item name and description |
+| Status | workflow state (`statusMap` or same-named states) |
+| Priority 1–5 | `urgent`, `high`, `medium`, `low`, `none` |
+| Assignee | label `core:assignee:<name>` (Plane members are real accounts; Fleet workers are not) |
+| Type | label `core:type:<type>` |
+| Comments and review notes | work item comments (`author: text`) |
+| Project, workspace, repository | configured `coreProject` and `repository` |
+| Sessions, launch evaluation, logs | local `runtime.db` only, never mirrored |
 
-Rationale: Plane assignees are real workspace members; Core workers are a
-closed vocabulary without requiring Plane user accounts per agent. Labels
-are visible in the Plane UI and round-trip on the work-item payload.
-Execution/runtime state is Core-daemon-local and must not depend on Plane
-availability.
+Workspace cards and `_registry` stay file-based. `Work/INDEX.md` is not rebuilt
+under Plane.
 
-## Change observation
+## Change detection
 
-```text
-polling (default)  → plane.ObserveChanges (ChangeSource) → TaskEvent → execution chain
-webhook (optional) → plane.ObserveWebhook → TaskEvent → same channel
-```
+Polling (default): the runtime attaches a `ProviderSync` when the provider is a
+`taskprovider.ChangeSource`, which Plane is. The poll interval has a 45 s floor
+for Plane's 60 requests/minute limit. Fingerprinting and `TaskEvent` creation
+are in `plane.ObservePoll` and `ObserveChanges`. Runtime code does not branch on
+the provider type.
 
-- **Polling:** Runtime attaches `ProviderSync` when the provider implements
-  `taskprovider.ChangeSource` (Plane does; Markdown does not). Poll floor is
-  45s for Plane's 60 req/min budget. Fingerprinting and `TaskEvent`
-  construction live in `plane.ObservePoll` / `ObserveChanges`. The old
-  `internal/corechain` package is gone; runtime code does not import Plane
-  types or branch on `Type()=="plane"`.
-- **Webhook:** `ObserveWebhook` normalizes common Plane JSON envelopes and
-  reloads via `Load`. Core does not host an HTTP webhook route in this
-  slice; the adapter is ready for a future route without launcher changes.
+Webhook: `ObserveWebhook` normalizes Plane's JSON envelopes and reloads through
+`Load`. Fleet has no HTTP route for it yet.
 
-## Package layout
+## Code
 
 `server/internal/taskprovider/plane`:
 
 | File | Owns |
 |---|---|
-| `client.go` / `entities.go` | REST, auth, pagination, API errors |
-| `mapping.go` / `provider.go` | Core Task ⇄ Plane work item; legacy `taskprovider.Provider` |
-| `flow.go` / `convert.go` | `Flow()` → `taskflow.TaskProvider` for `TaskService` |
-| `observe.go` | Poll / webhook → `TaskEvent` |
+| `client.go`, `entities.go` | REST, auth, pagination, API errors |
+| `mapping.go`, `provider.go` | Fleet task ⇄ Plane work item |
+| `flow.go`, `convert.go` | `Flow()` → `taskflow.TaskProvider` for `TaskService` |
+| `observe.go` | polling and webhook → `TaskEvent` |
 
-## Limitations
+## Limits
 
-- One Core project ↔ one Plane project per daemon config (no N:N yet).
-- `List()` fetches comments only for `blocked` tasks (rate-limit tradeoff);
-  `Load()` always fetches full comments.
-- States/labels cached ~60s per provider instance.
-- Workflow states must exist for every Core status Core writes (or be
-  covered by `statusMap`); missing target state is a hard error.
-- Workspaces (`Work/*/PROJECT.md`) and `_registry` stay file-based under
-  both providers; only **tasks** move to Plane.
-- `Work/INDEX.md` is not rebuilt under Plane (Markdown-only convenience).
-- Live smoke against the operator's Plane workspace still requires a real token and
-  matching workflow states — unit tests use a mocked HTTP Plane API.
+- One Fleet project maps to one Plane project for the whole instance. Mapping
+  several Plane projects to several Fleet projects is not supported. The client
+  builds every URL from one project id, and the poll budget was sized for one
+  project (the limit is 60 requests/minute per key across all projects).
+- `List()` fetches comments only for `blocked` tasks; `Load()` fetches them all.
+- States and labels are cached for about 60 s per provider instance.
+- Every Fleet status Fleet writes needs a Plane workflow state (or a
+  `statusMap` entry). A missing target state is a hard error.
+- Tests use a mocked Plane API. A live run needs a real token and matching
+  workflow states.
 
-## Verification checklist
+## Trying it
 
-1. Create `core.config.yaml` with `type: plane` and required fields.
-2. Ensure Plane project states match Core statuses or set `statusMap`.
-3. `export PLANE_API_TOKEN=…` (or configured `tokenEnv`).
-4. `make serve` and confirm `/api/state` lists Plane work items.
-5. Create/transition/comment via Manager or dashboard; confirm Plane UI.
-6. Switch back to Markdown by removing the file or setting `type: markdown`.
+1. Create `core.config.yaml` with `type: plane` and the fields above.
+2. Make the Plane project's states match the Fleet statuses, or set `statusMap`.
+3. Export the token variable.
+4. Run `make serve` and check that `/api/state` lists the Plane work items.
+5. Create, transition and comment through the dashboard or the Manager, and
+   check the Plane UI.
+6. To go back, remove the file or set `type: markdown`.

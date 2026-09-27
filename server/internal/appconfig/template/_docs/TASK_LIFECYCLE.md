@@ -66,11 +66,8 @@ Task frontmatter schema version:
 schema_version: 1
 ```
 
-New tasks must include `schema_version: 1`. Existing tasks without
-`schema_version` are treated as schema version `0` until migrated —
-existing version `0` cards remain valid input, migration should happen
-when a card is naturally edited, and a missing `schema_version` is legacy
-metadata, not a launch blocker by itself.
+New tasks include `schema_version: 1`. A card without `schema_version` reads
+as version `0`, stays valid, and is not a launch blocker by itself.
 
 Required frontmatter for schema version `1`:
 
@@ -101,8 +98,8 @@ launch:
   auto_pr: false
 ```
 
-`todo` is a lifecycle **status** (ready for pickup), not a `type`. Empty or
-legacy `type: todo` values normalize to `feature`.
+`todo` is a lifecycle **status** (ready for pickup), not a `type`. An empty
+`type` or `type: todo` normalizes to `feature`.
 
 Runtime/API may expose derived fields that are not frontmatter, including
 `workspace_id` and `project_id`. Do not hand-edit derived fields into task
@@ -126,7 +123,7 @@ tag: "FLET"
 - Numbers count per tag in `_registry/counters.json` and are never reused. A
   task keeps its ref if the project's tag changes later. Only new tasks use the
   new tag.
-- Refs created before tags existed use the legacy `CORE-` prefix and stay valid.
+- A ref written before its project had a tag (for example `CORE-12`) stays valid.
 - `INBOX-<number>` is the global Inbox ref space.
 
 ### Task dependencies (`depends_on`)

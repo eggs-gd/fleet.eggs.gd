@@ -1,11 +1,11 @@
-# Fleet MVP Operating Model
+# Fleet Operating Model
 
-This document captures how Fleet is meant to be used before any fully automatic
-agent daemon exists.
+This document captures how Fleet is used: who does what, and how work moves
+through the board.
 
 ## Roles
 
-Fleet has three practical roles in the MVP:
+Fleet has three practical roles:
 
 1. **Manager** — a Claude, Codex, Cursor, or Gemini session whose folder is
    this data root. The conversation stays in that provider's app. Fleet MCP
@@ -128,7 +128,7 @@ the backoffice API so the operator can see the worker question directly on the b
 card. The operator comments are treated as answers or extra context, not as the blocker
 source.
 
-## Worker-Specific MVP Behavior
+## Worker-Specific Behavior
 
 ### Codex
 
@@ -145,7 +145,7 @@ Daemon-launched Codex workers use `codex app-server --stdio`, create or resume
 a Codex thread, name it as `<task ref> · <task title>`, and persist
 `codex_thread_id`, `codex_turn_id`, host name/id, project/repository, and the
 Fleet launch claim id in runtime state. These sessions are LiveReady for normal
-daemon auto-launch (CORE-130). They are visible in Codex Remote on paired
+daemon auto-launch. They are visible in Codex Remote on paired
 clients, but they may not appear in the ordinary desktop project/sidebar
 history. The dashboard shows the Remote identity and copyable thread/turn ids;
 until Codex exposes a stable deep link, open Codex Remote, select the connected
@@ -242,7 +242,7 @@ launch:
   auto_pr: false
 ```
 
-For MVP daemon launch, prefer tasks with exactly one repository path. Workspace
+For daemon launch, prefer tasks with exactly one repository path. Workspace
 tasks spanning multiple repositories should remain manual unless the launcher
 grows a deterministic multi-repository strategy.
 

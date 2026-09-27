@@ -2,7 +2,7 @@
 // uses for bootstrap List/Load and optional ChangeSource polling.
 //
 // The target application contract is taskflow.TaskProvider + TaskService
-// (_docs/TASK_FLOW_ARCHITECTURE.md). Markdown and Plane both implement:
+// (_docs/ARCHITECTURE.md). Markdown and Plane both implement:
 //
 //   - taskprovider.Provider for Runtime bootstrap/claim legacy paths;
 //   - Provider.Flow() as taskflow.TaskProvider for TaskService;

@@ -38,7 +38,7 @@ func (UnconfiguredClassifier) Classify(context.Context, string, Vocabulary) (Int
 // It ends after TaskService accepts the command and returns an operator
 // confirmation. It must not watch changes, launch agents, wait for
 // executions, finalize, own change-detection walkers, or call providers
-// directly (_docs/TASK_FLOW_CONTOURS.md §3, CORE-110).
+// directly (_docs/ARCHITECTURE.md).
 type Service struct {
 	Tasks       TaskManagement
 	Board       BoardReader

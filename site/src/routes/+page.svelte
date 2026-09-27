@@ -33,8 +33,8 @@
 
     <nav class="nav-links" aria-label="Site links">
       <a href="#product">Manager</a>
-      <a href="#workers">Workers</a>
       <a href="#orchestrator">Execution</a>
+      <a href="#workers">Workers</a>
       <a href="#dashboard">Dashboard</a>
       <a href="#install">Download</a>
     </nav>

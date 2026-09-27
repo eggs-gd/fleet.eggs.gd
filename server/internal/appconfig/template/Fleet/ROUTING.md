@@ -18,7 +18,7 @@ or picking up agent work.
 Canonical task schema, project/repository ownership, and assignee precedence
 live in `_docs/TASK_LIFECYCLE.md`. Routing should not redefine those rules.
 
-## Current MVP Fleet
+## Current Fleet
 
 Active mobile-accessible workers:
 
@@ -31,7 +31,7 @@ Explicit opt-in workers:
 Fleet-control + Codex Remote workers:
 
 - `codex` (`core_visible` app-server JSON-RPC; LiveReady for normal daemon
-  auto-launch per CORE-130). Operator path is Codex Remote on paired clients
+  auto-launch). Operator path is Codex Remote on paired clients
   plus Fleet dashboard continue/interrupt/cancel. Not a Claude-style phone
   remote-control URL, and threads may not appear in ordinary ChatGPT desktop
   sidebar history.
@@ -98,7 +98,7 @@ not an oversight to silently fix.
 
 | Category | Preferred | Good backup | Notes |
 |---|---|---|---|
-| `feature` | `claude` | `cursor`, `codex` | Prefer Claude for phone/app_visible remote-control. Use Cursor when the operator explicitly wants the CLI-visible executor. Codex is a normal daemon coding worker via app-server + Codex Remote (CORE-130). Board management uses Fleet Manager API, not Codex chat. |
+| `feature` | `claude` | `cursor`, `codex` | Prefer Claude for phone/app_visible remote-control. Use Cursor when the operator explicitly wants the CLI-visible executor. Codex is a normal daemon coding worker via app-server + Codex Remote. Board management uses Fleet Manager API, not Codex chat. |
 | `bug` | `claude` | `cursor`, `codex` | Same visibility rule as `feature`. |
 | `research` | `claude` | `codex` | Prefer Claude for broad reasoning, synthesis, specs, and product thinking. |
 | `review` | `claude` | `codex` | Prefer Claude for prose/design/product review; Codex for code-risk review in Manager chat. |

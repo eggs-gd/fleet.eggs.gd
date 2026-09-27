@@ -1,75 +1,58 @@
-# Technology Decisions
+# Technology
 
-Core intentionally keeps runtime technology narrow.
+Fleet keeps its runtime technology narrow.
 
-## Runtime
+## Runtime: Go
 
-Use Go for the long-running Core runtime:
+One long-running Go binary, `fleet`, does everything at run time: the HTTP
+server, the embedded dashboard, task validation and indexing, the project
+scanner, the MCP endpoint and the agent launcher. Storage is `modernc.org/sqlite`
+(pure Go, no cgo) for runtime state, and Markdown files for tasks and project
+cards. It builds for macOS, Linux and Windows (`GOOS=windows go build` runs in
+CI), and macOS is the supported platform, see [windows](specs/windows.md).
 
-- daemon;
-- local HTTP server;
-- static backoffice serving;
-- task validation/indexing;
-- future agent launcher.
+## Dashboard: Svelte and Vite
 
-Go gives Core one small binary and avoids mixing UI tooling with orchestration.
+`view/` is a Svelte 5 app built with Vite. Vite is build-time only. The
+dashboard is copied into `server/internal/webui/dist` and embedded in the
+binary with `//go:embed`, so a built `fleet` needs no separate files. A binary
+built without the dashboard serves a placeholder and `serve` refuses to start;
+pass `--backoffice-dir <dir with index.html>` to serve another build.
 
-## Maintenance Entry Point
+The dashboard reads live state from `/api/state` and mutates through the JSON
+API. It does not use generated static data.
 
-Use the top-level `Makefile` as the cheap declarative entry point for local
-maintenance while Core is still bootstrapping.
+## Site: SvelteKit
 
-Current targets:
+`site/` is the public landing page, a static SvelteKit build published to
+GitHub Pages by its own workflow. It is independent of the binary.
 
-- `make scan`;
-- `make workspaces`;
-- `make build`;
-- `make test`;
-- `make check`;
-- `make serve`.
+## Entry points
 
-The Makefile does not add runtime behavior. It only documents and wires existing
-scripts, Svelte build commands, and Go runtime commands.
+The `Makefile` is the single entry point for local work:
 
-## Backoffice
+| Target | Does |
+|---|---|
+| `make setup` | install dashboard and site dependencies |
+| `make build` | build the dashboard and embed it into `bin/fleet` |
+| `make serve` | build, then run `bin/fleet serve` |
+| `make test`, `make vet`, `make check` | Go tests, vet, and the full gate |
+| `make scan`, `make rebuild-index` | project scan, `Work/INDEX.md` rebuild |
+| `make site` | build the landing page |
+| `make version`, `make fmt`, `make clean` | version, formatting, cleanup |
 
-Use Svelte/Vite for the local backoffice UI.
+Machine-local overrides (`DATA_ROOT`, `ADDR`, `LIVE`, `PROJECTS_ROOTS`) go in
+`Makefile.local`, which is not committed.
 
-Svelte/Vite is build-time only. The runtime should not depend on the Vite dev
-server.
+The CLI has four commands: `fleet serve`, `fleet scan`, `fleet rebuild-index`,
+`fleet version`.
 
-Expected flow:
-
-```bash
-make serve
-```
-
-The Go runtime serves `view/dist`.
-
-The UI reads live state from the Go server at `/api/state`. The runtime does
-not use generated static JSON.
-
-## Project Scan
+## Project scan
 
 Repository discovery and workspace cards are part of the Go server.
 
-- `make scan` / `core scan` walks the projects tree and rewrites `_registry`.
-- `make workspaces` / `core workspaces` rewrites `Work/<id>/PROJECT.md` from that registry, then rebuilds `Work/INDEX.md`.
-- `core serve` watches every saved scan root and rewrites `_registry` when repositories appear or disappear, then reloads the board. It does not rewrite workspace cards.
-- Settings → Rescan runs that same pass immediately.
-
-## Entry Point Direction
-
-Avoid adding unrelated launch points.
-
-Future direction:
-
-```text
-core scan
-core generate-workspaces
-core validate
-core serve
-```
-
-Until Go commands replace the Python scripts, keep the scripts small and
-deterministic.
+- `fleet scan` walks the configured scan roots and rewrites `_registry`.
+- `fleet serve` watches every saved scan root every 2 s. It rewrites
+  `_registry` when repositories appear or disappear, keeps each
+  `Work/<id>/PROJECT.md` in sync with the registry, and reloads the board.
+- Settings → Rescan runs the same pass immediately.
