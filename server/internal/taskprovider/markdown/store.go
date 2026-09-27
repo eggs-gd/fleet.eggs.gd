@@ -439,7 +439,7 @@ func safeTaskPath(root string, path string) (string, error) {
 		return "", err
 	}
 	if strings.HasPrefix(rel, ".."+string(filepath.Separator)) || rel == ".." {
-		return "", errors.New("task path is outside Core root")
+		return "", errors.New("task path is outside the Data root")
 	}
 	if !IsTaskFile(taskPath) {
 		return "", errors.New("path is not a Core task markdown file")

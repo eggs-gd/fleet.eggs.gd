@@ -962,13 +962,7 @@ exit 0
 	defer cancel()
 	app.Exec.StartLaunchCandidate(ctx, task)
 
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if len(app.State().RuntimeSessions) == 0 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	waitForLaunchToFinish(t, app, root, taskPath, 5*time.Second)
 	if sessions := app.State().RuntimeSessions; len(sessions) != 0 {
 		t.Fatalf("runtime still has active sessions: %#v", sessions)
 	}
@@ -1060,13 +1054,7 @@ exit 0
 	defer cancel()
 	app.Exec.StartLaunchCandidate(ctx, task)
 
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if len(app.State().RuntimeSessions) == 0 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
+	waitForLaunchToFinish(t, app, root, taskPath, 5*time.Second)
 	if sessions := app.State().RuntimeSessions; len(sessions) != 0 {
 		t.Fatalf("runtime still has active sessions: %#v", sessions)
 	}
@@ -1225,7 +1213,7 @@ repositories:
 	candidate.LaunchEvaluation.Agent = "codex"
 	candidate.LaunchEvaluation.Command = []string{"/bin/sh", "-c", "echo launched"}
 	app.Exec.StartLaunchCandidate(t.Context(), candidate)
-	waitForNoRuntimeSessions(t, app)
+	waitForLaunchToFinish(t, app, root, candidatePath, 15*time.Second)
 
 	loaded, err := markdown.LoadTaskFile(root, candidatePath)
 	if err != nil {
@@ -1924,7 +1912,7 @@ func TestFailedStartedProcessMovesTaskToBlocked(t *testing.T) {
 	}
 
 	app.Exec.StartLaunchCandidate(t.Context(), task)
-	waitForNoRuntimeSessions(t, app)
+	waitForLaunchToFinish(t, app, root, taskPath, 15*time.Second)
 
 	loaded, err := markdown.LoadTaskFile(root, taskPath)
 	if err != nil {
@@ -3498,4 +3486,21 @@ func firstSessionLog(t *testing.T, root string) string {
 		t.Fatalf("session logs = %d records, want exactly one", len(records))
 	}
 	return execution.ReadSessionLog(root, records[0].LogPath)
+}
+
+// waitForLaunchToFinish waits until the launched task has moved out of todo and
+// doing and no runtime session is left. An empty session list alone proves
+// nothing: it is also empty in the moment before the launch registers its
+// session. The caller's assertions report anything that is still wrong.
+func waitForLaunchToFinish(t *testing.T, app *App, root string, taskPath string, timeout time.Duration) {
+	t.Helper()
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		task, err := markdown.LoadTaskFile(root, taskPath)
+		if err == nil && task.Status != "todo" && task.Status != "doing" && len(app.State().RuntimeSessions) == 0 {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }

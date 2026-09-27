@@ -1,0 +1,2 @@
+This file keeps the directory in git so go:embed has something to embed.
+The dashboard is copied here by `make ui` and is not committed.

@@ -1,7 +1,7 @@
 # Manager MCP
 
 `internal/server/manager_mcp.go` mounts the Manager API as MCP tools
-directly on `core serve`, at `/mcp`. The Manager is a Claude, Codex, Cursor,
+directly on `fleet serve`, at `/mcp`. The Manager is a Claude, Codex, Cursor,
 or Gemini session whose folder is the data root. It reads and changes the
 board through these tools instead of hand-parsing `Work/INDEX.md`,
 `_registry/*.json`, and task Markdown files. The judgment (when to ask, how to
@@ -14,7 +14,7 @@ Streamable HTTP MCP transport (`github.com/modelcontextprotocol/go-sdk`),
 served from the same `http.ServeMux` as every other route in `Serve()` —
 not a separate process. Tool handlers call `*manager.Service` in-process
 (the same instance `/api/manager/*` uses), so there is no HTTP round-trip
-to itself and no "is core serve reachable" failure class.
+to itself and no "is fleet serve reachable" failure class.
 
 This replaced an earlier design (a standalone `cmd/manager-mcp` binary,
 spawned via `go run` and talking to `/api/manager/*` over loopback HTTP).
@@ -67,7 +67,7 @@ through a second, unconfigured classification step.
 
 ## Registration
 
-`core serve` writes the Fleet MCP entry into the provider files of the data
+`fleet serve` writes the Fleet MCP entry into the provider files of the data
 root before a Manager session is created or adopted: `.mcp.json` (Claude),
 `.codex/config.toml` (Codex), `.cursor/mcp.json` (Cursor), and
 `.agents/mcp_config.json` (Gemini). Keys and servers already in those files
@@ -90,5 +90,5 @@ The URL Fleet writes carries the per-install launch token in the query
 `~/.fleet/launch-token` and does not change between restarts, so these files
 stay tracked and stable. It is valid only for `127.0.0.1` with the server's own
 Host, but a query string reaches logs, so do not publish the URL. The address
-matches `core serve`'s `--addr`, default `127.0.0.1:8787`. Requires `core
+matches `fleet serve`'s `--addr`, default `127.0.0.1:8787`. Requires `fleet
 serve` to be running.

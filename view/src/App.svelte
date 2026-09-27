@@ -58,7 +58,7 @@
   import SplitGutter from './SplitGutter.svelte';
   import SettingsView from './SettingsView.svelte';
   import TaskList from './TaskList.svelte';
-  import { isOperatorAssignee, operatorAssignee } from './lib/operator.js';
+  import { AGENT_ASSIGNEES, isOperatorAssignee, operatorAssignee } from './lib/operator.js';
   import { isSettingsNav } from './lib/settingsNav.js';
   import TaskModal from './TaskModal.svelte';
 
@@ -139,7 +139,7 @@
     try {
       const response = await apiFetch('/api/state', { cache: 'no-store' });
       if (!response.ok) {
-        throw new Error(`Failed to load Core state (${response.status})`);
+        throw new Error(`Failed to load Fleet state (${response.status})`);
       }
       const nextData = await response.json();
       nextData.tasks = dedupeTasksByIdentity(nextData.tasks ?? []);
@@ -497,13 +497,33 @@
   }
 
   let managerSetupNeeded = false;
+  let managerProviders = [];
+  const SETUP_SKIPPED_KEY = 'fleet.managerSetupSkipped';
+
+  function setupSkipped() {
+    try {
+      return localStorage.getItem(SETUP_SKIPPED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function skipManagerSetup() {
+    try {
+      localStorage.setItem(SETUP_SKIPPED_KEY, '1');
+    } catch {
+      // The dialog only stays closed until the next reload.
+    }
+    managerSetupNeeded = false;
+  }
 
   async function loadManagerSetup() {
     try {
       const response = await apiFetch('/api/manager/setup', { cache: 'no-store' });
       if (!response.ok) return;
       const body = await response.json();
-      managerSetupNeeded = Boolean(body?.needed);
+      managerProviders = body?.providers ?? [];
+      managerSetupNeeded = Boolean(body?.needed) && !setupSkipped();
     } catch {
       managerSetupNeeded = false;
     }
@@ -539,6 +559,9 @@
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
     null;
+  $: people = data?.people ?? [];
+  // Who a task can be given to: nobody, the registered people, or an AI agent.
+  $: assigneeChoices = ['unassigned', ...people, ...AGENT_ASSIGNEES];
   $: assignees = [
     'all',
     ...Array.from(new Set(tasks.map((task) => assigneeLabel(task.assignee)))).sort()
@@ -636,11 +659,15 @@
 </script>
 
 <svelte:head>
-  <title>Core Backoffice</title>
+  <title>Fleet</title>
 </svelte:head>
 
 {#if managerSetupNeeded}
-  <ManagerSetup onDone={() => (managerSetupNeeded = false)} />
+  <ManagerSetup
+    providers={managerProviders}
+    onDone={() => (managerSetupNeeded = false)}
+    onSkip={skipManagerSetup}
+  />
 {/if}
 
 <main class="shell">
@@ -650,7 +677,7 @@
       <span>{error}</span>
     </section>
   {:else if !data}
-    <section class="loading">Loading Core state…</section>
+    <section class="loading">Loading Fleet state…</section>
   {:else}
     <div class="app-shell" style="--left-w: {leftWidth}px; --right-w: {rightWidth}px">
       <Sidebar
@@ -795,7 +822,7 @@
     {projects}
     {workspaces}
     statuses={data.statuses ?? []}
-    {assignees}
+    assignees={assigneeChoices}
     preferredProject={selectedProjectId || selectedWorkspaceId}
     saving={creating}
     {createError}
@@ -810,7 +837,7 @@
     {workspaces}
     {projects}
     statuses={data.statuses ?? []}
-    {assignees}
+    assignees={assigneeChoices}
     bind:draftStatus
     bind:draftPriority
     bind:draftAssignee

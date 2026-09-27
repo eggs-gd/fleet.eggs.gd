@@ -3,6 +3,7 @@ package appconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -85,5 +86,25 @@ func TestSaveIsAtomicNoLeftoverTempFiles(t *testing.T) {
 	}
 	if len(entries) != 1 || entries[0].Name() != "app.json" {
 		t.Fatalf("unexpected entries in ~/.fleet: %v", entries)
+	}
+}
+
+func TestEnsureRuntimeRootMakesTheHomeOwnerOnly(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file modes are not meaningful on Windows")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	old := filepath.Join(home, ".fleet")
+	if err := os.MkdirAll(old, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	root, err := EnsureRuntimeRoot()
+	if err != nil || root != old {
+		t.Fatalf("root = %q, %v", root, err)
+	}
+	info, err := os.Stat(root)
+	if err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("mode = %v, %v", info.Mode().Perm(), err)
 	}
 }

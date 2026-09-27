@@ -1,19 +1,22 @@
-# Core Go Runtime
+# Fleet Go Runtime
 
-This directory contains the Go runtime for Core backoffice and future local
+This directory contains the Go runtime for the Fleet dashboard and local
 automation.
 
 ## Current Entry Point
 
-Run Core through the top-level Makefile:
+Run Fleet through the top-level Makefile:
 
 ```bash
 make serve
 ```
 
-The `serve` command is the single runtime entry point. It:
+The `serve` command is the single runtime entry point. It starts in dry-run mode
+(it plans launches and starts no agents) unless you pass `--live` or set live mode
+in Settings. It:
 
-- serves the built Svelte backoffice from `view/dist`;
+- serves the dashboard built into the binary (`make build` embeds it; `--backoffice-dir`
+  serves a directory instead, for dashboard development);
 - exposes `/api/health` (`degraded` lists failing parts, empty when healthy);
 - exposes runtime Core state at `/api/state`;
 - persists task edits through `PATCH /api/tasks`;
@@ -28,7 +31,7 @@ There is intentionally no separate `daemon` command right now.
 
 ## Current Packages
 
-- `cmd/core`: CLI entry point.
+- `cmd/fleet`: CLI entry point.
 - `internal/server`: HTTP server, static backoffice host, Manager API routes,
   composition root (`Compose`), and dashboard REST (`DashboardSurface`:
   TaskService writes + board/`execution.Status` poll; CORE-114).

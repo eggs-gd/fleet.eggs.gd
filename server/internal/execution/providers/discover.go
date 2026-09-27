@@ -142,7 +142,7 @@ func discoverCodex() AgentDiscovery {
 	row := AgentDiscovery{
 		ID:                   "codex",
 		Name:                 "Codex",
-		Expected:             "standalone `codex` on PATH, CORE_CODEX_BINARY, or core.local.yaml. ChatGPT.app's bundled binary is not canonical.",
+		Expected:             "standalone `codex` on PATH, FLEET_CODEX_BINARY, or core.local.yaml. ChatGPT.app's bundled binary is not canonical.",
 		VisibilityClass:      "core_visible",
 		ConfiguredExecutable: localExecutable("codex"),
 		DetectedExecutables:  detectCodex(),

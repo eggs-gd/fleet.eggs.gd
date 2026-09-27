@@ -112,8 +112,8 @@
   {/each}
 </section>
 
-<section class="settings-block" aria-label="Core data">
-  <h3>Core data</h3>
+<section class="settings-block" aria-label="Fleet data">
+  <h3>Fleet data</h3>
   {#each projects.data_paths || [] as path (path.name)}
     <article class="settings-item">
       <div class="settings-item-head">

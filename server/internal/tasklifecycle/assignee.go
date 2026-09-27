@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -60,4 +61,26 @@ func KnownAssignee(root, name string) bool {
 // not check the roster.
 func ValidAssigneeName(name string) bool {
 	return assigneeSlug.MatchString(strings.ToLower(strings.TrimSpace(name)))
+}
+
+// RosterPeople lists the people registered as workers: the names of the
+// Fleet/<name>.md files, without the fleet's own documents and the AI agents.
+func RosterPeople(root string) []string {
+	people := []string{}
+	if strings.TrimSpace(root) == "" {
+		return people
+	}
+	entries, err := os.ReadDir(filepath.Join(root, "Fleet"))
+	if err != nil {
+		return people
+	}
+	for _, entry := range entries {
+		name, ok := strings.CutSuffix(strings.ToLower(entry.Name()), ".md")
+		if entry.IsDir() || !ok || !assigneeSlug.MatchString(name) || fleetDocs[name] || IsAgent(name) {
+			continue
+		}
+		people = append(people, name)
+	}
+	sort.Strings(people)
+	return people
 }

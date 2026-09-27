@@ -575,7 +575,7 @@ Local setup:
 - Install the official standalone Codex CLI so `codex` resolves on the daemon
   PATH (for example via `~/.local/bin/codex`). Core launches only that
   shell-visible binary through `exec.LookPath("codex")`.
-- Optional explicit override: set `CORE_CODEX_BINARY` to an absolute path when
+- Optional explicit override: set `FLEET_CODEX_BINARY` to an absolute path when
   the daemon environment cannot see the PATH install. ChatGPT.app's bundled
   `/Applications/ChatGPT.app/Contents/Resources/codex` is not an accepted
   daemon fallback (CORE-151); missing standalone CLI blocks the task with an
@@ -610,7 +610,7 @@ Manual runtime smoke command:
 
 ```text
 cd server
-CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCodexAppServerRuntimeSession -v -timeout 3m
+FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCodexAppServerRuntimeSession -v -timeout 3m
 ```
 
 This smoke is intentionally skipped by default. It launches the same
@@ -730,7 +730,7 @@ Manual visible smoke:
 
 ```text
 cd server
-CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCursorAgentProcessSession -v -timeout 3m
+FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/corechain/... -run TestManualVerifyCursorAgentProcessSession -v -timeout 3m
 ```
 
 The smoke exercises the same `cursor-visible` backend that `core serve` uses:

@@ -1,11 +1,11 @@
-# Core MVP Operating Model
+# Fleet MVP Operating Model
 
-This document captures how Core is meant to be used before any fully automatic
+This document captures how Fleet is meant to be used before any fully automatic
 agent daemon exists.
 
 ## Roles
 
-Core has three practical roles in the MVP:
+Fleet has three practical roles in the MVP:
 
 1. **Manager** — a Claude, Codex, Cursor, or Gemini session whose folder is
    this data root. The conversation stays in that provider's app. Fleet MCP
@@ -20,8 +20,8 @@ There is no assumption that a daemon automatically picks up tasks yet.
 
 ```text
 Phone / Action Button / voice or text
-  -> Core Manager API (STT + fast-path / cheap structured LLM)
-  -> Core task provider (Markdown default; optional Plane — see
+  -> Fleet Manager API (STT + fast-path / cheap structured LLM)
+  -> Fleet task provider (Markdown default; optional Plane — see
      `_docs/PLANE_TASK_PROVIDER.md`)
   -> daemon or manual wakeup of target worker
   -> worker edits repo files
@@ -29,18 +29,18 @@ Phone / Action Button / voice or text
   -> the operator reviews and commits later
 ```
 
-Core is the shared filesystem state. Chat history is temporary.
+Fleet is the shared filesystem state. Chat history is temporary.
 
 ## Manager Capture Mode
 
-Use the Core Manager API when:
+Use the Fleet Manager API when:
 
 - input is voice-first;
 - the user is walking / mobile / not in a repo;
 - the task should be remembered for later;
 - the target worker is not obvious;
 - the input needs triage into task/note/decision/inbox;
-- aliases, project routing, or Core metadata should be updated.
+- aliases, project routing, or Fleet metadata should be updated.
 
 Manager tools write:
 
@@ -58,12 +58,12 @@ Use direct agent mode when:
 - the user is already in Claude/Codex/Cursor/Gemini;
 - there is no need for Manager triage before work begins.
 
-If the task should remain visible in Core, the worker should create or update a
-Core task file before or during the work.
+If the task should remain visible in Fleet, the worker should create or update a
+Fleet task file before or during the work.
 
 ## Manual Wakeup Mode
 
-For now, workers do not poll Core automatically.
+For now, workers do not poll Fleet automatically.
 
 The user manually wakes a worker with a short instruction such as:
 
@@ -96,12 +96,12 @@ The worker should:
     numeric priority first: `1` before `2`, then `3`, `4`, `5`.
 13. If priority is tied, pick by natural ref order.
 14. Set task `status: doing` in the canonical task card. Do not edit
-    `Work/INDEX.md`; Core runtime or the shared mutation layer refreshes
+    `Work/INDEX.md`; Fleet runtime or the shared mutation layer refreshes
     generated views.
 15. Do the work.
 16. For manual wakeup, set task `status: needs_review` when physical artifacts
     are ready for the operator. For daemon-launched work, return a compact typed
-    `ExecutionResult` JSON payload and let Core's Finalizer apply the task
+    `ExecutionResult` JSON payload and let Fleet's Finalizer apply the task
     transition through `TaskService.ReportExecution` after execution is
     terminal — workers must not finalize task status themselves.
 17. Do not move your own bot-produced work to `done`; the operator closes reviewed
@@ -123,7 +123,7 @@ The worker must add a `## Review Comments` entry that answers:
 - what status the operator should move the task to after answering, usually
   `needs_rework` or `todo`.
 
-Core exposes the latest non-the operator blocked review comment as `blocked_reason` in
+Fleet exposes the latest non-the operator blocked review comment as `blocked_reason` in
 the backoffice API so the operator can see the worker question directly on the blocked
 card. The operator comments are treated as answers or extra context, not as the blocker
 source.
@@ -144,12 +144,12 @@ say:
 Daemon-launched Codex workers use `codex app-server --stdio`, create or resume
 a Codex thread, name it as `<task ref> · <task title>`, and persist
 `codex_thread_id`, `codex_turn_id`, host name/id, project/repository, and the
-Core launch claim id in runtime state. These sessions are LiveReady for normal
+Fleet launch claim id in runtime state. These sessions are LiveReady for normal
 daemon auto-launch (CORE-130). They are visible in Codex Remote on paired
 clients, but they may not appear in the ordinary desktop project/sidebar
 history. The dashboard shows the Remote identity and copyable thread/turn ids;
 until Codex exposes a stable deep link, open Codex Remote, select the connected
-host and project, then match the thread by its Core title or thread id.
+host and project, then match the thread by its Fleet title or thread id.
 `launch.mode: allow_core_visible` is a legacy no-op.
 
 ### Claude
@@ -163,7 +163,7 @@ deterministic launcher daemon.
 ### Cursor
 
 Cursor is daemon-launchable through the `cursor-visible` backend when a task is
-explicitly assigned to Cursor. Core creates/stores a Cursor chat id, launches
+explicitly assigned to Cursor. Fleet creates/stores a Cursor chat id, launches
 the normal interactive Cursor Agent CLI without `--print`, captures the session
 log, and exposes a CLI resume command in the dashboard. Cursor remains explicit
 opt-in rather than a default assignee because its operator path is CLI-visible,
@@ -196,7 +196,7 @@ transitions live in `TASK_LIFECYCLE.md`.
 
 Daemon v0 may:
 
-- watch Core files;
+- watch Fleet files;
 - validate task frontmatter;
 - refresh generated views such as `Work/INDEX.md`;
 - rebuild per-agent queues;
@@ -270,7 +270,7 @@ daemon, Manager, and workers should not invent additional transitions.
 
 Chat output is not a task deliverable.
 
-Every task must leave a physical artifact in Core or in the target repository:
+Every task must leave a physical artifact in Fleet or in the target repository:
 code, docs, README, roadmap, decision, project note, generated file, or an
 updated task card with concrete findings. This applies to research and planning
 tasks as much as implementation tasks.

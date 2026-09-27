@@ -44,6 +44,23 @@ func RuntimeRoot() (string, error) {
 	return filepath.Join(home, ".fleet"), nil
 }
 
+// EnsureRuntimeRoot creates ~/.fleet for the owner only (0700) and tightens it
+// if an older version made it world-readable. It holds the launch token, the
+// runtime database, and agent session logs.
+func EnsureRuntimeRoot() (string, error) {
+	root, err := RuntimeRoot()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return "", fmt.Errorf("create %s: %w", root, err)
+	}
+	if err := os.Chmod(root, 0o700); err != nil {
+		return "", fmt.Errorf("restrict %s: %w", root, err)
+	}
+	return root, nil
+}
+
 // PointerPath returns ~/.fleet/app.json.
 func PointerPath() (string, error) {
 	root, err := RuntimeRoot()
@@ -81,7 +98,7 @@ func Save(cfg Config) error {
 		return err
 	}
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create %s: %w", dir, err)
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")

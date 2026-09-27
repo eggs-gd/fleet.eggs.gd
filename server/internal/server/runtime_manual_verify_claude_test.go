@@ -17,10 +17,10 @@ import (
 // `claude --bg --remote-control` process and waits for it to finish. Run
 // explicitly with:
 //
-//	CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyClaudeBackgroundRemoteSession -v -timeout 90s
+//	FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyClaudeBackgroundRemoteSession -v -timeout 90s
 func TestRuntimeManualVerifyClaudeBackgroundRemoteSession(t *testing.T) {
-	if os.Getenv("CORE_MANUAL_LIVE_VERIFY") != "1" {
-		t.Skip("set CORE_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
+	if os.Getenv("FLEET_MANUAL_LIVE_VERIFY") != "1" {
+		t.Skip("set FLEET_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
 	}
 
 	root := t.TempDir()

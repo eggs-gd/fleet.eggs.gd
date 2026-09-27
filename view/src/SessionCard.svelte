@@ -105,7 +105,7 @@
   <p class="session-card-task">{session.task_title || session.task_ref || session.task_id}</p>
   <p class="session-card-activity">
     {#if orphan}
-      {session.blocking_reason || session.reason || 'Core lost track of this session.'}
+      {session.blocking_reason || session.reason || 'Fleet lost track of this session.'}
     {:else}
       {session.last_message || session.last_event || session.result?.summary || status}
     {/if}

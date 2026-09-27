@@ -41,7 +41,7 @@ Strong cleanup signals include duplicate local checkouts of the same remote and
 nested repositories. Weaker signals include names such as `old`, `test`,
 `backup`, or `playground`, missing remotes, and missing README files.
 
-Nothing in Core should delete a repository unless a human explicitly confirms
+Nothing in Fleet should delete a repository unless a human explicitly confirms
 that specific path.
 
 Human-reviewed protection rules live in `protection-rules.json`. Use them for

@@ -155,7 +155,7 @@ func TestServeBackofficeBlocksTraversalAndSetsNoStore(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "/../secret.txt", nil)
 	rec := httptest.NewRecorder()
-	serveBackoffice(rec, req, dir, "tok")
+	serveBackoffice(rec, req, os.DirFS(dir), "tok")
 	if strings.Contains(rec.Body.String(), "top secret") {
 		t.Fatal("path traversal reached a file outside the backoffice dir")
 	}

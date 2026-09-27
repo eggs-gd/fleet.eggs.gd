@@ -111,8 +111,8 @@
 
 <nav class="sidebar sidebar-left" aria-label="Navigation">
   <div class="sidebar-brand">
-    <span class="sidebar-logo">e</span>
-    <strong>eGGs.gd</strong>
+    <span class="sidebar-logo">F</span>
+    <strong>Fleet</strong>
     <ThemeSwitch pref={themePref} onChange={onThemeChange} />
   </div>
 
@@ -256,6 +256,16 @@
           {/if}
         {:else}
           <p class="empty">No projects yet.</p>
+          <p class="empty">
+            Fleet finds projects by scanning folders that hold your git repositories.
+          </p>
+          <button
+            type="button"
+            class="settings-btn"
+            on:click={() => onSelectSettingsSection('general')}
+          >
+            Add a folder to scan
+          </button>
         {/each}
       </div>
     </div>

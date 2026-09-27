@@ -129,6 +129,7 @@ func settingsSnapshot(cfg Config, dash *Dashboard, scanner *settings.Scanner) se
 		DryRun:             cfg.DryRun,
 		SessionTimeout:     cfg.SessionTimeout,
 		SessionTimeoutFlag: cfg.SessionTimeoutFlag,
+		LaunchFlag:         cfg.LaunchFlag,
 		Workspaces:         state.Workspaces,
 		Projects:           state.Projects,
 		Registry:           state.Registry,

@@ -11,6 +11,7 @@ import (
 type PatchRequest struct {
 	ScanRoots      *[]string             `json:"scanRoots"`
 	SessionTimeout *string               `json:"sessionTimeout"`
+	Launch         *string               `json:"launch"`
 	Agents         map[string]AgentPatch `json:"agents"`
 	Manager        *ManagerPatch         `json:"manager"`
 }
@@ -45,6 +46,13 @@ func DecodePatch(body []byte) (PatchRequest, error) {
 	if err := dec.Decode(&patch); err != nil {
 		return PatchRequest{}, fmt.Errorf("unknown or invalid settings field: %w", err)
 	}
+	if patch.Launch != nil {
+		switch strings.TrimSpace(*patch.Launch) {
+		case "", LaunchLive, LaunchDryRun:
+		default:
+			return PatchRequest{}, fmt.Errorf("launch must be %q or %q", LaunchLive, LaunchDryRun)
+		}
+	}
 	for id := range patch.Agents {
 		if !isKnownAgent(id) {
 			return PatchRequest{}, fmt.Errorf("unknown agent %q", id)
@@ -69,6 +77,9 @@ func MergeOverlay(base Overlay, patch PatchRequest) Overlay {
 	}
 	if patch.SessionTimeout != nil {
 		out.SessionTimeout = strings.TrimSpace(*patch.SessionTimeout)
+	}
+	if patch.Launch != nil {
+		out.Launch = strings.TrimSpace(*patch.Launch)
 	}
 	for id, item := range patch.Agents {
 		cur := out.Agents[id]

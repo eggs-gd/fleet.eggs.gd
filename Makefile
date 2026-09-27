@@ -1,53 +1,82 @@
 SHELL := /bin/sh
 
+# Machine-local overrides (not committed): DATA_ROOT, ADDR, LIVE, PROJECTS_ROOTS.
+-include Makefile.local
+
 APP_ROOT := $(CURDIR)
-DATA_ROOT ?= $(abspath $(APP_ROOT)/../Data)
+DATA_ROOT ?=
 VIEW_DIR := view
+SITE_DIR := site
 SERVER_DIR := server
-GO_CACHE ?= /tmp/core-eggs-gocache
+WEBUI_DIST := $(SERVER_DIR)/internal/webui/dist
+BIN := $(APP_ROOT)/bin/fleet
 ADDR ?= 127.0.0.1:8787
 SESSION_TIMEOUT ?= 10m
+LIVE ?=
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
+LDFLAGS := $(if $(VERSION),-X main.version=$(VERSION),)
 
-.PHONY: fmt help scan workspaces rebuild-index build test check serve serve-live version clean site
-SITE_DIR := site
+.PHONY: help setup ui build test vet check serve scan rebuild-index version fmt site clean
 
 help:
-	@printf '%s\n' 'Core service entry points:'
+	@printf '%s\n' 'Fleet entry points:'
 	@printf '%s\n' ''
-	@printf '%s\n' '  make scan        Scan PROJECTS_ROOTS and refresh Data/_registry'
-	@printf '%s\n' '  make workspaces  Generate Data/Work/* project cards from _registry'
-	@printf '%s\n' '  make rebuild-index Rebuild Data/Work/INDEX.md from Work source files'
-	@printf '%s\n' '  make build       Build the Svelte backoffice'
-	@printf '%s\n' '  make test        Run Go tests'
-	@printf '%s\n' '  make check       Run build and tests'
-	@printf '%s\n' '  make site        Typecheck and build the static landing'
-	@printf '%s\n' '  make fmt         gofmt for server, prettier for view and site'
-	@printf '%s\n' '  make serve       Serve built backoffice at http://$(ADDR)/'
-	@printf '%s\n' '  make version     Print Core runtime version'
+	@printf '%s\n' '  make setup         Install dashboard and site dependencies (npm ci)'
+	@printf '%s\n' '  make build         Build the dashboard, then bin/fleet with the dashboard inside'
+	@printf '%s\n' '  make serve         Build, then run bin/fleet serve on http://$(ADDR)/'
+	@printf '%s\n' '  make test          Run the Go tests'
+	@printf '%s\n' '  make vet           Run go vet'
+	@printf '%s\n' '  make check         Run vet, the Go tests, and the dashboard tests'
+	@printf '%s\n' '  make scan          Scan PROJECTS_ROOTS and refresh the registry'
+	@printf '%s\n' '  make rebuild-index Rebuild Work/INDEX.md from the task files'
+	@printf '%s\n' '  make site          Typecheck and build the static landing'
+	@printf '%s\n' '  make fmt           gofmt for the server, prettier for view and site'
+	@printf '%s\n' '  make clean         Remove build output'
 	@printf '%s\n' ''
-	@printf '%s\n' 'Variables:'
-	@printf '%s\n' '  DATA_ROOT=/path      Override the Data tree (default: ../Data next to App)'
-	@printf '%s\n' '  PROJECTS_ROOTS="a b" Directories to scan (required for make scan)'
-	@printf '%s\n' '  ADDR=host:port       Override serve address'
-	@printf '%s\n' '  SESSION_TIMEOUT=10m  Override live agent session timeout'
+	@printf '%s\n' 'Variables (or put them in Makefile.local):'
+	@printf '%s\n' '  DATA_ROOT=/path      Data root. Default: the one saved in ~/.fleet/app.json,'
+	@printf '%s\n' '                       created at ~/.fleet/workspace on first run'
+	@printf '%s\n' '  LIVE=1               Start agents for ready tasks (default: plan launches only)'
+	@printf '%s\n' '  ADDR=host:port       Listen address'
+	@printf '%s\n' '  SESSION_TIMEOUT=10m  Idle attention threshold for agent sessions'
+	@printf '%s\n' '  PROJECTS_ROOTS="a b" Directories to scan (make scan)'
 
-scan:
-	@test -n "$(PROJECTS_ROOTS)" || { printf '%s\n' 'PROJECTS_ROOTS is required'; exit 1; }
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core scan --root "$(DATA_ROOT)" $(foreach root,$(PROJECTS_ROOTS),--projects "$(root)")
+setup:
+	cd "$(VIEW_DIR)" && npm ci
+	cd "$(SITE_DIR)" && npm ci
 
-workspaces:
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core workspaces --root "$(DATA_ROOT)"
-
-rebuild-index:
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core rebuild-index --root "$(DATA_ROOT)"
-
-build:
+# The dashboard is copied into the Go package that embeds it. The placeholder
+# stays, so a checkout that has not built the dashboard still compiles.
+ui:
 	cd "$(VIEW_DIR)" && npm run build
+	find "$(WEBUI_DIST)" -mindepth 1 ! -name PLACEHOLDER -delete
+	cp -R "$(VIEW_DIR)/dist/." "$(WEBUI_DIST)/"
+
+build: ui
+	cd "$(SERVER_DIR)" && go build -ldflags '$(LDFLAGS)' -o "$(BIN)" ./cmd/fleet
 
 test:
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go test ./...
+	cd "$(SERVER_DIR)" && go test ./...
 
-check: build test
+vet:
+	cd "$(SERVER_DIR)" && go vet ./...
+
+check: vet test
+	cd "$(VIEW_DIR)" && npm run test:ui-state && npm run test:technology-display && npm run format:check
+
+serve: build
+	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \
+	"$(BIN)" serve --addr "$(ADDR)" --session-timeout "$(SESSION_TIMEOUT)" $(if $(DATA_ROOT),--root "$(DATA_ROOT)") $(if $(LIVE),--live)
+
+scan: build
+	@test -n "$(PROJECTS_ROOTS)" || { printf '%s\n' 'PROJECTS_ROOTS is required'; exit 1; }
+	"$(BIN)" scan $(if $(DATA_ROOT),--root "$(DATA_ROOT)") $(foreach root,$(PROJECTS_ROOTS),--projects "$(root)")
+
+rebuild-index: build
+	"$(BIN)" rebuild-index $(if $(DATA_ROOT),--root "$(DATA_ROOT)")
+
+version: build
+	"$(BIN)" version
 
 site:
 	cd "$(SITE_DIR)" && npm run check && npm run build
@@ -57,16 +86,6 @@ fmt:
 	cd "$(VIEW_DIR)" && npm run format
 	cd "$(SITE_DIR)" && npm run format
 
-serve: build
-	if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi; \
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core serve --root "$(DATA_ROOT)" --backoffice-dir "$(APP_ROOT)/$(VIEW_DIR)/dist" --addr "$(ADDR)" --session-timeout "$(SESSION_TIMEOUT)"
-
-serve-live:
-	@printf '%s\n' 'make serve-live is deprecated; use make serve. Running make serve now.'
-	$(MAKE) serve ADDR="$(ADDR)" SESSION_TIMEOUT="$(SESSION_TIMEOUT)"
-
-version:
-	cd "$(SERVER_DIR)" && GOCACHE="$(GO_CACHE)" go run ./cmd/core version
-
 clean:
-	rm -rf "$(VIEW_DIR)/dist"
+	rm -rf "$(VIEW_DIR)/dist" "$(APP_ROOT)/bin"
+	find "$(WEBUI_DIST)" -mindepth 1 ! -name PLACEHOLDER -delete

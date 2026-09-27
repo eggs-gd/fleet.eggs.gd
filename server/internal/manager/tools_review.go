@@ -85,13 +85,3 @@ func (s *Service) missingTask(ctx context.Context, ref string, err error) Respon
 	}
 	return failResponse(fail)
 }
-
-func firstRepo(draft Intent) string {
-	if strings.TrimSpace(draft.Repository) != "" {
-		return draft.Repository
-	}
-	if len(draft.Repositories) > 0 {
-		return draft.Repositories[0]
-	}
-	return ""
-}

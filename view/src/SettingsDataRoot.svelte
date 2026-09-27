@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { apiFetch } from './lib/api.js';
+  import { apiFetch, readApiError } from './lib/api.js';
   import SettingsField from './SettingsField.svelte';
 
   let config = $state(null);
@@ -77,7 +77,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agent: previousBinding.agent, workspace: input.trim() })
       });
-      if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) throw new Error(await readApiError(response));
       recreateOffer = false;
     } catch (err) {
       recreateError = err.message || String(err);
@@ -148,7 +148,7 @@
     {/if}
 
     {#if restartRequired}
-      <p class="settings-warn">Data was moved. Restart Core to serve from the new path.</p>
+      <p class="settings-warn">Data was moved. Restart Fleet to serve from the new path.</p>
     {/if}
     {#if recreateOffer}
       <div class="settings-savebar">

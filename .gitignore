@@ -9,3 +9,9 @@ site/build/
 
 .DS_Store
 .claude/settings.local.json
+
+# dashboard copied into the Go build by `make ui`
+server/internal/webui/dist/*
+!server/internal/webui/dist/PLACEHOLDER
+bin/
+Makefile.local

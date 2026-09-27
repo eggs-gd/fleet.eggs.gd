@@ -21,12 +21,12 @@ same time.
 This applies to:
 
 - daemon-launched agents;
-- manually launched agents when Core knows about the work;
+- manually launched agents when Fleet knows about the work;
 - Codex, Claude, Cursor, and future workers.
 
 ## Concurrency Scopes
 
-Core should treat these as lock scopes:
+Fleet should treat these as lock scopes:
 
 | Scope | Meaning | MVP Limit |
 |---|---|---:|
@@ -39,11 +39,11 @@ Core should treat these as lock scopes:
 The strictest matching scope wins.
 
 Provider startup states (`starting`, `waiting_for_visible_session`, and equivalent
-handshake phases) count as active slot owners. Core reserves assignee, project,
+handshake phases) count as active slot owners. Fleet reserves assignee, project,
 and repository scopes before Claude remote-control URL registration, Cursor
 `create-chat`, or Codex thread/start completes. A second task for the same
 assignee must wait while the first is still waiting for visible-session
-registration. When provider startup fails, Core releases the slot and requeues
+registration. When provider startup fails, Fleet releases the slot and requeues
 waiting candidates.
 
 Example: if Claude is working on `acme/billing-portal`, Codex should not
@@ -92,11 +92,11 @@ Rules:
 
 - Tokens may be human refs (`CORE-144`), canonical task ids, or locators.
 - A prerequisite is satisfied only at `status: done` (not `needs_review`).
-- While any dependency is unresolved, Core must not claim or start the task.
+- While any dependency is unresolved, Fleet must not claim or start the task.
 - The dependent may remain `todo` / `needs_rework`. Dependency waiting is a
   launch-evaluation skip (`failed_gates` / `launch_skipped` with a
   `depends_on:` reason), not operator-facing `status: blocked`.
-- When a prerequisite becomes `done`, Core requeues dependents for normal
+- When a prerequisite becomes `done`, Fleet requeues dependents for normal
   launch evaluation.
 - `/api/state` surfaces the current `depends_on` gate on
   `launch_evaluation` so the dashboard can explain why pickup is deferred.
@@ -104,7 +104,7 @@ Rules:
   (`depends_on` field), not only as agent instructions in the body.
   Saves write durable Markdown frontmatter through `/api/tasks`.
 
-If the selected assignee has no live-ready adapter, Core must leave the task in
+If the selected assignee has no live-ready adapter, Fleet must leave the task in
 its pickup status and expose the `agent_live_ready` or `agent_visibility`
 reason in runtime state and logs. This is a queue availability condition, not a
 task blocker. Do not move the task to `blocked` and do not reassign it to
@@ -113,32 +113,32 @@ another live-ready agent unless the operator explicitly changes the assignee or
 
 ## Session Visibility Classes (CORE-70 / CORE-130)
 
-Core distinguishes how an operator can see a daemon-launched session:
+Fleet distinguishes how an operator can see a daemon-launched session:
 
 | Class | Meaning | Daemon auto-launch |
 |---|---|---|
 | `app_visible` | Vendor desktop/mobile app session (Claude remote-control URL). | Allowed |
 | `cli_visible` | Verified provider CLI identity/resume path (Cursor chat id). | Allowed (explicit opt-in workers) |
-| `core_visible` | Core API/log/control plane plus provider Remote identity when available (Codex app-server / Codex Remote). Not a Claude-style deep-link URL. | Allowed when the adapter is LiveReady (CORE-130) |
+| `core_visible` | Fleet API/log/control plane plus provider Remote identity when available (Codex app-server / Codex Remote). Not a Claude-style deep-link URL. | Allowed when the adapter is LiveReady (CORE-130) |
 | `headless` | Process/log only. | Blocked |
 
 Current adapter mapping:
 
 - Claude `background-remote` → `app_visible` (live-ready).
 - Cursor `cursor-visible` → `cli_visible` (live-ready; not phone/app_visible).
-- Codex `codex-app-server` → `core_visible` (live-ready; Codex Remote + Core dashboard controls).
+- Codex `codex-app-server` → `core_visible` (live-ready; Codex Remote + Fleet dashboard controls).
 
 `launch.mode: allow_core_visible` is a legacy no-op kept for older task cards.
 Normal Codex daemon pickup no longer requires it.
 
-Codex events that mean Core JSON-RPC control is ready use
+Codex events that mean Fleet JSON-RPC control is ready use
 `agent_core_control_ready`, not `agent_remote_control_ready`. The latter is
 reserved for Claude's phone/app remote-control URL announcement.
 
 ## Pickup Order
 
 When multiple launchable `needs_rework` or `todo` tasks are available for the
-same assignee, Core must pick deterministically:
+same assignee, Fleet must pick deterministically:
 
 1. `needs_rework` before `todo`.
 2. Lower numeric `priority` first: `1` before `2`, then `3`, `4`, `5`.
@@ -159,7 +159,7 @@ the task's `## Handoff` and `## Activity Log`.
 
 ## Lock Model
 
-Core does not create separate lock files for MVP task locking.
+Fleet does not create separate lock files for MVP task locking.
 
 Task-level locking is the task status itself:
 
@@ -178,7 +178,7 @@ process:
 
 Repository and project concurrency should be enforced from active runtime
 sessions owned by the daemon. The real process launcher should keep these
-sessions in memory, which lets Core count active agents without scanning host
+sessions in memory, which lets Fleet count active agents without scanning host
 processes.
 
 The check and reservation must be atomic. The daemon must reserve the
@@ -221,7 +221,7 @@ is that app's own concern, not something recorded here.
 
 ## Claude Remote And HITL Constraint
 
-Core must not pretend that Claude CLI remote visibility and daemon-controlled
+Fleet must not pretend that Claude CLI remote visibility and daemon-controlled
 human-in-the-loop input are the same capability.
 
 Observed from `CORE-53`:
@@ -230,10 +230,10 @@ Observed from `CORE-53`:
   complete tasks and write artifacts, but it is not a phone-visible interactive
   session.
 - `script -q -F /dev/null claude` can create a phone-visible Claude session,
-  but bytes written by Core to stdin did not appear as a user message in the
+  but bytes written by Fleet to stdin did not appear as a user message in the
   remote chat.
 - macOS Terminal / AppleScript automation launches a separate GUI process that
-  Core does not own. Core can no longer observe stdout, know whether Claude is
+  Fleet does not own. Fleet can no longer observe stdout, know whether Claude is
   waiting, or safely correlate process completion with task completion.
 
 Valid future directions must choose one primary capability:
@@ -241,16 +241,16 @@ Valid future directions must choose one primary capability:
 | Goal | Candidate mechanism | Tradeoff |
 |---|---|---|
 | Deterministic daemon-controlled HITL | Claude Agent SDK / callback-based gate | Not phone-visible as a normal Claude remote session. |
-| Phone-visible Claude session | Claude CLI remote-capable interactive session | The human operates the session; Core should not inject stdin as if it were the user. |
-| Both phone visibility and hosted HITL | Managed/hosted agent runtime if available | Not self-hosted by the Core daemon. |
+| Phone-visible Claude session | Claude CLI remote-capable interactive session | The human operates the session; Fleet should not inject stdin as if it were the user. |
+| Both phone visibility and hosted HITL | Managed/hosted agent runtime if available | Not self-hosted by the Fleet daemon. |
 
 Do not add another argv/stdin/PTY/GUI paste workaround without first recording
 which capability is being selected for the task.
 
 ### Decision (2026-08-01)
 
-The operator chose the "phone-visible Claude session" row: Core dispatches the
-session and gets out of the way; the human answers from the phone. Core does
+The operator chose the "phone-visible Claude session" row: Fleet dispatches the
+session and gets out of the way; the human answers from the phone. Fleet does
 not try to be the second row (deterministic daemon-controlled input) at the
 same time.
 
@@ -261,23 +261,23 @@ claude --bg --remote-control --name "<task ref>" --permission-mode acceptEdits "
 ```
 
 - `--bg` returns almost immediately; the agent keeps running independently.
-  Core does not track it via a blocking foreground process/`cmd.Wait()`.
+  Fleet does not track it via a blocking foreground process/`cmd.Wait()`.
 - `--remote-control` makes the session phone-visible. The URL
   (`https://claude.ai/code/session_...`) is printed into `claude logs <id>`
-  shortly after dispatch; Core scrapes it and posts it as a task review
+  shortly after dispatch; Fleet scrapes it and posts it as a task review
   comment so the operator can open it from the phone.
-- If that URL never appears (a hollow background session), Core fails the
+- If that URL never appears (a hollow background session), Fleet fails the
   execution as `remote_control_unavailable` after the remote-control ready
   timeout instead of treating the hollow shell as idle HITL.
-- Core supervises completion by polling `claude agents --json`, matching the
+- Fleet supervises completion by polling `claude agents --json`, matching the
   dispatched short id, and watching the `state` field for a terminal value.
   Confirmed working values: `state: "done"` on normal completion. Other
   terminal values are not yet empirically confirmed; treat disappearance from
   the list as ended too.
 - `claude stop <id>` is reserved for explicit operator stop/cancel or runtime
   shutdown cleanup. Idle observation should surface operator attention instead
-  of silently stopping a process Core no longer owns.
-- Core does not inject stdin/PTY/GUI keystrokes into the session at all. The
+  of silently stopping a process Fleet no longer owns.
+- Fleet does not inject stdin/PTY/GUI keystrokes into the session at all. The
   prompt is passed as a normal CLI argument, and any follow-up conversation
   happens directly between the operator and Claude on the phone.
 - `launch.mode` is not a selector between headless and visible Claude behavior.
@@ -286,7 +286,7 @@ claude --bg --remote-control --name "<task ref>" --permission-mode acceptEdits "
   session.
 
 Operational note: when no Claude state or transcript activity is observed for
-the configured idle threshold, Core marks the execution `operator_attention`
+the configured idle threshold, Fleet marks the execution `operator_attention`
 and keeps the task in `doing`. The operator can open the phone session, continue there,
 or explicitly cancel/stop it. A long but active session must not be failed only
 because fixed wall time since launch elapsed.
@@ -299,7 +299,7 @@ observed live: `CORE-13` had two simultaneously "current" background Claude
 sessions in `claude agents --json`, with no way to tell which one was the
 active continuation.
 
-Core now tracks this explicitly instead of guessing: every relaunch looks
+Fleet now tracks this explicitly instead of guessing: every relaunch looks
 up the most recent persisted session for the same task and links the new
 session to it (regardless of whether an automatic resume is attempted), so
 the dashboard can always show the chain instead of a flat list of
@@ -322,13 +322,13 @@ Per-backend behavior:
   stopped first; no other flags may be repeated on the resume call). Was
   `CanAttempt: false` before this verification — do not revert that
   without a reason, this was a deliberate caution, not an oversight.
-- Cursor (`cursor-visible`): `CanAttempt: true`, `verified`. Core creates a
+- Cursor (`cursor-visible`): `CanAttempt: true`, `verified`. Fleet creates a
   Cursor chat id before the first prompt with `cursor-agent create-chat`,
   stores it as `cursor_chat_id`, and launches visible CLI work with
   `cursor-agent --resume <chat-id> --trust --workspace <repo> <prompt>`.
   Relaunch/reopen can safely reuse the same provider-visible identity by
   passing the previous `cursor_chat_id` back to `--resume`; if no prior chat id
-  exists, Core creates a fresh chat and links the sessions through the normal
+  exists, Fleet creates a fresh chat and links the sessions through the normal
   supersede fields. Cursor visibility is `cli_visible`, not a Claude-style
   phone remote-control URL.
 - `/api/state` exposes `session_groups`: every task's sessions (live and

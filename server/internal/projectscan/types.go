@@ -94,7 +94,3 @@ func emptyTech() TechLists {
 func emptyDetected() Detected {
 	return Detected{TechLists: emptyTech(), Evidence: []Evidence{}}
 }
-
-func emptyEffective() Effective {
-	return Effective{TechLists: emptyTech(), Capabilities: []string{}}
-}

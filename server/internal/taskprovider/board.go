@@ -30,7 +30,6 @@ type Snapshot struct {
 	Workspaces  []board.Workspace  `json:"workspaces"`
 	Projects    []board.Project    `json:"projects"`
 	Tasks       []Task             `json:"tasks"`
-	LifeItems   []board.LifeItem   `json:"life_items"`
 	Registry    board.RegistryInfo `json:"registry"`
 }
 
@@ -90,7 +89,6 @@ func (b *Board) Snapshot() Snapshot {
 		Workspaces:  workspaces,
 		Projects:    projects,
 		Tasks:       tasks,
-		LifeItems:   []board.LifeItem{},
 		Registry:    b.registry,
 	}
 }

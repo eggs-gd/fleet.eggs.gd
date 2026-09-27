@@ -78,7 +78,7 @@ func (d *Dashboard) State() State {
 		Workspaces:        snap.Workspaces,
 		Projects:          snap.Projects,
 		Tasks:             snap.Tasks,
-		LifeItems:         snap.LifeItems,
+		People:            tasklifecycle.RosterPeople(d.root),
 		Registry:          snap.Registry,
 	}
 	if d.exec != nil {

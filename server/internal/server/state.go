@@ -20,8 +20,10 @@ type State struct {
 	RuntimeSessions   []execution.RuntimeSession `json:"runtime_sessions"`
 	SessionGroups     []execution.SessionGroup   `json:"session_groups"`
 	OrphanedTasks     []execution.OrphanedTask   `json:"orphaned_tasks"`
-	LifeItems         []board.LifeItem           `json:"life_items"`
-	Registry          board.RegistryInfo         `json:"registry"`
+	// People are the humans registered as workers (Fleet/<name>.md), the
+	// assignees other than AI agents.
+	People   []string           `json:"people"`
+	Registry board.RegistryInfo `json:"registry"`
 }
 
 // DashboardSurface is the only Core surface HTTP dashboard handlers may use.

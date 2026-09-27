@@ -13,6 +13,11 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 )
 
+// managerSessionTimeout bounds how long the person waits for a provider to start
+// the Manager session. A provider that wants a sign-in waits for a person, so
+// a long timeout only makes the dialog hang.
+const managerSessionTimeout = 45 * time.Second
+
 type managerSessionStarter func(ctx context.Context, agent, workingDir string) (string, error)
 
 func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
@@ -21,7 +26,12 @@ func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		writeJSON(w, map[string]bool{"needed": managerSetupNeeded(cfg.CoreRoot, cfg.DataRootCreated)})
+		needed := managerSetupNeeded(cfg.CoreRoot, cfg.DataRootCreated)
+		out := setupResponse{Needed: needed}
+		if needed {
+			out.Providers = settings.AvailableProviders()
+		}
+		writeJSON(w, out)
 	})
 	mux.HandleFunc("/api/manager/session", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -38,7 +48,7 @@ func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
 		}
 		status, warning, err := createManagerSession(r.Context(), cfg, req.Agent, req.Workspace, execution.StartManagerSession)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeManagerSessionError(w, req.Agent, err)
 			return
 		}
 		writeJSON(w, struct {
@@ -93,7 +103,7 @@ func createManagerSession(ctx context.Context, cfg Config, agent, workspace stri
 	}
 	threadID := execution.CursorWorkspaceBinding
 	if agent != "cursor" {
-		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, managerSessionTimeout)
 		defer cancel()
 		threadID, err = start(ctx, agent, root)
 		if err != nil {

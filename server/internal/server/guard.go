@@ -6,11 +6,13 @@ import (
 	"encoding/hex"
 	"html"
 	"io"
+	"io/fs"
 	"mime"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -73,9 +75,24 @@ func guardLocal(listenAddr, token string, next http.Handler) http.Handler {
 				http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
 				return
 			}
+			r.Body = http.MaxBytesReader(w, r.Body, bodyLimit(r.URL.Path))
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Request body limits. Task text and MCP calls are small; only the audio
+// upload is big.
+const (
+	jsonBodyLimit  = 4 << 20
+	audioBodyLimit = 32 << 20
+)
+
+func bodyLimit(path string) int64 {
+	if path == "/api/manager/audio" {
+		return audioBodyLimit
+	}
+	return jsonBodyLimit
 }
 
 func guardedPath(path string) bool {
@@ -153,14 +170,19 @@ func bodyAllowed(r *http.Request) bool {
 	return media == "application/json"
 }
 
-func serveBackoffice(w http.ResponseWriter, r *http.Request, dir, token string) {
-	rel := strings.TrimPrefix(filepath.Clean("/"+r.URL.Path), string(filepath.Separator))
-	path := filepath.Join(dir, rel)
-	if info, err := os.Stat(path); err == nil && !info.IsDir() && filepath.Base(path) != "index.html" {
-		http.ServeFile(w, r, path)
-		return
+// serveBackoffice serves the dashboard from fsys. Any path that is not a file in
+// fsys gets index.html, with the launch token injected, so client-side routes
+// load. fs.FS refuses paths that leave its root, so a request cannot reach files
+// outside the dashboard.
+func serveBackoffice(w http.ResponseWriter, r *http.Request, fsys fs.FS, token string) {
+	rel := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
+	if rel != "" && rel != "index.html" {
+		if info, err := fs.Stat(fsys, rel); err == nil && !info.IsDir() {
+			http.ServeFileFS(w, r, fsys, rel)
+			return
+		}
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "index.html"))
+	data, err := fs.ReadFile(fsys, "index.html")
 	if err != nil {
 		http.NotFound(w, r)
 		return

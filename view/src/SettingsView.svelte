@@ -30,10 +30,10 @@
   let draft = null;
 
   $: scanKey = draft
-    ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}`
+    ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${draft.launch || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}`
     : '';
   $: baseKey = baseline
-    ? `${JSON.stringify(baseline.scanRoots)}|${baseline.sessionTimeout || ''}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}`
+    ? `${JSON.stringify(baseline.scanRoots)}|${baseline.sessionTimeout || ''}|${baseline.launch || ''}|${JSON.stringify(baseline.agents)}|${JSON.stringify(baseline.manager)}`
     : '';
   $: dirty = Boolean(draft && baseline && scanKey !== baseKey);
 
@@ -191,7 +191,7 @@
   {/each}
 
   {#if !snapshot && !error}
-    <p class="settings-hint">Loading Core configuration…</p>
+    <p class="settings-hint">Loading Fleet configuration…</p>
   {:else if snapshot && draft}
     {#if section === 'general'}
       <SettingsGeneral
@@ -202,6 +202,8 @@
         onScanRoots={(value) => (draft = { ...draft, scanRoots: value })}
         sessionTimeout={draft.sessionTimeout || ''}
         onSessionTimeout={(value) => (draft = { ...draft, sessionTimeout: value })}
+        launch={draft.launch || ''}
+        onLaunch={(value) => (draft = { ...draft, launch: value })}
         onRescan={rescan}
         {themePref}
         {onThemeChange}

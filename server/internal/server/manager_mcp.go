@@ -12,7 +12,7 @@ import (
 )
 
 // registerManagerMCPRoute mounts the Manager API as MCP tools directly on
-// this already-running core serve instance, at /mcp. Handlers call service
+// this already-running fleet serve instance, at /mcp. Handlers call service
 // in-process (no HTTP round-trip to itself) — this is the same service the
 // /api/manager/* routes use, not a second instance.
 //
@@ -39,7 +39,7 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name: "manager_vocabulary",
 		Description: "Return the current valid project ids, workspace ids, " +
-			"assignees, and statuses — the same board projection Core itself " +
+			"assignees, and statuses — the same board projection Fleet itself " +
 			"uses to validate project/repository references. Call this instead " +
 			"of reading Work/INDEX.md or _registry/*.json by hand.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, _ emptyMCPInput) (*mcp.CallToolResult, manager.Vocabulary, error) {

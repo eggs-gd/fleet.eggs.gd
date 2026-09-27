@@ -34,7 +34,7 @@ func TestListManagerThreadsUnimplementedAgentFails(t *testing.T) {
 
 func TestListManagerThreadsCodexSurfacesResolutionError(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("CORE_CODEX_BINARY", filepath.Join(root, "definitely-missing-codex-binary"))
+	t.Setenv("FLEET_CODEX_BINARY", filepath.Join(root, "definitely-missing-codex-binary"))
 	_, err := listManagerThreads(context.Background(), root, "codex")
 	if err == nil {
 		t.Fatal("expected an error when codex cannot be resolved")

@@ -20,10 +20,10 @@ import (
 // explicitly from an unrestricted host account with Codex auth and network
 // access available:
 //
-//	CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCodexSession -v -timeout 3m
+//	FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCodexSession -v -timeout 3m
 func TestRuntimeManualVerifyCodexSession(t *testing.T) {
-	if os.Getenv("CORE_MANUAL_LIVE_VERIFY") != "1" {
-		t.Skip("set CORE_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
+	if os.Getenv("FLEET_MANUAL_LIVE_VERIFY") != "1" {
+		t.Skip("set FLEET_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
 	}
 
 	root := t.TempDir()
@@ -57,7 +57,7 @@ repositories:
 
 Do not edit files. Do not run commands. Do not commit, push, or open a pull request.
 Return exactly this compact JSON result payload and no other final text:
-{"outcome":"completed","summary":"CORE_CODEX_APP_SERVER_SMOKE_OK","artifacts":["_registry/sessions/<claim_id>.log"],"tests":["CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCodexSession -v -timeout 3m"]}`
+{"outcome":"completed","summary":"CORE_CODEX_APP_SERVER_SMOKE_OK","artifacts":["_registry/sessions/<claim_id>.log"],"tests":["FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCodexSession -v -timeout 3m"]}`
 	plan, err := execution.DefaultPlanner().Plan("codex", execution.TaskContext{
 		Ref:          "CORE-CODEX-SMOKE",
 		ID:           task.ID,
@@ -96,13 +96,7 @@ Return exactly this compact JSON result payload and no other final text:
 
 	app.Exec.StartLaunchCandidate(ctx, task)
 
-	deadline := time.Now().Add(140 * time.Second)
-	for time.Now().Before(deadline) {
-		if len(app.State().RuntimeSessions) == 0 {
-			break
-		}
-		time.Sleep(2 * time.Second)
-	}
+	waitForLaunchToFinish(t, app, root, taskPath, 140*time.Second)
 	if sessions := app.State().RuntimeSessions; len(sessions) != 0 {
 		t.Fatalf("runtime still has active sessions after deadline: %#v", sessions)
 	}

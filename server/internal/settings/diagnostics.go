@@ -117,7 +117,7 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 		}
 	}
 	for _, path := range projects.DataPaths {
-		if path.Name == "Core root" && path.Exists && !path.Writable {
+		if path.Name == "Data root" && path.Exists && !path.Writable {
 			issues = append(issues, Issue{Severity: "warn", Code: "data_not_writable", Message: "Data directory not writable: " + path.Path, Section: "projects"})
 		}
 	}

@@ -131,7 +131,7 @@ func TestBuildEnvWinsOverOverlayExecutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFile(t, filepath.Join(root, OverlayFileName), "agents:\n  codex:\n    executable: "+overlayBin+"\n")
-	t.Setenv("CORE_CODEX_BINARY", envBin)
+	t.Setenv("FLEET_CODEX_BINARY", envBin)
 
 	snap := Build(Input{CoreRoot: root})
 	var codex Agent
@@ -146,7 +146,7 @@ func TestBuildEnvWinsOverOverlayExecutable(t *testing.T) {
 	if codex.EffectiveExecutable.Value != envBin || codex.EffectiveExecutable.Source != SourceEnv {
 		t.Fatalf("effective = %#v", codex.EffectiveExecutable)
 	}
-	if codex.EffectiveExecutable.OverriddenBy != "CORE_CODEX_BINARY" {
+	if codex.EffectiveExecutable.OverriddenBy != "FLEET_CODEX_BINARY" {
 		t.Fatalf("overridden_by = %q", codex.EffectiveExecutable.OverriddenBy)
 	}
 	if codex.EffectiveExecutable.Writable {

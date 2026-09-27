@@ -17,8 +17,8 @@ func installFakeExecutable(t *testing.T, name string) string {
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	if name == "codex" {
-		// Prefer PATH resolution in tests; host CORE_CODEX_BINARY must not win.
-		t.Setenv("CORE_CODEX_BINARY", "")
+		// Prefer PATH resolution in tests; host FLEET_CODEX_BINARY must not win.
+		t.Setenv("FLEET_CODEX_BINARY", "")
 	}
 	return path
 }
@@ -56,7 +56,7 @@ func TestBuildPromptIncludesRequiredCoreFrameworkRules(t *testing.T) {
 		"compact JSON result payload",
 		`"outcome": "<completed|failed|needs_input|needs_rework|blocked>"`,
 		"Do not manually edit generated/service index files such as Work/INDEX.md",
-		"Core daemon/finalizer refreshes derived files and generated indexes",
+		"Fleet daemon/finalizer refreshes derived files and generated indexes",
 		"no-auto-commit, no-auto-push, and no-auto-PR",
 		"Never finalize task status yourself",
 		"Task card content:",
@@ -98,7 +98,7 @@ func TestBuildPromptDoesNotInstructWorkersToMutateTaskCards(t *testing.T) {
 	}
 	for _, expected := range []string{
 		"Do not edit this (or any) canonical task card's status or frontmatter",
-		"Core reads your reported outcome and applies",
+		"Fleet reads your reported outcome and applies",
 		"never mutate",
 		"canonical task card yourself",
 		"Never finalize task status yourself",
@@ -328,7 +328,7 @@ func TestCodexPlanRequiresStandaloneCLIOnPATH(t *testing.T) {
 	// ChatGPT.app bundle that may exist on the machine. CORE-151 forbids that
 	// fallback.
 	t.Setenv("PATH", t.TempDir())
-	t.Setenv("CORE_CODEX_BINARY", "")
+	t.Setenv("FLEET_CODEX_BINARY", "")
 
 	plan, err := Codex{}.Plan(TaskContext{
 		Ref:        "CORE-151",
@@ -365,7 +365,7 @@ func TestCodexPlanUsesConfiguredBinaryPath(t *testing.T) {
 	}
 	// PATH has no codex; only the explicit Core override should win.
 	t.Setenv("PATH", t.TempDir())
-	t.Setenv("CORE_CODEX_BINARY", configured)
+	t.Setenv("FLEET_CODEX_BINARY", configured)
 
 	plan, err := Codex{}.Plan(TaskContext{
 		Ref:        "CORE-151",
@@ -375,7 +375,7 @@ func TestCodexPlanUsesConfiguredBinaryPath(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !plan.LiveReady {
-		t.Fatalf("configured CORE_CODEX_BINARY should be live-ready: %s", plan.LiveNotes)
+		t.Fatalf("configured FLEET_CODEX_BINARY should be live-ready: %s", plan.LiveNotes)
 	}
 	if plan.Command[0] != configured {
 		t.Fatalf("command[0] = %q, want configured %q", plan.Command[0], configured)
@@ -412,7 +412,7 @@ func TestCodexPlanRejectsInvalidConfiguredBinaryPath(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Setenv("PATH", t.TempDir())
-			t.Setenv("CORE_CODEX_BINARY", tc.configure(t))
+			t.Setenv("FLEET_CODEX_BINARY", tc.configure(t))
 
 			plan, err := Codex{}.Plan(TaskContext{
 				Ref:        "CORE-151",
@@ -422,10 +422,10 @@ func TestCodexPlanRejectsInvalidConfiguredBinaryPath(t *testing.T) {
 				t.Fatal(err)
 			}
 			if plan.LiveReady {
-				t.Fatalf("invalid CORE_CODEX_BINARY should not be live-ready: %#v", plan)
+				t.Fatalf("invalid FLEET_CODEX_BINARY should not be live-ready: %#v", plan)
 			}
 			if len(plan.Command) != 0 {
-				t.Fatalf("invalid CORE_CODEX_BINARY should not produce a command: %#v", plan.Command)
+				t.Fatalf("invalid FLEET_CODEX_BINARY should not produce a command: %#v", plan.Command)
 			}
 			if !strings.Contains(plan.LiveNotes, tc.wantReason) || !strings.Contains(plan.LiveNotes, "Codex CLI is not available on the daemon PATH") {
 				t.Fatalf("live notes = %q, want setup diagnostic containing %q", plan.LiveNotes, tc.wantReason)

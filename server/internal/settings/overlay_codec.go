@@ -8,9 +8,12 @@ import (
 
 func EncodeOverlay(overlay Overlay) []byte {
 	var b strings.Builder
-	b.WriteString("# Machine-local Core overlay. Do not commit.\n")
+	b.WriteString("# Machine-local Fleet overlay. Do not commit.\n")
 	if timeout := strings.TrimSpace(overlay.SessionTimeout); timeout != "" {
 		fmt.Fprintf(&b, "sessionTimeout: %s\n", yamlQuote(timeout))
+	}
+	if launch := strings.TrimSpace(overlay.Launch); launch != "" {
+		fmt.Fprintf(&b, "launch: %s\n", yamlQuote(launch))
 	}
 	if roots := normalizeScanRoots(overlay.ScanRoots); len(roots) > 0 {
 		b.WriteString("scanRoots:\n")
@@ -128,6 +131,9 @@ func ParseOverlay(data []byte) (Overlay, error) {
 			case "sessionTimeout":
 				section = ""
 				out.SessionTimeout = unquoteYAML(raw)
+			case "launch":
+				section = ""
+				out.Launch = unquoteYAML(raw)
 			case "scanRoots":
 				section = "scanRoots"
 				if raw != "" {

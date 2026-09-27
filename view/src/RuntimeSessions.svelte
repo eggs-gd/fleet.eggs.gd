@@ -72,7 +72,7 @@
     </div>
     <span>{count}</span>
     {#if tab === 'active' && orphanedTasks.length}
-      <span class="runtime-strip-orphan-flag" title="Core lost track of these sessions">
+      <span class="runtime-strip-orphan-flag" title="Fleet lost track of these sessions">
         {orphanedTasks.length} orphaned
       </span>
     {/if}

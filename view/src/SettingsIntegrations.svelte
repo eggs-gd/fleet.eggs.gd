@@ -57,7 +57,7 @@
       {/if}
       {#if !server.install_known}
         <p class="settings-hint">
-          No Install button — Core has no deterministic installer for this server.
+          No Install button — Fleet has no deterministic installer for this server.
         </p>
       {/if}
     </article>

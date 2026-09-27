@@ -2,7 +2,6 @@ package projectscan
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -41,35 +40,6 @@ type workspaceRelation struct {
 	Reason          string
 	Confidence      string
 	RepositoryPaths []string
-}
-
-// WriteWorkspaces creates Work/<id>/PROJECT.md cards from the registry.
-// It creates tasks/notes/decisions/inbox beside each card and leaves Work/INDEX.md
-// to the task index (core rebuild-index). Existing task files are kept.
-// PROJECT.md is rewritten.
-func WriteWorkspaces(registryDir, workDir string) ([]Workspace, error) {
-	projects, err := BuildWorkspaces(registryDir)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(workDir, 0o755); err != nil {
-		return nil, err
-	}
-	for _, project := range projects {
-		dir := filepath.Join(workDir, project.ID)
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return nil, err
-		}
-		for _, child := range []string{"tasks", "notes", "decisions", "inbox"} {
-			if err := os.MkdirAll(filepath.Join(dir, child), 0o755); err != nil {
-				return nil, err
-			}
-		}
-		if err := os.WriteFile(filepath.Join(dir, "PROJECT.md"), []byte(renderWorkspace(project)), 0o644); err != nil {
-			return nil, err
-		}
-	}
-	return projects, nil
 }
 
 // BuildWorkspaces reads registry JSON and returns workspace cards without writing them.

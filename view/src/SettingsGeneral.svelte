@@ -13,6 +13,8 @@
   export let onRescan = () => {};
   export let sessionTimeout = '';
   export let onSessionTimeout = () => {};
+  export let launch = '';
+  export let onLaunch = () => {};
   export let themePref = 'system';
   export let onThemeChange = () => {};
   export let refreshMs = 5000;
@@ -23,10 +25,27 @@
 
 <section class="settings-block" aria-label="Runtime">
   <h3>Runtime</h3>
-  <SettingsField label="Core version" value={general.version || '—'} />
+  <SettingsField label="Fleet version" value={general.version || '—'} />
   <SettingsField label="Build hash" value={general.build_hash || '—'} mono />
   <SettingsField label="Runtime status" value={general.runtime_status || '—'} />
   <SettingsField label="Launch mode" value={general.launch_mode || '—'} />
+  <div class="settings-row">
+    <span class="settings-key">Saved launch mode</span>
+    <span class="settings-val">
+      <select class="settings-input" value={launch} on:change={(e) => onLaunch(e.target.value)}>
+        <option value="">Default (dry-run)</option>
+        <option value="dry-run">Dry-run: plan launches only</option>
+        <option value="live">Live: start agents for ready tasks</option>
+      </select>
+    </span>
+  </div>
+  <p class="settings-hint">
+    {general.launch_config?.warning ||
+      'Live mode starts AI agents that edit files without asking each time.'}
+    {#if general.launch_config?.overridden_by}
+      This process was started with {general.launch_config.overridden_by}.
+    {/if}
+  </p>
   <SettingsField label="Started at" value={general.started_at || '—'} />
   <SettingsField label="Uptime" value={general.uptime || '—'} />
   <SettingsField label="Host" value={general.host || '—'} />
@@ -94,7 +113,7 @@
 <section class="settings-block" aria-label="Startup behaviour">
   <h3>Startup behaviour</h3>
   <p class="settings-lede">
-    Observed bootstrap. These are not toggles — Core does not expose startup flags yet.
+    Observed bootstrap. These are not toggles — Fleet does not expose startup flags yet.
   </p>
   {#each general.startup || [] as fact (fact.id)}
     <SettingsField label={fact.label} value={fact.value} hint={fact.source} />

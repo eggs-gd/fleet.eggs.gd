@@ -19,8 +19,10 @@ var knownAgentIDs = []string{"claude", "codex", "cursor", "gemini"}
 type Overlay struct {
 	ScanRoots      []string
 	SessionTimeout string
-	Agents         map[string]AgentOverlay
-	Manager        ManagerOverlay
+	// Launch is "live", "dry-run", or empty for the default (dry-run).
+	Launch  string
+	Agents  map[string]AgentOverlay
+	Manager ManagerOverlay
 }
 
 type AgentOverlay struct {
@@ -105,6 +107,35 @@ func (o Overlay) localAgents() map[string]providers.LocalAgent {
 	return out
 }
 
+// Launch modes. A serve that plans launches without starting agents is the
+// default: an agent edits files without asking, so starting them is opt-in.
+const (
+	LaunchLive   = "live"
+	LaunchDryRun = "dry-run"
+)
+
+// ResolveLaunchMode decides whether serve only plans launches. --live and
+// --dry-run win over core.local.yaml, which wins over the default (dry-run). It
+// returns dryRun.
+func ResolveLaunchMode(flagLive, flagDryRun bool, overlay Overlay) (dryRun bool, err error) {
+	switch {
+	case flagLive && flagDryRun:
+		return false, fmt.Errorf("--live and --dry-run cannot be used together")
+	case flagLive:
+		return false, nil
+	case flagDryRun:
+		return true, nil
+	}
+	switch strings.TrimSpace(overlay.Launch) {
+	case "", LaunchDryRun:
+		return true, nil
+	case LaunchLive:
+		return false, nil
+	default:
+		return false, fmt.Errorf("%s launch must be %q or %q, got %q", OverlayFileName, LaunchLive, LaunchDryRun, overlay.Launch)
+	}
+}
+
 const DefaultSessionTimeout = 10 * time.Minute
 
 // ResolveServeTimeout uses an explicit --session-timeout when the flag was
@@ -140,7 +171,7 @@ func (o Overlay) Agent(id string) AgentOverlay {
 }
 
 func (o Overlay) clone() Overlay {
-	out := Overlay{ScanRoots: append([]string{}, o.ScanRoots...), SessionTimeout: o.SessionTimeout, Agents: map[string]AgentOverlay{}, Manager: o.Manager}
+	out := Overlay{ScanRoots: append([]string{}, o.ScanRoots...), SessionTimeout: o.SessionTimeout, Launch: o.Launch, Agents: map[string]AgentOverlay{}, Manager: o.Manager}
 	for id, agent := range o.Agents {
 		out.Agents[id] = agent
 	}

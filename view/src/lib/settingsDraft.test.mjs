@@ -62,3 +62,17 @@ test('patchFromDraft emits manager only when the binding changes', () => {
     manager: { agent: 'claude', threadId: 'abc-123' }
   });
 });
+
+test('launch mode is drafted from the snapshot and only patched when it changes', () => {
+  const snapshot = {
+    general: { launch_config: { value: 'live' } },
+    projects: {},
+    agents: {},
+    manager: {}
+  };
+  const baseline = draftFromSnapshot(snapshot);
+  assert.equal(baseline.launch, 'live');
+  assert.equal(patchFromDraft(baseline, baseline).launch, undefined);
+  assert.equal(patchFromDraft({ ...baseline, launch: 'dry-run' }, baseline).launch, 'dry-run');
+  assert.equal(patchFromDraft({ ...baseline, launch: '' }, baseline).launch, '');
+});

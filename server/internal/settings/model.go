@@ -51,6 +51,7 @@ type General struct {
 	ListenAddr           string        `json:"listen_addr,omitempty"`
 	SessionTimeout       string        `json:"session_timeout"`
 	SessionTimeoutConfig Field         `json:"session_timeout_config"`
+	LaunchConfig         Field         `json:"launch_config"`
 	AutoRefresh          ClientPref    `json:"auto_refresh"`
 	Theme                ClientPref    `json:"theme"`
 	Startup              []StartupFact `json:"startup"`

@@ -1369,7 +1369,7 @@ func driveCodexTurn(ctx context.Context, cancel context.CancelFunc, client *Code
 			attentionNotified = false
 			resetTimer(timer, idleTimeout)
 			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Core launcher does not service Codex server-initiated requests")
+				_ = client.respondError(msg.ID, -32601, "Fleet launcher does not service Codex server-initiated requests")
 				session.LastEvent = "server_request:" + msg.Method
 				session.ExecutionStatus = "waiting_input"
 				upsertSession(opts, *session)
@@ -1418,7 +1418,7 @@ func waitForCodexResponse(ctx context.Context, messages <-chan CodexRPCMessage, 
 			attentionNotified = false
 			resetTimer(timer, idleTimeout)
 			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Core launcher does not service Codex server-initiated requests")
+				_ = client.respondError(msg.ID, -32601, "Fleet launcher does not service Codex server-initiated requests")
 				session.LastEvent = "server_request:" + msg.Method
 				session.ExecutionStatus = "waiting_input"
 				upsertSession(opts, *session)
@@ -1437,7 +1437,6 @@ func waitForCodexResponse(ctx context.Context, messages <-chan CodexRPCMessage, 
 
 func startOrResumeCodexThread(ctx context.Context, client *CodexClient, messages <-chan CodexRPCMessage, session *RuntimeSession, task tasklifecycle.Task, idleTimeout time.Duration, opts RunnerOptions) (string, error) {
 	if strings.TrimSpace(session.CodexThreadID) != "" {
-		resumeThreadID := session.CodexThreadID
 		id, err := client.request("thread/resume", codexThreadResumeParams(*session))
 		if err == nil {
 			response, waitErr := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts)
@@ -1452,14 +1451,11 @@ func startOrResumeCodexThread(ctx context.Context, client *CodexClient, messages
 					}
 					return threadID, nil
 				}
-				waitErr = errors.New("codex app-server thread/resume response did not include thread.id")
 			}
-			err = waitErr
 		}
 		session.ResumeOutcome = "fallback_new"
 		session.CodexThreadID = ""
 		upsertSession(opts, *session)
-		_ = resumeThreadID
 	}
 
 	id, err := client.request("thread/start", codexThreadStartParams(*session))

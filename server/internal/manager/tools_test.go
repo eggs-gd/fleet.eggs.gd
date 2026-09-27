@@ -280,7 +280,7 @@ func TestEventsReadsAuditCursor(t *testing.T) {
 		t.Fatalf("events = %#v", events)
 	}
 	later := svc.Events(events[0].ID)
-	if later.Result.Detail.([]audit.Event) != nil && len(later.Result.Detail.([]audit.Event)) != 0 {
+	if len(later.Result.Detail.([]audit.Event)) != 0 {
 		t.Fatalf("cursor = %#v", later.Result.Detail)
 	}
 }

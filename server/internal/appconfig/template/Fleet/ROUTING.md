@@ -28,11 +28,11 @@ Explicit opt-in workers:
 
 - `cursor` (`cli_visible` Cursor Agent CLI sessions; not phone/app_visible)
 
-Core-control + Codex Remote workers:
+Fleet-control + Codex Remote workers:
 
 - `codex` (`core_visible` app-server JSON-RPC; LiveReady for normal daemon
   auto-launch per CORE-130). Operator path is Codex Remote on paired clients
-  plus Core dashboard continue/interrupt/cancel. Not a Claude-style phone
+  plus Fleet dashboard continue/interrupt/cancel. Not a Claude-style phone
   remote-control URL, and threads may not appear in ordinary ChatGPT desktop
   sidebar history.
 
@@ -48,9 +48,9 @@ phone/app-visible. Do not make it the default assignee; assign Cursor when the o
 explicitly asks or when a task/project documents why Cursor is the right worker.
 
 Prefer Claude when the operator must open the session from a phone Claude remote-control
-URL. Prefer Codex for local coding/repo work that Core can launch and control
+URL. Prefer Codex for local coding/repo work that Fleet can launch and control
 through app-server + Codex Remote. Do not use Codex as the default Manager for
-non-coding voice/task ingestion — use the Core Manager API.
+non-coding voice/task ingestion — use the Fleet Manager API.
 
 ## Assignment Precedence
 
@@ -98,7 +98,7 @@ not an oversight to silently fix.
 
 | Category | Preferred | Good backup | Notes |
 |---|---|---|---|
-| `feature` | `claude` | `cursor`, `codex` | Prefer Claude for phone/app_visible remote-control. Use Cursor when the operator explicitly wants the CLI-visible executor. Codex is a normal daemon coding worker via app-server + Codex Remote (CORE-130). Board management uses Core Manager API, not Codex chat. |
+| `feature` | `claude` | `cursor`, `codex` | Prefer Claude for phone/app_visible remote-control. Use Cursor when the operator explicitly wants the CLI-visible executor. Codex is a normal daemon coding worker via app-server + Codex Remote (CORE-130). Board management uses Fleet Manager API, not Codex chat. |
 | `bug` | `claude` | `cursor`, `codex` | Same visibility rule as `feature`. |
 | `research` | `claude` | `codex` | Prefer Claude for broad reasoning, synthesis, specs, and product thinking. |
 | `review` | `claude` | `codex` | Prefer Claude for prose/design/product review; Codex for code-risk review in Manager chat. |
@@ -146,19 +146,19 @@ Prefer Codex when:
 - the user asks this Manager chat to do the work immediately.
 
 Codex is daemon-launchable through `codex app-server --stdio`. Operator
-continuation uses Codex Remote (paired clients) and/or Core dashboard controls,
+continuation uses Codex Remote (paired clients) and/or Fleet dashboard controls,
 not a Claude-style remote-control URL.
 
 ### Cursor
 
-Cursor is available through the Core `cursor-visible` daemon backend. Use it
+Cursor is available through the Fleet `cursor-visible` daemon backend. Use it
 when:
 
 - the operator explicitly requests Cursor;
 - the task is isolated UI/editor implementation work;
 - CLI-visible inspection/resume is acceptable.
 
-Cursor is not a phone-visible Claude remote-control session. Core stores the
+Cursor is not a phone-visible Claude remote-control session. Fleet stores the
 Cursor chat id and dashboard resume command, but operator continuation happens
 through `cursor-agent --resume <chat-id>` / Cursor, not through dashboard input
 controls.

@@ -6,3 +6,18 @@ export function apiFetch(input, init = {}) {
   }
   return fetch(input, { ...init, headers });
 }
+
+// readApiError turns a failed response into a message for the person. The
+// server answers with {"error": "...", "code": "..."}; anything else is shown
+// as a short line, never as a page of raw output.
+export async function readApiError(response) {
+  const text = await response.text();
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body.error === 'string' && body.error) return body.error;
+  } catch {
+    // not JSON
+  }
+  const line = text.trim().split('\n')[0] || `Request failed (${response.status})`;
+  return line.length > 200 ? `${line.slice(0, 200)}…` : line;
+}

@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -22,6 +23,7 @@ func preflight(cfg Config) error {
 			problems = append(problems, fmt.Errorf("%s: %w", name, err))
 		}
 	}
+	check("dashboard", dashboardPresent(cfg))
 	dataErr := writable(cfg.CoreRoot)
 	check("data root is not writable", dataErr)
 	runtimeRoot := cfg.RuntimeRoot
@@ -50,4 +52,14 @@ func writable(dir string) error {
 	name := probe.Name()
 	probe.Close()
 	return os.Remove(filepath.Clean(name))
+}
+
+func dashboardPresent(cfg Config) error {
+	if cfg.Backoffice == nil {
+		return errors.New("no dashboard is configured")
+	}
+	if _, err := fs.Stat(cfg.Backoffice, "index.html"); err != nil {
+		return fmt.Errorf("%s has no index.html: build the dashboard with `make build`, or pass --backoffice-dir", cfg.BackofficeSource)
+	}
+	return nil
 }

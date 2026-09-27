@@ -24,14 +24,17 @@ type Input struct {
 	DryRun             bool
 	SessionTimeout     time.Duration
 	SessionTimeoutFlag bool
-	Workspaces         []board.Workspace
-	Projects           []board.Project
-	Registry           board.RegistryInfo
-	Tasks              []tasklifecycle.Task
-	RuntimeSessions    []executionapi.RuntimeSession
-	SessionGroups      []execution.SessionGroup
-	OrphanedTasks      []execution.OrphanedTask
-	Scan               ScanStatus
+	// LaunchFlag names the flag this process was started with (--live or
+	// --dry-run), or "" when the mode came from core.local.yaml or the default.
+	LaunchFlag      string
+	Workspaces      []board.Workspace
+	Projects        []board.Project
+	Registry        board.RegistryInfo
+	Tasks           []tasklifecycle.Task
+	RuntimeSessions []executionapi.RuntimeSession
+	SessionGroups   []execution.SessionGroup
+	OrphanedTasks   []execution.OrphanedTask
+	Scan            ScanStatus
 }
 
 // Build returns the Settings inspect model with overlay merged for display.
@@ -97,6 +100,7 @@ func inspectGeneral(in Input, overlay Overlay, now time.Time) General {
 		ListenAddr:           in.Addr,
 		SessionTimeout:       in.SessionTimeout.String(),
 		SessionTimeoutConfig: sessionTimeoutField(overlay, in.SessionTimeoutFlag),
+		LaunchConfig:         launchField(overlay, in.LaunchFlag),
 		AutoRefresh: ClientPref{
 			Value:         "browser localStorage core.autoRefreshMs",
 			Source:        "layoutPrefs.js",
@@ -125,6 +129,23 @@ func inspectGeneral(in Input, overlay Overlay, now time.Time) General {
 	}
 }
 
+func launchField(overlay Overlay, flag string) Field {
+	configured := strings.TrimSpace(overlay.Launch)
+	field := Field{
+		Value:    configured,
+		Source:   SourceDefault,
+		Writable: true,
+		Warning:  "Live mode starts AI agents for ready tasks. They edit files in your repositories without asking each time. Dry-run only plans launches. A change applies after restart.",
+	}
+	if configured != "" {
+		field.Source = SourceLocal
+	}
+	if flag != "" {
+		field.OverriddenBy = "fleet serve " + flag
+	}
+	return field
+}
+
 func sessionTimeoutField(overlay Overlay, flagSet bool) Field {
 	configured := strings.TrimSpace(overlay.SessionTimeout)
 	field := Field{
@@ -137,7 +158,7 @@ func sessionTimeoutField(overlay Overlay, flagSet bool) Field {
 		field.Source = SourceLocal
 	}
 	if flagSet {
-		field.OverriddenBy = "core serve --session-timeout"
+		field.OverriddenBy = "fleet serve --session-timeout"
 	}
 	return field
 }
@@ -201,7 +222,7 @@ func composeAgent(root string, overlay Overlay, row providers.AgentDiscovery, se
 		Writable: false,
 	}
 	if effective.Source == SourceEnv {
-		effective.OverriddenBy = "CORE_CODEX_BINARY"
+		effective.OverriddenBy = "FLEET_CODEX_BINARY"
 	}
 	return Agent{
 		ID:                   row.ID,
@@ -268,4 +289,21 @@ func inspectManager(root string, overlay Overlay) Manager {
 		InstructionsSource: src,
 		Notes:              notes,
 	}
+}
+
+// ProviderAvailability says whether one supported agent is installed on this
+// computer and usable.
+type ProviderAvailability struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Available bool   `json:"available"`
+}
+
+// AvailableProviders probes the supported agents (claude, codex, cursor, gemini).
+func AvailableProviders() []ProviderAvailability {
+	var out []ProviderAvailability
+	for _, row := range providers.DiscoverAgents() {
+		out = append(out, ProviderAvailability{ID: row.ID, Name: row.Name, Available: row.Status == providers.AgentReady})
+	}
+	return out
 }

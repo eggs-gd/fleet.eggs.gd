@@ -19,10 +19,10 @@ import (
 // to finish. Run explicitly from an unrestricted host account with Cursor
 // auth and writable local state:
 //
-//	CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCursorSession -v -timeout 3m
+//	FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyCursorSession -v -timeout 3m
 func TestRuntimeManualVerifyCursorSession(t *testing.T) {
-	if os.Getenv("CORE_MANUAL_LIVE_VERIFY") != "1" {
-		t.Skip("set CORE_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
+	if os.Getenv("FLEET_MANUAL_LIVE_VERIFY") != "1" {
+		t.Skip("set FLEET_MANUAL_LIVE_VERIFY=1 to run this live-network manual check")
 	}
 
 	root := t.TempDir()
@@ -75,13 +75,7 @@ Do not commit, push, or open a pull request.`
 
 	app.Exec.StartLaunchCandidate(ctx, task)
 
-	deadline := time.Now().Add(110 * time.Second)
-	for time.Now().Before(deadline) {
-		if len(app.State().RuntimeSessions) == 0 {
-			break
-		}
-		time.Sleep(2 * time.Second)
-	}
+	waitForLaunchToFinish(t, app, root, taskPath, 110*time.Second)
 	if sessions := app.State().RuntimeSessions; len(sessions) != 0 {
 		t.Fatalf("runtime still has active sessions after deadline: %#v", sessions)
 	}

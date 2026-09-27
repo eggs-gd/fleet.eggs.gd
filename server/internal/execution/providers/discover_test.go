@@ -89,13 +89,13 @@ func TestResolveCodexPrefersEnvThenOverlayThenPath(t *testing.T) {
 		t.Fatalf("overlay resolve = %q %q %v", resolved, source, err)
 	}
 
-	t.Setenv("CORE_CODEX_BINARY", envBin)
+	t.Setenv("FLEET_CODEX_BINARY", envBin)
 	resolved, source, err = resolveCodexBinaryWithSource()
 	if err != nil || resolved != envBin || source != "env" {
 		t.Fatalf("env resolve = %q %q %v", resolved, source, err)
 	}
 
-	t.Setenv("CORE_CODEX_BINARY", "")
+	t.Setenv("FLEET_CODEX_BINARY", "")
 	ApplyLocalAgents(nil)
 	resolved, source, err = resolveCodexBinaryWithSource()
 	if err != nil || resolved != pathBin || source != "path" {

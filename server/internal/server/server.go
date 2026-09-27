@@ -5,24 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/manager"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/runtimedb"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 )
 
 type Config struct {
-	Addr               string
-	CoreRoot           string
-	DataRootSource     string
-	RuntimeRoot        string
-	BackofficeDir      string
+	Addr           string
+	CoreRoot       string
+	DataRootSource string
+	RuntimeRoot    string
+	// Backoffice is the dashboard to serve, and BackofficeSource says where it
+	// comes from (a directory, or "embedded"). Serve refuses to start without an
+	// index.html in it.
+	Backoffice         fs.FS
+	BackofficeSource   string
 	DryRun             bool
+	LaunchFlag         string
 	SessionTimeout     time.Duration
 	SessionTimeoutFlag bool
 	Version            string
@@ -97,13 +107,17 @@ func Serve(cfg Config) error {
 	registerManagerRoutes(mux, managerService, cfg)
 	registerManagerProvisionRoutes(mux, cfg)
 	if bound := managerBindingStatus(cfg.CoreRoot); bound.Bound {
-		_, _ = settings.EnsureManagerMCP(cfg.CoreRoot, bound.Agent, cfg.Addr, cfg.LaunchToken)
+		if _, err := settings.EnsureManagerMCP(cfg.CoreRoot, bound.Agent, cfg.Addr, cfg.LaunchToken); err != nil {
+			cfg.Health.Fail("manager-mcp", fmt.Errorf("refresh the Fleet MCP entry for %s: %w", bound.Agent, err))
+		} else {
+			cfg.Health.OK("manager-mcp")
+		}
 	}
 	registerManagerMCPRoute(mux, managerService)
 	registerAppConfigRoutes(mux, cfg)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		serveBackoffice(w, r, cfg.BackofficeDir, cfg.LaunchToken)
+		serveBackoffice(w, r, cfg.Backoffice, cfg.LaunchToken)
 	})
 
 	listener, err := net.Listen("tcp", cfg.Addr)
@@ -111,23 +125,58 @@ func Serve(cfg Config) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	settingsRT.scanner.Health = cfg.Health
 	go settingsRT.scanner.Watch(ctx, cfg.CoreRoot, 2*time.Second)
 	go coreRuntime.Run(ctx)
 
-	launchMode := "dry-run"
+	launchMode := "dry-run (agents are not started; see Settings or --live)"
 	if !cfg.DryRun {
-		launchMode = "live"
+		launchMode = "live (agents are started for ready tasks)"
 	}
-	fmt.Printf("Core backoffice: http://%s/\n", cfg.Addr)
-	fmt.Printf("Core root: %s\n", cfg.CoreRoot)
-	fmt.Printf("Backoffice dir: %s\n", cfg.BackofficeDir)
+	fmt.Printf("Fleet: http://%s/\n", cfg.Addr)
+	fmt.Printf("Data root: %s\n", cfg.CoreRoot)
+	fmt.Printf("Dashboard: %s\n", cfg.BackofficeSource)
 	fmt.Printf("Launch mode: %s\n", launchMode)
 	fmt.Printf("Session timeout: %s\n", cfg.SessionTimeout)
-	return http.Serve(listener, guardLocal(cfg.Addr, cfg.LaunchToken, mux))
+
+	srv := &http.Server{
+		Handler: guardLocal(cfg.Addr, cfg.LaunchToken, mux),
+		// No read or write timeout: a Manager session can take minutes to start
+		// and MCP streams stay open. A client that never finishes its headers,
+		// or sits idle, is dropped.
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    1 << 20,
+	}
+	err = serveUntilDone(ctx, srv, listener)
+	stop()
+	runtimedb.CloseAll()
+	if err == nil {
+		fmt.Println("Stopped. Agent sessions you started keep running and are picked up again on the next start.")
+	}
+	return err
+}
+
+// serveUntilDone serves until ctx is cancelled, then gives requests that are
+// already running a few seconds to finish. It does not touch agent sessions.
+func serveUntilDone(ctx context.Context, srv *http.Server, l net.Listener) error {
+	done := make(chan error, 1)
+	go func() { done <- srv.Serve(l) }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+	}
+	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdown); err != nil {
+		return err
+	}
+	<-done
+	return nil
 }
 
 func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Config) {

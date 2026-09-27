@@ -100,4 +100,4 @@ Interpretation:
 - Smoke has URL but Core misses it → broaden `ParseRemoteControlURL` with a
   regression test (do not guess without a live `claude logs` excerpt).
 - Optional after CLI works:
-  `CORE_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyClaudeBackgroundRemoteSession -v -timeout 90s`
+  `FLEET_MANUAL_LIVE_VERIFY=1 go test ./internal/server/... -run TestRuntimeManualVerifyClaudeBackgroundRemoteSession -v -timeout 90s`

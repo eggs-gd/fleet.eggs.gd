@@ -15,6 +15,7 @@ export function draftFromSnapshot(snapshot) {
       ? [...snapshot.projects.scan_roots]
       : [],
     sessionTimeout: snapshot?.general?.session_timeout_config?.value || '',
+    launch: snapshot?.general?.launch_config?.value || '',
     agents,
     manager: {
       agent: snapshot?.manager?.session ? snapshot.manager.provider || '' : '',
@@ -30,6 +31,9 @@ export function patchFromDraft(draft, baseline) {
   }
   if ((draft?.sessionTimeout || '') !== (baseline?.sessionTimeout || '')) {
     patch.sessionTimeout = draft.sessionTimeout || '';
+  }
+  if ((draft?.launch || '') !== (baseline?.launch || '')) {
+    patch.launch = draft.launch || '';
   }
   const agents = {};
   for (const id of Object.keys(draft?.agents || {})) {

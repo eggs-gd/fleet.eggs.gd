@@ -33,7 +33,7 @@ func loadMCP(root string) Integrations {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			out.Notes = append(out.Notes, ".mcp.json is not present under the Core root.")
+			out.Notes = append(out.Notes, ".mcp.json is not present under the Data root.")
 			return out
 		}
 		out.Notes = append(out.Notes, "failed to read .mcp.json: "+err.Error())

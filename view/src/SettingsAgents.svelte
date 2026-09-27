@@ -109,7 +109,7 @@
           {/if}
           {#if agent.status === 'non_canonical'}
             <p class="settings-warn">
-              Non-canonical installation. Core will not silently use a ChatGPT.app bundle as the
+              Non-canonical installation. Fleet will not silently use a ChatGPT.app bundle as the
               standalone CLI.
             </p>
           {/if}

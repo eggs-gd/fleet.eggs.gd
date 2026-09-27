@@ -2,17 +2,17 @@ package settings
 
 func inventoryCatalog() []InventoryEntry {
 	return []InventoryEntry{
-		entry("core version", "cmd/core/main.go const version", false, false, true, "general", false),
-		entry("listen addr", "core serve --addr / server.Config.Addr", false, true, true, "general", false),
-		entry("core root", "~/.fleet/app.json dataRoot; General moves the directory", true, true, true, "general", true),
-		entry("dry-run", "core serve --dry-run", false, true, true, "general", false),
-		entry("session timeout", OverlayFileName+" sessionTimeout; explicit core serve --session-timeout overrides the file", true, true, true, "general", true),
+		entry("version", "cmd/fleet/main.go version, set by the build (-ldflags)", false, false, true, "general", false),
+		entry("listen addr", "fleet serve --addr / server.Config.Addr", false, true, true, "general", false),
+		entry("data root", "~/.fleet/app.json dataRoot; General moves the directory", true, true, true, "general", true),
+		entry("dry-run", "fleet serve --live, --dry-run", false, true, true, "general", false),
+		entry("session timeout", OverlayFileName+" sessionTimeout; explicit fleet serve --session-timeout overrides the file", true, true, true, "general", true),
 		entry("theme", "browser localStorage core.theme via layoutPrefs.js", true, false, true, "general", true),
 		entry("auto-refresh interval", "browser localStorage core.autoRefreshMs via layoutPrefs.js", true, false, true, "general", true),
 		entry("split widths / accordion / scroll", "browser localStorage layoutPrefs.js", true, false, true, "general", true),
 		entry("project scan roots", OverlayFileName+" scanRoots; serve watches them and rewrites _registry when repositories change", true, false, true, "general", true),
 		entry("task storage type", "markdown", false, true, true, "general", false),
-		entry("agent executables", OverlayFileName+" agents.*.executable; env CORE_CODEX_BINARY wins when set", true, false, true, "agents", true),
+		entry("agent executables", OverlayFileName+" agents.*.executable; env FLEET_CODEX_BINARY wins when set", true, false, true, "agents", true),
 		entry("agent enabled", OverlayFileName+" agents.*.enabled; disable does not kill live sessions", true, false, true, "agents", true),
 		entry("agent routing/preferences", OverlayFileName+" routingInstructions overlaying Fleet/<agent>.md Best At", true, false, true, "agents", true),
 		entry("manager STT/LLM", "manager.NewService wires UnconfiguredTranscriber + UnconfiguredClassifier", false, false, true, "agents", false),

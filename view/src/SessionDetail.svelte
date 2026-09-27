@@ -207,7 +207,7 @@
       <button
         type="button"
         on:click={() =>
-          onControlSession(session, 'continue', 'Continue from the current Core task context.')}
+          onControlSession(session, 'continue', 'Continue from the current Fleet task context.')}
         >Continue</button
       >
       <button type="button" on:click={() => onControlSession(session, 'interrupt')}

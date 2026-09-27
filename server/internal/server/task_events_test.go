@@ -1,11 +1,13 @@
 package server
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/audit"
@@ -81,7 +83,7 @@ func TestAuditedBusFailureIsReturnedAndReportedButEventStillDelivered(t *testing
 
 func TestPreflightReportsEveryProblemTogether(t *testing.T) {
 	root := t.TempDir()
-	if err := preflight(Config{CoreRoot: root, RuntimeRoot: t.TempDir()}); err != nil {
+	if err := preflight(Config{CoreRoot: root, RuntimeRoot: t.TempDir(), Backoffice: dashboardFS(), BackofficeSource: "test"}); err != nil {
 		t.Fatalf("healthy start: %v", err)
 	}
 	for _, want := range []string{"_registry/counters.json", ".agents/skills/intake/SKILL.md"} {
@@ -95,7 +97,7 @@ func TestPreflightReportsEveryProblemTogether(t *testing.T) {
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := preflight(Config{CoreRoot: missing, RuntimeRoot: filepath.Join(blocker, "rt")})
+	err := preflight(Config{CoreRoot: missing, RuntimeRoot: filepath.Join(blocker, "rt"), Backoffice: dashboardFS(), BackofficeSource: "test"})
 	if err == nil {
 		t.Fatal("broken roots passed preflight")
 	}
@@ -114,8 +116,25 @@ func TestPreflightNamesTheFailingSkillFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".agents"), []byte("in the way"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := preflight(Config{CoreRoot: root, RuntimeRoot: t.TempDir()})
+	err := preflight(Config{CoreRoot: root, RuntimeRoot: t.TempDir(), Backoffice: dashboardFS(), BackofficeSource: "test"})
 	if err == nil || !strings.Contains(err.Error(), "manager skills") || !strings.Contains(err.Error(), "install manager skill") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func dashboardFS() fs.FS {
+	return fstest.MapFS{"index.html": {Data: []byte("<html><head></head></html>")}}
+}
+
+func TestPreflightRefusesToStartWithoutADashboard(t *testing.T) {
+	root := t.TempDir()
+	for name, cfg := range map[string]Config{
+		"none":    {CoreRoot: root, RuntimeRoot: t.TempDir()},
+		"no page": {CoreRoot: root, RuntimeRoot: t.TempDir(), Backoffice: fstest.MapFS{"PLACEHOLDER": {}}, BackofficeSource: "embedded"},
+	} {
+		err := preflight(cfg)
+		if err == nil || !strings.Contains(err.Error(), "dashboard") {
+			t.Errorf("%s: err = %v", name, err)
+		}
 	}
 }

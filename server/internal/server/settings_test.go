@@ -13,6 +13,7 @@ import (
 )
 
 func TestSettingsRouteGetAndRejectsPost(t *testing.T) {
+	resetLocalAgents(t)
 	root := t.TempDir()
 	mux := http.NewServeMux()
 	registerSettingsRoutes(mux, &settingsRuntime{
@@ -46,6 +47,7 @@ func TestSettingsRouteGetAndRejectsPost(t *testing.T) {
 }
 
 func TestSettingsPatchRejectsUnknownKeysAndRelativeExecutable(t *testing.T) {
+	resetLocalAgents(t)
 	root := t.TempDir()
 	mux := http.NewServeMux()
 	registerSettingsRoutes(mux, &settingsRuntime{
@@ -69,6 +71,7 @@ func TestSettingsPatchRejectsUnknownKeysAndRelativeExecutable(t *testing.T) {
 }
 
 func TestSettingsRecheckDoesNotWriteOverlay(t *testing.T) {
+	resetLocalAgents(t)
 	root := t.TempDir()
 	mux := http.NewServeMux()
 	registerSettingsRoutes(mux, &settingsRuntime{
@@ -89,6 +92,7 @@ func TestSettingsRecheckDoesNotWriteOverlay(t *testing.T) {
 }
 
 func TestSettingsRescanConflictWhenBusy(t *testing.T) {
+	resetLocalAgents(t)
 	root := t.TempDir()
 	scanRoot := filepath.Join(root, "projects")
 	if err := os.MkdirAll(scanRoot, 0o755); err != nil {
@@ -128,6 +132,7 @@ func TestSettingsRescanConflictWhenBusy(t *testing.T) {
 }
 
 func TestSettingsPatchPersistsEnabled(t *testing.T) {
+	resetLocalAgents(t)
 	root := t.TempDir()
 	mux := http.NewServeMux()
 	registerSettingsRoutes(mux, &settingsRuntime{
@@ -157,4 +162,12 @@ func TestSettingsPatchPersistsEnabled(t *testing.T) {
 			t.Fatal("GET snapshot after PATCH still shows codex enabled")
 		}
 	}
+}
+
+// resetLocalAgents clears the process-wide agent overrides a settings request
+// applies, so one test cannot leave an agent disabled for the next.
+func resetLocalAgents(t *testing.T) {
+	t.Helper()
+	settings.ApplyOverlay(settings.Overlay{})
+	t.Cleanup(func() { settings.ApplyOverlay(settings.Overlay{}) })
 }

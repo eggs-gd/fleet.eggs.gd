@@ -73,20 +73,6 @@ type TechnologyEvidence struct {
 	IgnoreReason string   `json:"ignore_reason,omitempty"`
 }
 
-type LifeItem struct {
-	ID           string `json:"id"`
-	Ref          string `json:"ref"`
-	Title        string `json:"title"`
-	Kind         string `json:"kind"`
-	Status       string `json:"status"`
-	Source       string `json:"source"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
-	Summary      string `json:"summary"`
-	Path         string `json:"path"`
-	RelativePath string `json:"relative_path"`
-}
-
 type RegistryInfo struct {
 	RepositoriesCount int                    `json:"repositories_count"`
 	GroupsCount       int                    `json:"groups_count"`

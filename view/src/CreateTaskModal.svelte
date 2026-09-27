@@ -1,6 +1,5 @@
 <script>
   const taskTypes = ['feature', 'bug', 'research', 'review', 'maintenance', 'decision'];
-  const defaultAssignees = ['unassigned', 'owner', 'claude', 'codex', 'cursor', 'gemini'];
 
   export let projects = [];
   export let workspaces = [];
@@ -32,10 +31,7 @@
         (workspace) => workspace.id === (selectedProject?.workspace_id || draftProject)
       )?.repositories || [];
   $: assigneeOptions = Array.from(
-    new Set([
-      ...defaultAssignees,
-      ...assignees.filter((assignee) => assignee && assignee !== 'all')
-    ])
+    new Set(assignees.filter((assignee) => assignee && assignee !== 'all'))
   );
   $: statusOptions = statuses.length
     ? statuses
@@ -101,7 +97,7 @@
     <header>
       <div>
         <p class="eyebrow">New task</p>
-        <h2 id="create-task-title">Create Core task</h2>
+        <h2 id="create-task-title">Create Fleet task</h2>
       </div>
       <div class="task-modal-actions">
         <button type="button" class="primary-action" disabled={saving} on:click={submit}>

@@ -7,7 +7,7 @@ import (
 
 func TestParseRemoteControlURLIgnoresPromptEchoedHistoricalURL(t *testing.T) {
 	log := strings.Join([]string{
-		"You are a Core worker agent launched by the deterministic Core daemon.",
+		"You are a Fleet worker agent launched by the deterministic Fleet daemon.",
 		"## Review Comments",
 		"- 2026-08-02T02:09:24+03:00 - core: Remote-control session is live: https://claude.ai/code/session_01W8XF7nseQB2QdtbHpexTuh",
 		"",

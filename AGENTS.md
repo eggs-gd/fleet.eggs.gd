@@ -123,7 +123,7 @@ These conventions apply to work inside `server` (Go) and
 ## Project Configuration
 
 - **Language**: TypeScript (frontend), Go (backend)
-- **Package Manager**: yarn (frontend)
+- **Package Manager**: npm (frontend)
 - **Add-ons**: sveltekit-adapter, prettier, mcp
 
 ## Code Style — before writing code

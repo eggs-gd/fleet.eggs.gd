@@ -35,14 +35,13 @@ func inspectProjects(root, runtimeRoot string, workspaces []board.Workspace, pro
 				WorkspaceCount: len(workspaces),
 				ProjectCount:   len(projects),
 				Enabled:        true,
-				Source:         "core serve --root / server.Config.CoreRoot",
+				Source:         "fleet serve --root / server.Config.CoreRoot",
 				Notes:          "Task cards and workspace PROJECT.md files live under Work/ in this tree. Project checkouts are scanned from the scan roots above.",
 			},
 		},
 		Notes: []string{
 			"Several project directories can be watched. The daemon still has one Data root.",
 			"The running server watches every scan root and rewrites _registry when repositories appear or disappear, then reloads the board.",
-			"Personal tasks/context still live inside the Core repository (Work/, _registry/). Moving them to ~/.eggs-core/ is not implemented.",
 		},
 	}
 	for _, scanRoot := range meta.scanRoots() {
@@ -59,7 +58,7 @@ func inspectProjects(root, runtimeRoot string, workspaces []board.Workspace, pro
 	}
 
 	out.DataPaths = []DataPath{
-		inspectPath("Core root", coreRoot, "process root"),
+		inspectPath("Data root", coreRoot, "process root"),
 		inspectPath("Tasks", filepath.Join(coreRoot, "Work"), "Markdown task cards Work/<project>/tasks"),
 		inspectPath("Workspaces", filepath.Join(coreRoot, "Work"), "PROJECT.md workspace cards"),
 		inspectPath("Registry", filepath.Join(coreRoot, "_registry"), "generated discovery/runtime state"),

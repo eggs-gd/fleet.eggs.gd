@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,32 +18,34 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/server"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider/markdown"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/webui"
 )
 
-const version = "0.0.1"
+// version is set by the build (-ldflags "-X main.version=...").
+var version = "0.0.1"
 
 func main() {
 	log.SetFlags(0)
 
 	if len(os.Args) < 2 {
-		usage()
+		usage(os.Stderr)
 		os.Exit(2)
 	}
 
 	switch os.Args[1] {
+	case "help", "-h", "--help", "-help":
+		usage(os.Stdout)
 	case "rebuild-index":
 		rebuildIndex(os.Args[2:])
 	case "scan":
 		scanProjects(os.Args[2:])
-	case "workspaces":
-		writeWorkspaces(os.Args[2:])
 	case "serve":
 		serve(os.Args[2:])
 	case "version":
 		fmt.Println(version)
 	default:
 		log.Printf("unknown command: %s", os.Args[1])
-		usage()
+		usage(os.Stderr)
 		os.Exit(2)
 	}
 }
@@ -85,25 +90,6 @@ func (s *stringList) Set(value string) error {
 	return nil
 }
 
-func writeWorkspaces(args []string) {
-	flags := flag.NewFlagSet("workspaces", flag.ExitOnError)
-	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet/workspace)")
-	flags.Parse(args)
-
-	coreRoot, _, err := appconfig.ResolveDataRoot(*root)
-	if err != nil {
-		log.Fatal(err)
-	}
-	projects, err := projectscan.WriteWorkspaces(filepath.Join(coreRoot, "_registry"), filepath.Join(coreRoot, "Work"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	if err := markdown.RebuildWorkIndex(coreRoot); err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Generated %d Work workspaces in %s\n", len(projects), filepath.Join(coreRoot, "Work"))
-}
-
 func rebuildIndex(args []string) {
 	flags := flag.NewFlagSet("rebuild-index", flag.ExitOnError)
 	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet_data)")
@@ -124,19 +110,20 @@ func rebuildIndex(args []string) {
 func serve(args []string) {
 	flags := flag.NewFlagSet("serve", flag.ExitOnError)
 	addr := flags.String("addr", "127.0.0.1:8787", "HTTP listen address")
-	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet_data)")
-	backofficeDir := flags.String("backoffice-dir", "view/dist", "built backoffice static directory")
-	dryRun := flags.Bool("dry-run", false, "plan agent launches without starting processes")
-	live := flags.Bool("live", false, "deprecated no-op; serve is live by default")
+	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet/workspace)")
+	backofficeDir := flags.String("backoffice-dir", "", "serve the dashboard from this directory instead of the one built into the binary (for development)")
+	live := flags.Bool("live", false, "start AI agents for ready tasks. They edit files without asking each time")
+	dryRun := flags.Bool("dry-run", false, "only plan agent launches (the default)")
 	sessionTimeout := flags.Duration("session-timeout", 10*time.Minute, "idle attention threshold for controllable agent sessions; resets on activity and is not a total-session cap")
 	flags.Parse(args)
-	if *live {
-		fmt.Fprintln(os.Stderr, "warning: --live is deprecated; core serve is live by default")
-	}
 	sessionTimeoutFlag := false
+	launchFlag := ""
 	flags.Visit(func(f *flag.Flag) {
-		if f.Name == "session-timeout" {
+		switch f.Name {
+		case "session-timeout":
 			sessionTimeoutFlag = true
+		case "live", "dry-run":
+			launchFlag = "--" + f.Name
 		}
 	})
 
@@ -152,7 +139,7 @@ func serve(args []string) {
 		log.Printf("bootstrapped new Data root at %s (source: %s)", coreRoot, rootSource)
 	}
 
-	runtimeRoot, err := appconfig.RuntimeRoot()
+	runtimeRoot, err := appconfig.EnsureRuntimeRoot()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -160,13 +147,7 @@ func serve(args []string) {
 		log.Fatalf("import runtime data: %v", err)
 	}
 
-	// A relative --backoffice-dir resolves against the working directory,
-	// like any other relative CLI path — not against --root (Data). App
-	// (this binary's own source/install tree, where the built dist/ lives)
-	// and Data (--root) are independent trees and are not assumed to be
-	// co-located; callers that invoke this from elsewhere must pass an
-	// absolute --backoffice-dir (see App/Makefile's `serve` target).
-	staticDir, err := filepath.Abs(*backofficeDir)
+	dashboard, dashboardSource, err := resolveDashboard(*backofficeDir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -179,14 +160,20 @@ func serve(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	planOnly, err := settings.ResolveLaunchMode(*live, *dryRun, overlay)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	cfg := server.Config{
 		Addr:               *addr,
 		CoreRoot:           coreRoot,
 		DataRootSource:     rootSource,
 		RuntimeRoot:        runtimeRoot,
-		BackofficeDir:      staticDir,
-		DryRun:             *dryRun,
+		Backoffice:         dashboard,
+		BackofficeSource:   dashboardSource,
+		DryRun:             planOnly,
+		LaunchFlag:         launchFlag,
 		SessionTimeout:     timeout,
 		SessionTimeoutFlag: sessionTimeoutFlag,
 		Version:            version,
@@ -197,14 +184,33 @@ func serve(args []string) {
 	}
 }
 
-func usage() {
-	fmt.Fprintln(os.Stderr, "usage:")
-	fmt.Fprintln(os.Stderr, "  core rebuild-index [--root <data-root>]")
-	fmt.Fprintln(os.Stderr, "  core scan [--root <data-root>] --projects <scan-root> [--projects <scan-root>...]")
-	fmt.Fprintln(os.Stderr, "  core workspaces [--root <data-root>]")
-	fmt.Fprintln(os.Stderr, "  core serve [--addr 127.0.0.1:8787] [--root <data-root>] [--backoffice-dir view/dist] [--dry-run] [--session-timeout 10m]")
-	fmt.Fprintln(os.Stderr, "  core version")
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "--root is optional: without it, Core uses the Data root saved in")
-	fmt.Fprintln(os.Stderr, "~/.fleet/app.json, defaulting to and creating ~/.fleet/workspace on first run.")
+// resolveDashboard picks the dashboard to serve: a directory named with
+// --backoffice-dir (for development), otherwise the one built into the binary.
+// A relative directory resolves against the working directory, like any other
+// path argument.
+func resolveDashboard(dir string) (fs.FS, string, error) {
+	if dir != "" {
+		abs, err := filepath.Abs(dir)
+		if err != nil {
+			return nil, "", err
+		}
+		return os.DirFS(abs), abs, nil
+	}
+	if fsys, ok := webui.Embedded(); ok {
+		return fsys, "built into this binary", nil
+	}
+	return nil, "", errors.New("this binary was built without the dashboard: run `make build`, or pass --backoffice-dir <dir with index.html>")
+}
+
+func usage(w io.Writer) {
+	fmt.Fprintln(w, "usage:")
+	fmt.Fprintln(w, "  fleet serve [--addr 127.0.0.1:8787] [--root <data-root>] [--live | --dry-run] [--session-timeout 10m]")
+	fmt.Fprintln(w, "  fleet scan [--root <data-root>] --projects <scan-root> [--projects <scan-root>...]")
+	fmt.Fprintln(w, "  fleet rebuild-index [--root <data-root>]")
+	fmt.Fprintln(w, "  fleet version")
+	fmt.Fprintln(w, "")
+	fmt.Fprintln(w, "serve only plans agent launches unless you pass --live or turn live mode on in")
+	fmt.Fprintln(w, "Settings. Live mode starts agents that edit files without asking each time.")
+	fmt.Fprintln(w, "--root is optional: without it, Fleet uses the Data root saved in")
+	fmt.Fprintln(w, "~/.fleet/app.json, defaulting to and creating ~/.fleet/workspace on first run.")
 }

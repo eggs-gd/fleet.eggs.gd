@@ -147,7 +147,7 @@ func codexMissingCLIDiagnostic() string {
 
 // resolveCodexBinary finds the official standalone Codex CLI for daemon
 // launches (CORE-151). Resolution order:
-//  1. CORE_CODEX_BINARY — process env wins over overlay;
+//  1. FLEET_CODEX_BINARY — process env wins over overlay;
 //  2. core.local.yaml agents.codex.executable;
 //  3. exec.LookPath("codex") — shell-visible standalone install.
 //
@@ -160,11 +160,11 @@ func resolveCodexBinary() (string, error) {
 }
 
 func resolveCodexBinaryWithSource() (string, string, error) {
-	if configured := strings.TrimSpace(os.Getenv("CORE_CODEX_BINARY")); configured != "" {
+	if configured := strings.TrimSpace(os.Getenv("FLEET_CODEX_BINARY")); configured != "" {
 		if !filepath.IsAbs(configured) {
-			return "", "env", errors.New("CORE_CODEX_BINARY is set but is not an absolute path")
+			return "", "env", errors.New("FLEET_CODEX_BINARY is set but is not an absolute path")
 		}
-		if err := requireRunnable(configured, "CORE_CODEX_BINARY"); err != nil {
+		if err := requireRunnable(configured, "FLEET_CODEX_BINARY"); err != nil {
 			return "", "env", err
 		}
 		return configured, "env", nil
@@ -227,10 +227,6 @@ func (agent Cursor) Plan(task TaskContext) (Plan, error) {
 
 func cursorAgentVisibleCommand(binary string, workingDir string, prompt string) []string {
 	return []string{binary, "--trust", "--workspace", workingDir, prompt}
-}
-
-func cursorAgentPrintDiagnosticCommand(binary string, workingDir string, prompt string) []string {
-	return []string{binary, "--print", "--output-format", "text", "--trust", "--workspace", workingDir, prompt}
 }
 
 func resolveCursorAgentBinary() (string, error) {
