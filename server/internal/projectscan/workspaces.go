@@ -176,18 +176,7 @@ type workspaceRepoJSON struct {
 }
 
 func (repo workspaceRepoJSON) model() workspaceRepo {
-	return workspaceRepo{
-		ID:           repo.ID,
-		Name:         repo.Name,
-		Title:        repo.Title,
-		RelativePath: repo.RelativePath,
-		Remote:       repo.Remote,
-		Branch:       repo.Branch,
-		Summary:      repo.Summary,
-		Stack:        repo.Stack,
-		Effective:    repo.Effective,
-		Detected:     repo.Detected,
-	}
+	return workspaceRepo(repo)
 }
 
 func workspaceTitle(repos []workspaceRepo) string {

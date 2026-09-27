@@ -170,22 +170,25 @@ func TestServerDoesNotConstructCorechainRuntime(t *testing.T) {
 
 func assertPackageDoesNotImport(t *testing.T, dir string, forbidden ...string) {
 	t.Helper()
-	filter := func(info os.FileInfo) bool {
-		name := info.Name()
-		return strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, "_test.go")
-	}
-	pkgs, err := parser.ParseDir(token.NewFileSet(), filepath.Clean(dir), filter, parser.ImportsOnly)
+	entries, err := os.ReadDir(filepath.Clean(dir))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			for _, spec := range file.Imports {
-				path := strings.Trim(spec.Path.Value, `"`)
-				for _, banned := range forbidden {
-					if strings.Contains(path, banned) {
-						t.Fatalf("%s imports forbidden dependency %s", file.Name.Name, path)
-					}
+	fset := token.NewFileSet()
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(filepath.Clean(dir), name), nil, parser.ImportsOnly)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, spec := range file.Imports {
+			path := strings.Trim(spec.Path.Value, `"`)
+			for _, banned := range forbidden {
+				if strings.Contains(path, banned) {
+					t.Fatalf("%s imports forbidden dependency %s", file.Name.Name, path)
 				}
 			}
 		}

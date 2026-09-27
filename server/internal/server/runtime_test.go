@@ -3339,8 +3339,8 @@ func findSessionInGroups(state State, taskRef string) (execution.RuntimeSession,
 		if group.TaskRef != taskRef && group.TaskID != taskRef {
 			continue
 		}
-		for i := len(group.Sessions) - 1; i >= 0; i-- {
-			return group.Sessions[i].RuntimeSession, true
+		if n := len(group.Sessions); n > 0 {
+			return group.Sessions[n-1].RuntimeSession, true
 		}
 	}
 	for _, group := range state.SessionGroups {
