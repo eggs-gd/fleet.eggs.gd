@@ -71,7 +71,6 @@ Return exactly this compact JSON result payload and no other final text:
 		RelativePath: task.RelativePath,
 		WorkingDir:   root,
 		Assignee:     "codex",
-		LaunchMode:   execution.LaunchModeAllowCoreVisible,
 		Body:         body,
 	})
 	if err != nil {
@@ -82,7 +81,6 @@ Return exactly this compact JSON result payload and no other final text:
 	}
 	t.Logf("command: %#v visibility=%s", plan.Command, plan.VisibilityClass)
 
-	task.Launch.Mode = execution.LaunchModeAllowCoreVisible
 	task.LaunchEvaluation.Agent = "codex"
 	task.LaunchEvaluation.Backend = plan.Backend
 	task.LaunchEvaluation.VisibilityMode = plan.VisibilityClass

@@ -159,6 +159,12 @@ func CursorOperatorCommand(binary string, chatID string, workingDir string) stri
 	return strings.Join([]string{binary, "--resume", chatID, "--workspace", workingDir}, " ")
 }
 
+// GeminiOperatorCommand returns the command that reopens an Antigravity
+// conversation in a terminal so a person can continue it.
+func GeminiOperatorCommand(binary string, projectID string, conversationID string) string {
+	return strings.Join([]string{binary, "--project", projectID, "--conversation", conversationID}, " ")
+}
+
 // CodexRemoteThreadTitle names the provider-visible thread after the Core task.
 func CodexRemoteThreadTitle(ref string, title string, id string) string {
 	ref = strings.TrimSpace(ref)

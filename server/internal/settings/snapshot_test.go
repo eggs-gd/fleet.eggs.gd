@@ -73,6 +73,15 @@ func TestBuildReadModelDoesNotLeakSecretsOrInventProviders(t *testing.T) {
 		t.Fatalf("providers = %v (only the registered providers.NewRegistry() set must appear)", ids)
 	}
 	for _, agent := range snap.Agents.Providers {
+		if agent.Capabilities.Provider != agent.ID || agent.Capabilities.OperatorVisibility == "" {
+			t.Fatalf("agent %s must show its capabilities: %#v", agent.ID, agent.Capabilities)
+		}
+		if agent.SessionReuse.Backend != agent.Capabilities.Backend || agent.SessionReuse.Level == "" {
+			t.Fatalf("agent %s must show its session reuse rule: %#v", agent.ID, agent.SessionReuse)
+		}
+		if agent.VisibilityLabel == "" || agent.VisibilitySummary == "" {
+			t.Fatalf("agent %s must explain its visibility in words: %#v", agent.ID, agent)
+		}
 		if !agent.Enabled.Writable || !agent.ConfiguredExecutable.Writable || !agent.RoutingInstructions.Writable {
 			t.Fatalf("agent %s writable flags = %#v", agent.ID, agent)
 		}

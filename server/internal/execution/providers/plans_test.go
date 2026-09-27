@@ -292,10 +292,10 @@ func TestCodexPlanUsesAppServerCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !plan.LiveReady {
-		t.Fatalf("Codex plan must be live-ready by default (CORE-130): %s", plan.LiveNotes)
+		t.Fatalf("Codex plan must be live-ready by default: %s", plan.LiveNotes)
 	}
-	if plan.VisibilityClass != "core_visible" {
-		t.Fatalf("visibility = %q, want core_visible", plan.VisibilityClass)
+	if plan.VisibilityClass != "fleet_visible" {
+		t.Fatalf("visibility = %q, want fleet_visible", plan.VisibilityClass)
 	}
 	if plan.Backend != "codex-app-server" {
 		t.Fatalf("backend = %q, want codex-app-server", plan.Backend)
@@ -312,8 +312,8 @@ func TestCodexPlanUsesAppServerCommand(t *testing.T) {
 	if !strings.Contains(plan.Prompt, "CORE-57") {
 		t.Fatalf("prompt missing task ref: %s", plan.Prompt)
 	}
-	if !strings.Contains(plan.LiveNotes, "core_visible") || !strings.Contains(plan.LiveNotes, "auto-launch is allowed") {
-		t.Fatalf("live notes should document core_visible Remote/control path and default auto-launch: %s", plan.LiveNotes)
+	if !strings.Contains(plan.LiveNotes, "fleet_visible") || !strings.Contains(plan.LiveNotes, "Codex Remote") {
+		t.Fatalf("live notes should document the fleet_visible Remote/control path: %s", plan.LiveNotes)
 	}
 	if !strings.Contains(plan.LiveNotes, "Resolved Codex binary: "+binary) {
 		t.Fatalf("live notes should expose resolved Codex binary path: %s", plan.LiveNotes)
@@ -434,25 +434,57 @@ func TestCodexPlanRejectsInvalidConfiguredBinaryPath(t *testing.T) {
 	}
 }
 
-func TestCodexPlanLegacyAllowCoreVisibleStillLiveReady(t *testing.T) {
-	_ = installFakeExecutable(t, "codex")
+func TestGeminiPlanIsTerminalResumable(t *testing.T) {
+	binary := installFakeExecutable(t, "agy")
 
-	plan, err := Codex{}.Plan(TaskContext{
-		Ref:        "CORE-70",
-		WorkingDir: "/tmp/core.eggs.gd",
-		LaunchMode: "allow_core_visible",
-	})
+	plan, err := Gemini{}.Plan(TaskContext{Ref: "TEST-9", WorkingDir: "/tmp/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !plan.LiveReady {
-		t.Fatalf("Codex must stay live-ready with legacy override: %s", plan.LiveNotes)
+		t.Fatalf("Gemini plan must be live-ready: %s", plan.LiveNotes)
 	}
-	if plan.VisibilityClass != "core_visible" {
-		t.Fatalf("must not pretend app_visible: %q", plan.VisibilityClass)
+	if plan.VisibilityClass != "cli_visible" {
+		t.Fatalf("visibility = %q, want cli_visible", plan.VisibilityClass)
 	}
-	if !strings.Contains(plan.LiveNotes, "allow_core_visible") {
-		t.Fatalf("legacy mode notes missing: %s", plan.LiveNotes)
+	if plan.Command[0] != binary || plan.Backend != BackendGeminiHeadless {
+		t.Fatalf("unexpected plan: %#v", plan)
+	}
+}
+
+func TestEveryAdapterStatesItsCapabilities(t *testing.T) {
+	want := map[string]struct {
+		visibility string
+		reuse      string
+	}{
+		"claude": {"app_visible", "verified"},
+		"codex":  {"fleet_visible", "unverified"},
+		"cursor": {"cli_visible", "verified"},
+		"gemini": {"cli_visible", "verified"},
+	}
+	agents := NewRegistry().Agents()
+	if len(agents) != len(want) {
+		t.Fatalf("registered %d adapters, expected %d", len(agents), len(want))
+	}
+	for _, agent := range agents {
+		expect, ok := want[agent.Name()]
+		if !ok {
+			t.Fatalf("unexpected adapter %q", agent.Name())
+		}
+		caps := agent.Capabilities()
+		if caps.Provider != agent.Name() || caps.Backend == "" {
+			t.Errorf("%s: provider/backend not set: %#v", agent.Name(), caps)
+		}
+		if caps.OperatorVisibility != expect.visibility {
+			t.Errorf("%s: visibility = %q, want %q", agent.Name(), caps.OperatorVisibility, expect.visibility)
+		}
+		reuse := agent.SessionReuse()
+		if string(reuse.Level) != expect.reuse || reuse.Backend != caps.Backend {
+			t.Errorf("%s: reuse = %#v, want level %s on backend %s", agent.Name(), reuse, expect.reuse, caps.Backend)
+		}
+		if !caps.CanExposeOperatorPath {
+			t.Errorf("%s: an adapter that can be launched automatically must expose an operator path", agent.Name())
+		}
 	}
 }
 

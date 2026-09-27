@@ -1513,7 +1513,7 @@ func TestRuntimeLaunchesNextCodexTaskAfterTerminalSuccessWithoutFileEvent(t *tes
 	firstPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-57.md")
 	secondPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-80.md")
 	writeTestFile(t, firstPath, testTaskMarkdownWithID("work-core-57", "CORE-57", "First Codex task", "todo"))
-	writeTestFile(t, secondPath, allowCoreVisibleLaunch(testTaskMarkdownWithID("work-core-80", "CORE-80", "Second Codex task", "todo")))
+	writeTestFile(t, secondPath, testTaskMarkdownWithID("work-core-80", "CORE-80", "Second Codex task", "todo"))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -1538,7 +1538,7 @@ func TestRuntimeLaunchesNextCodexTaskAfterTerminalFailureWithoutFileEvent(t *tes
 	firstPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-57.md")
 	secondPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-74.md")
 	writeTestFile(t, firstPath, testTaskMarkdownWithID("work-core-57", "CORE-57", "Failing Codex task", "todo"))
-	writeTestFile(t, secondPath, allowCoreVisibleLaunch(testTaskMarkdownWithID("work-core-74", "CORE-74", "Next Codex task", "todo")))
+	writeTestFile(t, secondPath, testTaskMarkdownWithID("work-core-74", "CORE-74", "Next Codex task", "todo"))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -1563,7 +1563,7 @@ func TestRuntimeLaunchesNextCodexTaskAfterStartupOrphanRelease(t *testing.T) {
 	orphanPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-57.md")
 	nextPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-70.md")
 	writeTestFile(t, orphanPath, testTaskMarkdownWithID("work-core-57", "CORE-57", "Dead Codex task", "doing"))
-	writeTestFile(t, nextPath, allowCoreVisibleLaunch(testTaskMarkdownWithID("work-core-70", "CORE-70", "Next after orphan", "todo")))
+	writeTestFile(t, nextPath, testTaskMarkdownWithID("work-core-70", "CORE-70", "Next after orphan", "todo"))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -1592,8 +1592,8 @@ func TestRuntimeProviderSessionExitRequeuesWaitingLaunchableTask(t *testing.T) {
 	installFakeCodexAppServer(t, root)
 	firstPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-core-123.md")
 	secondPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-core-125.md")
-	writeTestFile(t, firstPath, allowCoreVisibleLaunch(testTaskMarkdownWithID("work-core-123", "CORE-123", "Provider session holder", "todo")))
-	writeTestFile(t, secondPath, allowCoreVisibleLaunch(testTaskMarkdownWithPriority("work-core-125", "CORE-125", "Needs rework after slot free", "needs_rework", 1)))
+	writeTestFile(t, firstPath, testTaskMarkdownWithID("work-core-123", "CORE-123", "Provider session holder", "todo"))
+	writeTestFile(t, secondPath, testTaskMarkdownWithPriority("work-core-125", "CORE-125", "Needs rework after slot free", "needs_rework", 1))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -1606,7 +1606,6 @@ func TestRuntimeProviderSessionExitRequeuesWaitingLaunchableTask(t *testing.T) {
 	first.LaunchEvaluation.Repository = "core.eggs.gd"
 	first.LaunchEvaluation.WorkingDir = repo
 	first.LaunchEvaluation.Command = []string{"codex", "app-server", "--stdio"}
-	first.Launch.Mode = execution.LaunchModeAllowCoreVisible
 
 	app.Exec.StartLaunchCandidate(t.Context(), first)
 	waitForTaskStatus(t, root, secondPath, "needs_review")
@@ -1623,8 +1622,8 @@ func TestRuntimeBootstrapLaunchPendingPicksTodoAndNeedsRework(t *testing.T) {
 	installFakeCodexAppServer(t, root)
 	reworkPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-core-125-boot.md")
 	todoPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-core-124-boot.md")
-	writeTestFile(t, reworkPath, allowCoreVisibleLaunch(testTaskMarkdownWithPriority("work-core-125-boot", "CORE-125", "Rework first", "needs_rework", 1)))
-	writeTestFile(t, todoPath, allowCoreVisibleLaunch(testTaskMarkdownWithPriority("work-core-124-boot", "CORE-124", "Todo second", "todo", 2)))
+	writeTestFile(t, reworkPath, testTaskMarkdownWithPriority("work-core-125-boot", "CORE-125", "Rework first", "needs_rework", 1))
+	writeTestFile(t, todoPath, testTaskMarkdownWithPriority("work-core-124-boot", "CORE-124", "Todo second", "todo", 2))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -1706,7 +1705,7 @@ func TestAnnotateTaskStaleWaitClearRequeuesLaunchableTask(t *testing.T) {
 	root, _ := writeRuntimeRequeueFixture(t)
 	installFakeCodexAppServer(t, root)
 	nextPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-04-core-124-stale.md")
-	writeTestFile(t, nextPath, allowCoreVisibleLaunch(testTaskMarkdownWithPriority("work-core-124-stale", "CORE-124", "Stale wait idle", "todo", 1)))
+	writeTestFile(t, nextPath, testTaskMarkdownWithPriority("work-core-124-stale", "CORE-124", "Stale wait idle", "todo", 1))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {
@@ -3266,14 +3265,6 @@ func testTaskMarkdownWithID(id string, ref string, title string, status string) 
 func testTaskMarkdownWithPriority(id string, ref string, title string, status string, priority int) string {
 	body := testTaskMarkdownWithID(id, ref, title, status)
 	return strings.Replace(body, "status: "+status+"\n", "status: "+status+"\npriority: "+strconv.Itoa(priority)+"\n", 1)
-}
-
-// allowCoreVisibleLaunch is a legacy fixture helper. CORE-130 made normal Codex
-// app-server auto-launch LiveReady by default, so injecting
-// launch.mode=allow_core_visible is no longer required; the helper remains so
-// older tests that still call it keep compiling and behave identically.
-func allowCoreVisibleLaunch(markdown string) string {
-	return strings.Replace(markdown, "launch:\n---", "launch:\n  mode: "+execution.LaunchModeAllowCoreVisible+"\n---", 1)
 }
 
 // waitForLaunchesToEnd waits until every launch has finished, including the task

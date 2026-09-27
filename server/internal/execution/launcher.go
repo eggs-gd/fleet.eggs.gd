@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/executionapi"
 	"github.com/eggs-gd/fleet.eggs.gd/lib/chain"
 )
 
@@ -44,7 +45,7 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 		return task, nil
 	}
 
-	visibility := VisibilityClass(firstNonEmpty(plan.VisibilityClass, string(VisibilityUnknown)))
+	visibility := executionapi.NormalizeVisibility(firstNonEmpty(plan.VisibilityClass, string(VisibilityUnknown)))
 	if visibility == "" {
 		visibility = VisibilityUnknown
 	}
@@ -57,12 +58,8 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 
 	if !plan.LiveReady {
 		gate := "agent_live_ready"
-		switch visibility {
-		case VisibilityCoreVisible, VisibilityHeadless:
-			gate = "agent_visibility"
-		}
-		// Missing CLI binaries are setup failures that should block the task
-		// with an actionable provider diagnostic (CORE-150), not a routine skip.
+		// A missing CLI binary is a setup failure that should block the task
+		// with an actionable provider diagnostic, not a routine skip.
 		notesLower := strings.ToLower(plan.LiveNotes)
 		if strings.Contains(notesLower, "binary could not be resolved") ||
 			strings.Contains(notesLower, "is not available on the daemon path") {
@@ -72,10 +69,10 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 		task.ResolveLaunchEvaluation()
 		return task, nil
 	}
-	if !visibility.AllowsDaemonAutoLaunch() && !strings.EqualFold(strings.TrimSpace(task.Launch.Mode), LaunchModeAllowCoreVisible) {
+	if !visibility.AllowsDaemonAutoLaunch() {
 		task.FailLaunchGate("agent_visibility", fmt.Sprintf(
-			"backend %q visibility is %q; daemon auto-launch requires app_visible or cli_visible (override with launch.mode=%s)",
-			plan.Backend, visibility, LaunchModeAllowCoreVisible,
+			"backend %q is %q (%s); automatic launch needs a session a person can reach: app_visible, cli_visible or fleet_visible",
+			plan.Backend, visibility, visibility.Label(),
 		))
 		task.ResolveLaunchEvaluation()
 		return task, nil

@@ -102,21 +102,20 @@ Fleet distinguishes how an operator can see a daemon-launched session:
 |---|---|---|
 | `app_visible` | Vendor desktop/mobile app session (Claude remote-control URL). | Allowed |
 | `cli_visible` | Verified provider CLI identity and resume path (Cursor chat id). | Allowed (explicit opt-in workers) |
-| `core_visible` | Fleet API, log and control plane, plus the provider's Remote identity when available (Codex app-server, Codex Remote). Not a deep-link URL. | Allowed when the adapter is live-ready |
-| `headless` | Process and log only. | Blocked unless the task card sets `launch.mode: allow_core_visible` |
+| `fleet_visible` | Fleet's dashboard controls, plus the provider's Remote view when it has one (Codex app-server, Codex Remote). Not a deep-link URL. | Allowed when the adapter is live-ready |
+| `headless` | Log only, nothing to open. | Blocked |
 
 Adapter mapping:
 
 - Claude `background-remote` → `app_visible`.
 - Cursor `cursor-visible` → `cli_visible` (not phone or app visible).
-- Codex `codex-app-server` → `core_visible` (Codex Remote plus dashboard controls).
-- Gemini `gemini-headless` → `headless` (process and log only, with an
-  operator resume command). The visibility gate holds a Gemini task in its
-  pickup status unless the task card sets `launch.mode: allow_core_visible`.
+- Codex `codex-app-server` → `fleet_visible` (Codex Remote plus dashboard controls).
+- Gemini `gemini-headless` → `cli_visible` (`agy --project <id> --conversation <id>`
+  reopens the conversation in a terminal).
 
-Events meaning that Fleet's JSON-RPC control of Codex is ready are
-`agent_core_control_ready`. `agent_remote_control_ready` is reserved for
-Claude's remote-control URL announcement.
+There is no per-task override. An old `core_visible` value reads as
+`fleet_visible`, and `launch.mode: allow_core_visible` in an old card is ignored.
+Settings → Agents shows what each provider can do.
 
 ## Pickup Order
 
@@ -235,7 +234,7 @@ Resume by backend:
   prompt is passed back to `cursor-agent --resume`.
 - **Codex** (`codex-app-server`, unverified): a prior thread id is tried first
   and Fleet falls back to a fresh thread on any RPC error.
-- **Gemini** (`gemini-headless`, unverified): the conversation id is passed to
+- **Gemini** (`gemini-headless`, verified): the conversation id is passed to
   `agy --conversation`.
 
 ### One session per agent per project

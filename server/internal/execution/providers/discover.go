@@ -43,12 +43,22 @@ type AgentDiscovery struct {
 	Error                string               `json:"error,omitempty"`
 	VisibilityClass      string               `json:"visibility_class,omitempty"`
 	LiveReady            bool                 `json:"live_ready"`
+	// Capabilities and SessionReuse come from the adapter, not from probing.
+	Capabilities ProviderCapabilities   `json:"capabilities"`
+	SessionReuse SessionReuseCapability `json:"session_reuse"`
 }
 
 // DiscoverAgents reports Claude, Codex, Cursor, and Gemini — the providers
 // registered in NewRegistry().
 func DiscoverAgents() []AgentDiscovery {
-	return []AgentDiscovery{discoverClaude(), discoverCodex(), discoverCursor(), discoverGemini()}
+	rows := []AgentDiscovery{discoverClaude(), discoverCodex(), discoverCursor(), discoverGemini()}
+	for i := range rows {
+		if agent, ok := capabilityRegistry.Agent(rows[i].ID); ok {
+			rows[i].Capabilities = agent.Capabilities()
+			rows[i].SessionReuse = agent.SessionReuse()
+		}
+	}
+	return rows
 }
 
 func discoverClaude() AgentDiscovery {
@@ -116,7 +126,7 @@ func discoverGemini() AgentDiscovery {
 		ID:                   "gemini",
 		Name:                 "Gemini",
 		Expected:             "agy (Antigravity CLI) on PATH, or core.local.yaml",
-		VisibilityClass:      "headless",
+		VisibilityClass:      "cli_visible",
 		ConfiguredExecutable: localExecutable("gemini"),
 		DetectedExecutables:  detectGemini(),
 	}
@@ -143,7 +153,7 @@ func discoverCodex() AgentDiscovery {
 		ID:                   "codex",
 		Name:                 "Codex",
 		Expected:             "standalone `codex` on PATH, FLEET_CODEX_BINARY, or core.local.yaml. ChatGPT.app's bundled binary is not canonical.",
-		VisibilityClass:      "core_visible",
+		VisibilityClass:      "fleet_visible",
 		ConfiguredExecutable: localExecutable("codex"),
 		DetectedExecutables:  detectCodex(),
 	}

@@ -35,11 +35,10 @@ and agent instead of only the task.
 | `background-remote` (Claude) | verified | Protocol below. |
 | `cursor-visible` (Cursor) | verified | `cursor-agent --resume <chat-id>`, chat id created before the first prompt. |
 | `codex-app-server` (Codex) | unverified | `thread/resume`; on failure Fleet starts a fresh thread and records `session_resume_fallback`. |
-| `gemini-headless` (Gemini) | unverified | `agy --conversation <id>`, carries `gemini_conversation_id` and `gemini_project_id`. |
+| `gemini-headless` (Gemini) | verified | `agy --conversation <id>`: the same conversation id comes back and the earlier turn is remembered. Carries `gemini_conversation_id` and `gemini_project_id`. |
 
-Claude and Cursor have no fallback: a failed resume is a launch failure, since
-silently forking a copy defeats the reuse. The level is reported by
-`executionapi.ProviderSessionReuseCapability`.
+Claude, Cursor and Gemini have no fallback: a failed resume is a launch failure, since
+silently forking a copy defeats the reuse. The level is stated by each adapter's `SessionReuse()` and shown in Settings → Agents.
 
 ## Claude resume protocol
 

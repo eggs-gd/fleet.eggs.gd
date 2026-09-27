@@ -700,7 +700,7 @@ func sessionPointerForSession(session RuntimeSession) string {
 		return firstNonEmpty(session.RemoteControlURL, session.BackgroundID)
 	case string(VisibilityCLIVisible):
 		return firstNonEmpty(session.OperatorCommand, session.CursorChatID)
-	case string(VisibilityCoreVisible):
+	case string(VisibilityFleetVisible):
 		return firstNonEmpty(session.CodexThreadTitle, session.CodexThreadID, session.ProviderThreadID())
 	default:
 		return session.ProviderSessionID()

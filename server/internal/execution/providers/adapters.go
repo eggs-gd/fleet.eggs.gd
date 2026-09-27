@@ -39,7 +39,7 @@ func (agent Claude) Plan(task TaskContext) (Plan, error) {
 		Prompt:          prompt,
 		VisibilityClass: "app_visible",
 		LiveReady:       true,
-		LiveNotes:       "Claude launches as a `claude --bg --remote-control` background agent with `--permission-mode acceptEdits` so every daemon session is app_visible and operator-controllable. File edits are auto-accepted; Bash/git actions are not, so no-auto-commit/push/PR from the launch prompt still holds. Core does not inject stdin/PTY input; it supervises completion via `claude agents --json` polling and exposes the printed remote-control URL so a human can continue the session from the phone. The task `launch.mode` value cannot select a headless Claude print path.",
+		LiveNotes:       "Claude launches as a `claude --bg --remote-control` background agent with `--permission-mode acceptEdits` so every daemon session is app_visible. File edits are auto-accepted; Bash/git actions are not, so no-auto-commit/push/PR from the launch prompt still holds. Fleet does not inject stdin/PTY input; it supervises completion via `claude agents --json` polling and exposes the printed remote-control URL so a human can continue the session from the phone. The task `launch.mode` value cannot select a headless Claude print path.",
 	}, nil
 }
 
@@ -122,10 +122,7 @@ func (agent Codex) Plan(task TaskContext) (Plan, error) {
 		}, nil
 	}
 
-	notes := "Resolved Codex binary: " + binary + ". Codex `app-server --stdio` is core_visible (CORE-130): Core owns a JSON-RPC thread/turn control plane with dashboard continue/interrupt/cancel, names threads for Codex Remote, and normal daemon auto-launch is allowed. Sessions appear in Codex Remote on paired clients (not necessarily ChatGPT desktop sidebar history) and lack a Claude-style deep-link URL. `launch.mode: allow_core_visible` is a legacy no-op. `codex exec` remains a local fallback/smoke path, not the primary Core launcher contract."
-	if strings.EqualFold(strings.TrimSpace(task.LaunchMode), "allow_core_visible") {
-		notes = "Legacy launch.mode=allow_core_visible is accepted but no longer required. " + notes
-	}
+	notes := "Resolved Codex binary: " + binary + ". Codex `app-server --stdio` is fleet_visible: Fleet drives a JSON-RPC thread and turn channel with continue, interrupt and cancel in the dashboard, and names threads for Codex Remote. Sessions appear in Codex Remote on paired clients (not necessarily in the ChatGPT desktop history) and have no link. `codex exec` is only a local fallback for smoke runs."
 
 	return Plan{
 		Agent:           agent.Name(),
@@ -133,7 +130,7 @@ func (agent Codex) Plan(task TaskContext) (Plan, error) {
 		Command:         []string{binary, "app-server", "--stdio"},
 		WorkingDir:      task.WorkingDir,
 		Prompt:          prompt,
-		VisibilityClass: "core_visible",
+		VisibilityClass: "fleet_visible",
 		LiveReady:       true,
 		LiveNotes:       notes,
 	}, nil
@@ -221,7 +218,7 @@ func (agent Cursor) Plan(task TaskContext) (Plan, error) {
 		Prompt:          prompt,
 		VisibilityClass: "cli_visible",
 		LiveReady:       true,
-		LiveNotes:       "Cursor uses the normal interactive `cursor-agent --trust --workspace <path> <prompt>` CLI path, never `--print`, for daemon-launched tasks (CORE-79). Visibility class is cli_visible, not phone/app_visible: Core creates a Cursor chat with `cursor-agent create-chat`, launches with `--resume <chat_id>`, stores the chat id on the runtime session, captures stdout/stderr in `_registry/sessions/<claim_id>.log`, and exposes `cursor-agent --resume <chat_id> --workspace <path>` for operator inspection/resume. Completion detection is process-exit based. Assign Cursor only as an explicit opt-in worker; do not treat it as Claude-style phone remote-control.",
+		LiveNotes:       "Cursor uses the normal interactive `cursor-agent --trust --workspace <path> <prompt>` CLI path, never `--print`, for daemon-launched tasks. Visibility class is cli_visible, not phone/app_visible: Fleet creates a Cursor chat with `cursor-agent create-chat`, launches with `--resume <chat_id>`, stores the chat id on the runtime session, captures stdout/stderr in `_registry/sessions/<claim_id>.log`, and exposes `cursor-agent --resume <chat_id> --workspace <path>` for operator inspection/resume. Completion detection is process-exit based. Assign Cursor only as an explicit opt-in worker; do not treat it as Claude-style phone remote-control.",
 	}, nil
 }
 
@@ -306,9 +303,9 @@ func (agent Gemini) Plan(task TaskContext) (Plan, error) {
 		Command:         []string{binary, "--print", prompt, "--output-format", "stream-json"},
 		WorkingDir:      task.WorkingDir,
 		Prompt:          prompt,
-		VisibilityClass: "headless",
+		VisibilityClass: "cli_visible",
 		LiveReady:       true,
-		LiveNotes:       "Gemini launches through Google's Antigravity CLI (`agy --print <prompt> --output-format stream-json`): a synchronous headless call that blocks until the turn's terminal `result` event, not a background/daemon process like Claude/Codex. Core registers the working directory as an antigravity project on first use (`agy --new-project`, discovered afterward from `~/.gemini/config/projects/*.json` since the CLI does not print the id) so AGENTS.md/GEMINI.md and project-scoped `.agents/mcp_config.json` load the same way an interactive session would; every later launch in that directory reuses `--project <id>`. Resume is `--conversation <id>`, a fresh process invocation, not stdin into a live process.",
+		LiveNotes:       "Gemini launches through Google's Antigravity CLI (`agy --print <prompt> --output-format stream-json`): a synchronous headless call that blocks until the turn's terminal `result` event, not a background/daemon process like Claude/Codex. Core registers the working directory as an antigravity project on first use (`agy --new-project`, discovered afterward from `~/.gemini/config/projects/*.json` since the CLI does not print the id) so AGENTS.md/GEMINI.md and project-scoped `.agents/mcp_config.json` load the same way an interactive session would; every later launch in that directory reuses `--project <id>`. Resume is `--conversation <id>`, a fresh process invocation, not stdin into a live process. A person reopens the conversation in a terminal with `agy --project <id> --conversation <id>` (cli_visible).",
 	}, nil
 }
 

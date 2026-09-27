@@ -150,7 +150,6 @@ clients, but they may not appear in the ordinary desktop project/sidebar
 history. The dashboard shows the Remote identity and copyable thread/turn ids;
 until Codex exposes a stable deep link, open Codex Remote, select the connected
 host and project, then match the thread by its Fleet title or thread id.
-`launch.mode: allow_core_visible` is a legacy no-op.
 
 ### Claude
 

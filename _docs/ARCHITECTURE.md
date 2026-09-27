@@ -66,8 +66,9 @@ Launch gates run in order on each eligible task, and the result is stored in
 - `fleet_profile` — `Fleet/<agent>.md` exists;
 - `repository` — exactly one repository;
 - `command` — the adapter produced a launch command;
-- `agent_live_ready`, `agent_visibility`, `agent_executable` — the adapter is
-  verified, visible to the operator, and its binary was found.
+- `agent_live_ready`, `agent_executable` — the adapter is verified and its
+  binary was found;
+- `agent_visibility` — a person can reach the session (not `headless`).
 
 A task that fails a gate stays in its pickup status with the failed gates
 recorded. Only a real launch failure moves it to `blocked`. Details, prompts,

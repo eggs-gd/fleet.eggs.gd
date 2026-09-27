@@ -122,6 +122,25 @@ execution: queued | claimed | starting | running | waiting_input |
            operator_attention | stalled | succeeded | failed | timed_out | cancelled
 ```
 
+## Terms
+
+Three separate questions decide whether a task starts, and each has one name:
+
+| Question | Name | Values |
+|---|---|---|
+| Is the adapter verified and its binary found? | `live_ready`, gates `agent_live_ready` and `agent_executable` | yes or no |
+| How can a person reach a session? | visibility class, gate `agent_visibility` | `app_visible` (a link in the vendor's app), `cli_visible` (a terminal command that reopens it), `fleet_visible` (Fleet's dashboard controls, no link), `headless` (log only), `unknown` |
+| What else can Fleet do with it? | capabilities (`can_*` flags) | `yes`, `no`, `unknown` |
+
+Automatic launch needs a ready adapter and a class other than `headless` or
+`unknown`. A headless session is refused because nobody would notice it stalling.
+There is no per-task override. The old `core_visible` name is read as
+`fleet_visible`, and `launch.mode: allow_core_visible` in an old card is ignored.
+
+Every adapter states its own capabilities and its session-reuse rule
+(`Capabilities()` and `SessionReuse()` on `executionapi.Agent`). Settings →
+Agents shows them in plain words for each provider.
+
 ## Agents
 
 An adapter is launchable only when it is marked `LiveReady`. An unverified
@@ -151,11 +170,11 @@ blocks the task as `remote_control_unavailable`.
 Fleet owns the JSON-RPC channel: `initialize`, `thread/start`,
 `thread/name/set` (`<ref> · <title>`), `turn/start`. It stores the thread and
 turn ids and the thread title on the session, streams notifications into the
-session log, and emits `agent_core_control_ready`. Dashboard controls
+session log. Dashboard controls
 `continue`, `interrupt` and `cancel` call `/api/sessions/control`; `continue`
 sends another `turn/start` on the stored thread, and the others call
 `turn/interrupt`. Thread start uses `approvalPolicy: "never"` and
-`sandbox: "workspace-write"`. The visibility class is `core_visible`: the
+`sandbox: "workspace-write"`. The visibility class is `fleet_visible`: the
 thread shows up in Codex Remote on a paired client under the Fleet title. It
 has no deep link and may not appear in the ChatGPT desktop history.
 
@@ -191,17 +210,20 @@ Terminal status: `SUCCESS` → `succeeded`, `WAITING` → `waiting_input`,
 `CANCELED` and `INTERRUPTED` → `cancelled`, anything else → `failed`
 (`provider_error`). An exit without a `result` event is a `provider_error`.
 
-The visibility class is `headless`. The `agent_visibility` gate holds a Gemini
-task in its pickup status unless the card sets `launch.mode:
-allow_core_visible`.
+The visibility class is `cli_visible`, like Cursor. Fleet stores the project
+and conversation ids and writes `agy --project <id> --conversation <id>` as the
+operator command, which reopens the conversation in a terminal between turns.
+There is no link. The Antigravity remote-control daemon (`agy remote-control`)
+could give a phone view, but Fleet does not use it yet.
 
 Requirements: `agy` on `PATH` or `agents.gemini.executable` in
 `core.local.yaml`, and an authenticated user. Global MCP servers (`agy mcp
 add`) work. Project-scoped MCP through `.agents/mcp_config.json` is documented
-by Antigravity but was not recognized in testing. Headless stream-json turns
+by Antigravity but was not recognized in testing. Stream-json turns
 have upstream reliability issues (a turn can end with an empty response while
 a tool call is still running); the missing-`result` check is a safety net, not
-a fix. Session resume via `--conversation` is registered as unverified.
+a fix. Resume via `--conversation` is confirmed: the same conversation id comes back and
+the earlier turn is remembered.
 
 ## Launch log
 

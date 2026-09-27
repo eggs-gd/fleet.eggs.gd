@@ -30,16 +30,16 @@ Explicit opt-in workers:
 
 Fleet-control + Codex Remote workers:
 
-- `codex` (`core_visible` app-server JSON-RPC; LiveReady for normal daemon
+- `codex` (`fleet_visible` app-server JSON-RPC; LiveReady for normal daemon
   auto-launch). Operator path is Codex Remote on paired clients
   plus Fleet dashboard continue/interrupt/cancel. Not a Claude-style phone
   remote-control URL, and threads may not appear in ordinary ChatGPT desktop
   sidebar history.
 
-Headless workers:
+Terminal-resume workers:
 
-- `gemini` (`headless`; Google's Antigravity CLI, binary `agy`. Registered
-  2026-09-22 — not yet in the Agent Fit Matrix below by design, see
+- `gemini` (`cli_visible`; Google's Antigravity CLI, binary `agy`. Not yet in
+  the Agent Fit Matrix below by design, see
   `Fleet/gemini.md`, which deliberately leaves "Best At"/"Use For" undecided
   until it has a track record on real tasks.)
 

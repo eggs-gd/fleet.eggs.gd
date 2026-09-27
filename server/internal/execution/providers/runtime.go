@@ -669,6 +669,10 @@ func RunGeminiHeadlessSession(ctx context.Context, session RuntimeSession, task 
 	} else {
 		session.GeminiProjectID = projectID
 	}
+	if session.GeminiProjectID != "" && session.GeminiConversationID != "" {
+		session.OperatorCommand = GeminiOperatorCommand(binary, session.GeminiProjectID, session.GeminiConversationID)
+		appendSessionLogLine(logFile, "\n[core] operator resume command: %s\n", session.OperatorCommand)
+	}
 
 	session.Status = "exited"
 	switch {
@@ -978,7 +982,7 @@ func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task 
 	session.Status = "starting"
 	session.ExecutionStatus = "waiting_for_visible_session"
 	session.LastEvent = "waiting_for_visible_session"
-	session.VisibilityMode = firstNonEmpty(session.VisibilityMode, string(execution.VisibilityCoreVisible))
+	session.VisibilityMode = firstNonEmpty(session.VisibilityMode, string(execution.VisibilityFleetVisible))
 	session.Capabilities = ProviderCapabilityFlags(session.Agent, session.Backend)
 	upsertSession(opts, session)
 	_, _ = fmt.Fprintf(logFile, "[core] provider visible-session wait started (codex thread/start handshake)\n")

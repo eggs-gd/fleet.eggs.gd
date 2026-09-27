@@ -112,9 +112,9 @@ func TestBuildCodexCommandUsesAppServerMode(t *testing.T) {
 			Backend:         BackendCodexAppServer,
 			Command:         []string{"/tmp/codex", "app-server", "--stdio"},
 			WorkingDir:      "/tmp/repo",
-			VisibilityClass: string(VisibilityCoreVisible),
+			VisibilityClass: string(VisibilityFleetVisible),
 			LiveReady:       true,
-			LiveNotes:       "core_visible",
+			LiveNotes:       "fleet_visible",
 		},
 	}}}
 
@@ -123,10 +123,10 @@ func TestBuildCodexCommandUsesAppServerMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !launched.LaunchEvaluation.Launchable {
-		t.Fatalf("Codex app-server should be daemon-launchable by default (CORE-130): %#v", launched.LaunchEvaluation)
+		t.Fatalf("Codex app-server should be daemon-launchable by default: %#v", launched.LaunchEvaluation)
 	}
-	if launched.LaunchEvaluation.VisibilityMode != string(VisibilityCoreVisible) {
-		t.Fatalf("visibility = %q, want %q", launched.LaunchEvaluation.VisibilityMode, VisibilityCoreVisible)
+	if launched.LaunchEvaluation.VisibilityMode != string(VisibilityFleetVisible) {
+		t.Fatalf("visibility = %q, want %q", launched.LaunchEvaluation.VisibilityMode, VisibilityFleetVisible)
 	}
 	if launched.LaunchEvaluation.Backend != codexAppServerBackend {
 		t.Fatalf("backend = %q, want %q", launched.LaunchEvaluation.Backend, codexAppServerBackend)
@@ -137,28 +137,24 @@ func TestBuildCodexCommandUsesAppServerMode(t *testing.T) {
 	}
 }
 
-func TestBuildCodexCommandLegacyAllowCoreVisibleStillLaunchable(t *testing.T) {
-	installFakeLauncherExecutable(t, "codex")
+func TestLaunchGateRefusesHeadlessAndIgnoresLegacyOverride(t *testing.T) {
 	task := &Task{
-		Ref:      "CORE-70",
-		Assignee: "codex",
-		Launch: tasklifecycle.Launch{
-			Mode: LaunchModeAllowCoreVisible,
-		},
+		Ref:      "TEST-1",
+		Assignee: "gemini",
+		Launch:   tasklifecycle.Launch{Mode: "allow_core_visible"},
 		LaunchEvaluation: tasklifecycle.LaunchEvaluation{
-			Agent:      "codex",
+			Agent:      "gemini",
 			WorkingDir: "/tmp/repo",
 		},
 	}
 	launcher := &AgentLauncher{Planner: stubPlanner{plans: map[string]Plan{
-		"codex": {
-			Agent:           "codex",
-			Backend:         BackendCodexAppServer,
-			Command:         []string{"/tmp/codex", "app-server", "--stdio"},
+		"gemini": {
+			Agent:           "gemini",
+			Backend:         BackendGeminiHeadless,
+			Command:         []string{"/tmp/agy", "--print", "x"},
 			WorkingDir:      "/tmp/repo",
-			VisibilityClass: string(VisibilityCoreVisible),
+			VisibilityClass: string(VisibilityHeadless),
 			LiveReady:       true,
-			LiveNotes:       "legacy override accepted",
 		},
 	}}}
 
@@ -166,15 +162,44 @@ func TestBuildCodexCommandLegacyAllowCoreVisibleStillLaunchable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !launched.LaunchEvaluation.Launchable {
-		t.Fatalf("legacy allow_core_visible must remain launchable: %#v", launched.LaunchEvaluation)
+	if launched.LaunchEvaluation.Launchable {
+		t.Fatalf("a headless session must not launch automatically, even with the old launch.mode value: %#v", launched.LaunchEvaluation)
 	}
-	if launched.LaunchEvaluation.VisibilityMode != string(VisibilityCoreVisible) {
-		t.Fatalf("must remain core_visible, got %q", launched.LaunchEvaluation.VisibilityMode)
+	if !strings.Contains(strings.Join(launched.LaunchEvaluation.FailedGates, "|"), "agent_visibility") {
+		t.Fatalf("expected the agent_visibility gate, got %#v", launched.LaunchEvaluation.FailedGates)
 	}
-	command := launched.LaunchEvaluation.Command
-	if len(command) != 3 || command[1] != "app-server" || command[2] != "--stdio" {
-		t.Fatalf("command = %#v, want codex app-server command", command)
+}
+
+func TestLaunchGateAcceptsTerminalResumeSessions(t *testing.T) {
+	for _, class := range []VisibilityClass{VisibilityAppVisible, VisibilityCLIVisible, VisibilityFleetVisible} {
+		task := &Task{
+			Ref:              "TEST-2",
+			Assignee:         "gemini",
+			LaunchEvaluation: tasklifecycle.LaunchEvaluation{Agent: "gemini", WorkingDir: "/tmp/repo"},
+		}
+		launcher := &AgentLauncher{Planner: stubPlanner{plans: map[string]Plan{
+			"gemini": {
+				Agent:           "gemini",
+				Backend:         BackendGeminiHeadless,
+				Command:         []string{"/tmp/agy", "--print", "x"},
+				WorkingDir:      "/tmp/repo",
+				VisibilityClass: string(class),
+				LiveReady:       true,
+			},
+		}}}
+		launched, err := launcher.Decorate(task)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !launched.LaunchEvaluation.Launchable {
+			t.Fatalf("%s should be launchable: %#v", class, launched.LaunchEvaluation)
+		}
+	}
+}
+
+func TestLaunchGateReadsLegacyCoreVisibleName(t *testing.T) {
+	if !VisibilityClass("core_visible").AllowsDaemonAutoLaunch() {
+		t.Fatal("the former name core_visible must still count as fleet_visible")
 	}
 }
 

@@ -1,6 +1,12 @@
 <script>
   import SettingsField from './SettingsField.svelte';
   import { fieldHint } from './lib/settingsDraft.js';
+  import {
+    capabilityRows,
+    launchesAutomatically,
+    plainText,
+    reuseSummary
+  } from './lib/agentCapabilities.js';
 
   export let agents = {};
   export let draft = { agents: {} };
@@ -102,8 +108,35 @@
           <SettingsField label="Detected version" value={agent.version || '—'} />
           <SettingsField label="Canonical" value={agent.canonical ? 'yes' : 'no'} />
           <SettingsField label="Expected" value={agent.expected || '—'} />
-          <SettingsField label="Visibility" value={agent.visibility_class || '—'} />
-          <SettingsField label="Live ready" value={agent.live_ready ? 'yes' : 'no'} />
+          <p class="settings-lede">What Fleet can do with {agent.name}</p>
+          <SettingsField
+            label="Starts by itself"
+            value={launchesAutomatically(agent) ? 'yes' : 'no'}
+            tone={launchesAutomatically(agent) ? 'ok' : 'warn'}
+            hint="Yes when the adapter is verified and enabled, and a person can reach the session."
+          />
+          <SettingsField
+            label="How you reach a session"
+            value={agent.visibility_label || agent.visibility_class || '—'}
+            hint={plainText(agent.visibility_summary)}
+          />
+          {#each capabilityRows(agent) as row (row.key)}
+            <SettingsField label={row.label} value={row.value} tone={row.tone} />
+          {/each}
+          <SettingsField
+            label="Resume for the next task"
+            value={reuseSummary(agent).label}
+            hint={reuseSummary(agent).reason}
+          />
+          {#if agent.capabilities?.terminal_state_detection}
+            <SettingsField
+              label="Knows it finished by"
+              value={agent.capabilities.terminal_state_detection}
+            />
+          {/if}
+          {#if agent.capabilities?.notes}
+            <p class="settings-hint">{plainText(agent.capabilities.notes)}</p>
+          {/if}
           {#if agent.error}
             <p class="settings-warn">{agent.error}</p>
           {/if}

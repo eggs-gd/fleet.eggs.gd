@@ -28,6 +28,7 @@ func TestProviderSessionReuseCapabilityMatrix(t *testing.T) {
 		{BackendCursorVisible, sessionReuseVerified, true},
 		{BackendCodexAppServer, sessionReuseUnverified, true},
 		{BackendBackgroundRemote, sessionReuseVerified, true},
+		{BackendGeminiHeadless, sessionReuseVerified, true},
 		{"process", sessionReuseUnsupported, false},
 		{"terminal", sessionReuseUnsupported, false},
 		{"", sessionReuseUnsupported, false},
@@ -66,19 +67,19 @@ func TestProviderCapabilityFlagsCursorVisible(t *testing.T) {
 	}
 }
 
-func TestProviderCapabilityFlagsCodexCoreVisible(t *testing.T) {
+func TestProviderCapabilityFlagsCodexFleetVisible(t *testing.T) {
 	capability := ProviderCapabilityFlags("codex", BackendCodexAppServer)
-	if capability.OperatorVisibility != string(VisibilityCoreVisible) {
-		t.Fatalf("codex visibility = %q, want core_visible", capability.OperatorVisibility)
+	if capability.OperatorVisibility != string(VisibilityFleetVisible) {
+		t.Fatalf("codex visibility = %q, want fleet_visible", capability.OperatorVisibility)
 	}
 	if !capability.CanStartVisibleSession {
-		t.Fatal("codex should claim can_start_visible_session for Codex Remote + Core control (CORE-130)")
+		t.Fatal("codex should claim can_start_visible_session for Codex Remote + Fleet control")
 	}
 	if capability.CanShowAppVisibleLink.IsYes() {
 		t.Fatal("codex must not claim a Claude-style app-visible deep link")
 	}
 	if !VisibilityClass(capability.OperatorVisibility).AllowsDaemonAutoLaunch() {
-		t.Fatal("core_visible Codex path must allow normal daemon auto-launch (CORE-130)")
+		t.Fatal("fleet_visible Codex path must allow normal daemon auto-launch")
 	}
 }
 

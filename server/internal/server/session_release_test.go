@@ -171,7 +171,7 @@ func TestOperatorReleaseWakesLaunchQueue(t *testing.T) {
 	stalePath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-84-stale.md")
 	nextPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-02-core-84-next.md")
 	writeTestFile(t, stalePath, testTaskMarkdownWithID("work-core-84-stale", "CORE-84-STALE", "Stale slot holder", "doing"))
-	writeTestFile(t, nextPath, allowCoreVisibleLaunch(testTaskMarkdownWithID("work-core-84-next", "CORE-84-NEXT", "Next after release", "todo")))
+	writeTestFile(t, nextPath, testTaskMarkdownWithID("work-core-84-next", "CORE-84-NEXT", "Next after release", "todo"))
 
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
 	if err := app.Bootstrap(); err != nil {

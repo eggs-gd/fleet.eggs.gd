@@ -1,6 +1,9 @@
 package settings
 
-import "github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
+import (
+	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/executionapi"
+)
 
 const (
 	SourceDefault = "default"
@@ -133,22 +136,26 @@ type Agents struct {
 }
 
 type Agent struct {
-	ID                   string                         `json:"id"`
-	Name                 string                         `json:"name"`
-	Status               string                         `json:"status"`
-	Enabled              BoolField                      `json:"enabled"`
-	ConfiguredExecutable Field                          `json:"configured_executable"`
-	DetectedExecutables  []providers.DetectedExecutable `json:"detected_executables,omitempty"`
-	EffectiveExecutable  Field                          `json:"effective_executable"`
-	Canonical            bool                           `json:"canonical"`
-	Expected             string                         `json:"expected,omitempty"`
-	Version              string                         `json:"version,omitempty"`
-	Error                string                         `json:"error,omitempty"`
-	VisibilityClass      string                         `json:"visibility_class,omitempty"`
-	LiveReady            bool                           `json:"live_ready"`
-	RoutingInstructions  Field                          `json:"routing_instructions"`
-	PreferredUse         string                         `json:"preferred_use,omitempty"`
-	ActiveSessions       int                            `json:"active_sessions"`
+	ID                   string                              `json:"id"`
+	Name                 string                              `json:"name"`
+	Status               string                              `json:"status"`
+	Enabled              BoolField                           `json:"enabled"`
+	ConfiguredExecutable Field                               `json:"configured_executable"`
+	DetectedExecutables  []providers.DetectedExecutable      `json:"detected_executables,omitempty"`
+	EffectiveExecutable  Field                               `json:"effective_executable"`
+	Canonical            bool                                `json:"canonical"`
+	Expected             string                              `json:"expected,omitempty"`
+	Version              string                              `json:"version,omitempty"`
+	Error                string                              `json:"error,omitempty"`
+	VisibilityClass      string                              `json:"visibility_class,omitempty"`
+	VisibilityLabel      string                              `json:"visibility_label,omitempty"`
+	VisibilitySummary    string                              `json:"visibility_summary,omitempty"`
+	LiveReady            bool                                `json:"live_ready"`
+	Capabilities         executionapi.ProviderCapabilities   `json:"capabilities"`
+	SessionReuse         executionapi.SessionReuseCapability `json:"session_reuse"`
+	RoutingInstructions  Field                               `json:"routing_instructions"`
+	PreferredUse         string                              `json:"preferred_use,omitempty"`
+	ActiveSessions       int                                 `json:"active_sessions"`
 }
 
 type Manager struct {

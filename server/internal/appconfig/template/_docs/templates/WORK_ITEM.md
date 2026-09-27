@@ -73,7 +73,7 @@ Launch policy: `todo` and `needs_rework` tasks are daemon-pickup candidates
 when they have a supported assignee and exactly one repository. Leave
 `launch.agent` empty unless this task intentionally launches a different worker
 than `assignee`; do not use `launch.mode` to choose between visible and
-headless workers. Invisible/headless daemon workers are not supported.
+headless workers. Workers whose session a person cannot reach are not launched automatically.
 
 ## Review Comments
 

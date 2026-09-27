@@ -1,6 +1,9 @@
 package execution
 
-import "github.com/eggs-gd/fleet.eggs.gd/internal/executionapi"
+import (
+	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/executionapi"
+)
 
 const (
 	BackendBackgroundRemote = executionapi.BackendBackgroundRemote
@@ -27,9 +30,9 @@ const (
 )
 
 func ProviderCapabilityFlags(provider string, backend string) ProviderCapabilities {
-	return executionapi.ProviderCapabilityFlags(provider, backend)
+	return providers.ProviderCapabilityFlags(provider, backend)
 }
 
 func ProviderSessionReuseCapability(backend string) SessionReuseCapability {
-	return executionapi.ProviderSessionReuseCapability(backend)
+	return providers.ProviderSessionReuseCapability(backend)
 }
