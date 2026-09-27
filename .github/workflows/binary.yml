@@ -1,0 +1,73 @@
+name: Binary
+
+# The dashboard is embedded in the binary, so a change to view/ or to server/
+# means the binary has to be built again. This builds it the way `make build`
+# does, starts it from another directory, and checks that it serves the
+# dashboard. The build is kept as an artifact.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server/**'
+      - 'view/**'
+      - 'Makefile'
+      - '.github/workflows/binary.yml'
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'view/**'
+      - 'Makefile'
+      - '.github/workflows/binary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: binary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: view/package-lock.json
+      - name: Install dashboard dependencies
+        run: npm ci
+        working-directory: view
+      - name: Build (dashboard, then the binary with the dashboard inside)
+        run: make build VERSION=${{ github.sha }}
+      - name: Start it from another directory and check the dashboard
+        run: |
+          export HOME="$RUNNER_TEMP/home"
+          mkdir -p "$HOME" "$RUNNER_TEMP/elsewhere"
+          cd "$RUNNER_TEMP/elsewhere"
+          "$GITHUB_WORKSPACE/bin/fleet" version
+          "$GITHUB_WORKSPACE/bin/fleet" serve --addr 127.0.0.1:18787 > serve.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for _ in $(seq 1 30); do
+            curl -fsS -o page.html http://127.0.0.1:18787/ && break
+            sleep 1
+          done
+          grep -q 'name="fleet-token"' page.html || { echo "no dashboard page served"; cat serve.log; exit 1; }
+          asset=$(grep -o 'assets/[^"]*\.js' page.html | head -1)
+          test -n "$asset" || { echo "the page references no script"; exit 1; }
+          curl -fsS -o /dev/null "http://127.0.0.1:18787/$asset"
+          grep -q "dry-run" serve.log || { echo "serve did not start in dry-run mode"; cat serve.log; exit 1; }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fleet-darwin-arm64
+          path: bin/fleet
+          retention-days: 7
