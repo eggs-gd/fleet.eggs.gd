@@ -43,6 +43,17 @@ func TestMaintainCardsCreatesAndKeepsHumanFields(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(work, "space", "tasks")); err != nil {
 		t.Fatalf("tasks dir missing: %v", err)
 	}
+	for _, gone := range []string{"notes", "decisions", "inbox"} {
+		if _, err := os.Stat(filepath.Join(work, "space", gone)); err == nil {
+			t.Fatalf("a project gets no %s folder: what a project is lives in its repository", gone)
+		}
+	}
+	created, _ := os.ReadFile(card)
+	for _, gone := range []string{"## Registry", "## Repositories", "## Relationships", "## Protection", "## Technology Evidence", "## Notes"} {
+		if strings.Contains(string(created), gone) {
+			t.Fatalf("the card describes the project's structure (%s), which its repository already does:\n%s", gone, created)
+		}
+	}
 	if report, _ := MaintainCards(registry, work); len(report.Created)+len(report.Repaired) != 0 {
 		t.Fatalf("second pass changed a healthy card: %+v", report)
 	}

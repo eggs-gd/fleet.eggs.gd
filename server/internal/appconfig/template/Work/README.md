@@ -14,18 +14,16 @@ Expected layout:
 Work/<project-id>/
   PROJECT.md
   tasks/
-  notes/
-  decisions/
-  inbox/
 ```
 
-`PROJECT.md` describes the workspace and its repositories. `tasks/` contains
-executable work items. `notes/` contains project-specific knowledge that is not
-yet a task. `decisions/` contains durable decisions and rationale. `inbox/`
-contains project-specific raw material after the project is already known.
+`PROJECT.md` is the project card: its id, title, ref tag, aliases, default
+assignee and repositories. `tasks/` contains executable work items.
 
-Global raw capture still starts in `Inbox/items/` when the project is unknown or
-the input is ambiguous.
+Fleet manages work, not knowledge. What a project is, how it is built and why
+lives in the project's own repository. A decision that one task needs is
+written in that task's `## Context`. Nothing else is kept per project.
+
+Raw capture starts in `Inbox/items/`.
 
 See `_docs/TASK_LIFECYCLE.md` for the task schema and lifecycle,
 `_docs/templates/WORK_ITEM.md` for the task template, and `_docs/MANAGER.md`

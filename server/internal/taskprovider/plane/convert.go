@@ -11,13 +11,14 @@ import (
 func (p *Provider) flowCreate(_ context.Context, input taskflow.CreateTask) (taskflow.Task, error) {
 	req := tasklifecycle.TaskCreateRequest{
 		Title:            input.Title,
-		Request:          input.Description,
+		Request:          tasklifecycle.RequestWithSections(input.Description, input.Acceptance, input.Context),
 		Project:          input.Project,
 		Repository:       input.Repository,
 		Status:           string(input.Status),
 		Type:             input.Type,
 		Assignee:         input.Assignee,
 		AssignmentReason: input.AssignmentReason,
+		SourceInbox:      input.SourceInbox,
 		DependsOn:        append([]string{}, input.DependsOn...),
 	}
 	if input.Priority > 0 {
@@ -110,7 +111,7 @@ func (p *Provider) flowAddComment(ctx context.Context, id string, text string) e
 	}
 	author := taskflow.CommentAuthorFrom(ctx)
 	if author == "" {
-		author = "core"
+		author = tasklifecycle.SystemCommentAuthor
 	}
 	_, err := p.Mutate(tasklifecycle.TaskPatch{
 		Path:          id,

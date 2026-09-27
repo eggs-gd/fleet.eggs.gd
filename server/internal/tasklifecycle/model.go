@@ -58,19 +58,21 @@ type Task struct {
 	Repositories  []string `json:"repositories"`
 	// DependsOn lists prerequisite task refs (e.g. CORE-144), ids, or
 	// locators that must reach DependencySatisfiedStatus before launch.
-	DependsOn        []string  `json:"depends_on,omitempty"`
-	Assignee         string    `json:"assignee"`
-	AssignmentReason string    `json:"assignment_reason"`
-	Source           string    `json:"source"`
-	CreatedAt        string    `json:"created_at"`
-	UpdatedAt        string    `json:"updated_at"`
-	Launch           Launch    `json:"launch"`
-	Summary          string    `json:"summary"`
-	Body             string    `json:"body"`
-	Comments         []Comment `json:"comments"`
-	BlockedReason    string    `json:"blocked_reason,omitempty"`
-	Path             string    `json:"path"`
-	RelativePath     string    `json:"relative_path"`
+	DependsOn        []string `json:"depends_on,omitempty"`
+	Assignee         string   `json:"assignee"`
+	AssignmentReason string   `json:"assignment_reason"`
+	Source           string   `json:"source"`
+	// SourceInbox is the Inbox item this task was created from, if any.
+	SourceInbox   string    `json:"source_inbox,omitempty"`
+	CreatedAt     string    `json:"created_at"`
+	UpdatedAt     string    `json:"updated_at"`
+	Launch        Launch    `json:"launch"`
+	Summary       string    `json:"summary"`
+	Body          string    `json:"body"`
+	Comments      []Comment `json:"comments"`
+	BlockedReason string    `json:"blocked_reason,omitempty"`
+	Path          string    `json:"path"`
+	RelativePath  string    `json:"relative_path"`
 
 	LaunchEvaluation LaunchEvaluation `json:"launch_evaluation"`
 	Execution        ExecutionState   `json:"execution"`

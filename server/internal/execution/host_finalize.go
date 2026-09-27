@@ -245,7 +245,7 @@ func (s *Service) BlockNotReadyLaunchTask(task Task, decision LaunchLogClassific
 	blocked, err := s.tasks.Patch(context.Background(), locator, taskflow.PatchInput{
 		Status:        taskflow.StatusBlocked,
 		Comment:       comment,
-		CommentAuthor: "core",
+		CommentAuthor: tasklifecycle.SystemCommentAuthor,
 		Reason:        decision.Reason,
 		Actor:         "launcher",
 	})

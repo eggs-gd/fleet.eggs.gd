@@ -43,9 +43,31 @@ type TaskCreateRequest struct {
 	Assignee         string `json:"assignee"`
 	Priority         *int   `json:"priority"`
 	AssignmentReason string `json:"assignment_reason"`
-	// DependsOn lists prerequisite refs that must be done before launch
-	// (CORE-148). Optional; empty means no hard dependency gate.
+	// Acceptance is what makes the work done. Optional while the task sits in
+	// backlog; the Manager will not ready a task without it.
+	Acceptance string `json:"acceptance_criteria"`
+	// Context is what the worker needs beyond the request: why, the limits,
+	// and any decision already made. It lives on the card, not in a separate
+	// document, so the worker receives it with the task.
+	Context string `json:"context"`
+	// SourceInbox is the Inbox ref this task was promoted from.
+	SourceInbox string `json:"source_inbox"`
+	// DependsOn lists prerequisite refs that must be done before launch.
+	// Optional; empty means no hard dependency gate.
 	DependsOn []string `json:"depends_on"`
+}
+
+// RequestWithSections folds acceptance criteria and context into one
+// description, for a store that keeps a single text field for a task.
+func RequestWithSections(request, acceptance, context string) string {
+	text := strings.TrimSpace(request)
+	if a := strings.TrimSpace(acceptance); a != "" {
+		text += "\n\n## Acceptance Criteria\n\n" + a
+	}
+	if c := strings.TrimSpace(context); c != "" {
+		text += "\n\n## Context\n\n" + c
+	}
+	return text
 }
 
 // NormalizeTaskCreateRequest validates and fills in defaults for a

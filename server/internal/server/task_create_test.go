@@ -77,8 +77,13 @@ func TestCreateFromRequestWritesTaskIncrementsCounterAndRefreshesIndex(t *testin
 	if !strings.Contains(task.Body, "Add a create-task action to the backoffice.") {
 		t.Fatalf("body missing request text:\n%s", task.Body)
 	}
-	if !strings.Contains(task.Body, "Created from backoffice dashboard") {
+	if !strings.Contains(task.Body, "## Activity Log") || !strings.Contains(task.Body, " — Created.") {
 		t.Fatalf("body missing activity log:\n%s", task.Body)
+	}
+	for _, gone := range []string{"## Raw Input", "## Project Resolution", "## Handoff", "## Deliverable", "Work/core-eggs-gd/PROJECT.md"} {
+		if strings.Contains(task.Body, gone) {
+			t.Fatalf("a new card must not carry %q:\n%s", gone, task.Body)
+		}
 	}
 
 	data, err := os.ReadFile(filepath.Join(root, "_registry", "counters.json"))

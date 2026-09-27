@@ -51,12 +51,14 @@ type Task struct {
 	Assignee         string
 	AssignmentReason string
 	Source           string
-	CreatedAt        string
-	UpdatedAt        string
-	Summary          string
-	Body             string
-	Comments         []Comment
-	BlockedReason    string
+	// SourceInbox is the Inbox item this task was created from, if any.
+	SourceInbox   string
+	CreatedAt     string
+	UpdatedAt     string
+	Summary       string
+	Body          string
+	Comments      []Comment
+	BlockedReason string
 	// Locator is the opaque provider-scoped identity used with TaskProvider.
 	Locator string
 }
@@ -81,8 +83,13 @@ type CreateTask struct {
 	Priority         int
 	AssignmentReason string
 	Source           string
-	// DependsOn lists prerequisite refs that must be done before launch
-	// (CORE-148). Empty means no hard dependency gate.
+	// Acceptance, Context and SourceInbox are stored on the card as their own
+	// parts, so the worker receives them without the raw input.
+	Acceptance  string
+	Context     string
+	SourceInbox string
+	// DependsOn lists prerequisite refs that must be done before launch.
+	// Empty means no hard dependency gate.
 	DependsOn []string
 }
 

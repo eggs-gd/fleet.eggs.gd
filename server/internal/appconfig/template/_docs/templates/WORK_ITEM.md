@@ -28,18 +28,8 @@ launch:
 
 ## Request
 
-Normalized request in clear language.
-
-## Raw Input
-
-Original user wording, transcript, URL, or source text.
-
-## Project Resolution
-
-- Matched workspace: `project-id`
-- Matched repository: `relative/repository/path`
-- Resolution method: exact title | alias | repository name | path | fuzzy
-- Confidence: high | medium | low
+What to do, in clear language. Not the raw input: that stays in the Inbox item
+when there is one.
 
 ## Acceptance Criteria
 
@@ -48,32 +38,11 @@ Original user wording, transcript, URL, or source text.
 
 ## Context
 
-- Workspace: `Work/project-id/PROJECT.md`
-- Project owner: `project-id`
-- Repository: `relative/repository/path`
-
-## Deliverable
-
-Expected physical artifact:
-
-- File, doc, note, decision, roadmap update, code change, generated output, or
-  task-card update required for completion.
-
-Produced artifacts:
-
-- Pending.
-
-## Handoff
-
-Clear next action for the assignee or next agent.
-
-Assignment reason: why this task is assigned to `assignee`.
-
-Launch policy: `todo` and `needs_rework` tasks are daemon-pickup candidates
-when they have a supported assignee and exactly one repository. Leave
-`launch.agent` empty unless this task intentionally launches a different worker
-than `assignee`; do not use `launch.mode` to choose between visible and
-headless workers. Workers whose session a person cannot reach are not launched automatically.
+Why this is wanted, the limits, and every decision already made. The worker
+sees only the task, so write the reasoning here instead of pointing at it. If a
+choice should outlive the task, add a criterion that the worker documents it in
+the repository's own docs, in the same change. Leave this section out when
+there is nothing to add.
 
 ## Review Comments
 
@@ -84,4 +53,4 @@ instruction.
 
 ## Activity Log
 
-- YYYY-MM-DDTHH:MM:SS+ZZ:ZZ — Created by Manager.
+- YYYY-MM-DDTHH:MM:SS+ZZ:ZZ — Created.

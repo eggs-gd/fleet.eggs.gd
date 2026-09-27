@@ -22,6 +22,9 @@ type TaskSummary struct {
 	Path         string   `json:"path"`
 	RelativePath string   `json:"relative_path"`
 	Summary      string   `json:"summary,omitempty"`
+	// SourceInbox is the Inbox item this task was created from, if any — so a
+	// person or the Manager can find the raw input behind the task.
+	SourceInbox string `json:"source_inbox,omitempty"`
 }
 
 // BoardView is the workspace/registry projection Manager needs for vocabulary
@@ -58,25 +61,14 @@ func summaryFromFlow(task taskflow.Task) TaskSummary {
 		Path:         path,
 		RelativePath: path,
 		Summary:      task.Summary,
+		SourceInbox:  task.SourceInbox,
 	}
 }
 
 // createViaService creates a task through Contour 1 TaskManagement.
-func createViaService(ctx context.Context, tasks TaskManagement, title, description, project, repository, status, typ, assignee, reason, source string, priority *int, dependsOn []string) (TaskSummary, error) {
+func createViaService(ctx context.Context, tasks TaskManagement, input taskflow.CreateTask, priority *int) (TaskSummary, error) {
 	if tasks == nil {
 		return TaskSummary{}, Failure{Code: FailureProviderError, Message: "task service is not configured"}
-	}
-	input := taskflow.CreateTask{
-		Title:            title,
-		Description:      description,
-		Project:          project,
-		Repository:       repository,
-		Status:           taskflow.Status(status),
-		Type:             typ,
-		Assignee:         assignee,
-		AssignmentReason: reason,
-		Source:           source,
-		DependsOn:        append([]string{}, dependsOn...),
 	}
 	if priority != nil {
 		input.Priority = *priority

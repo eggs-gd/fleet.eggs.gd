@@ -3,7 +3,11 @@ name: shape-task
 description: Shape an intent into a task with acceptance criteria.
 ---
 
-Turn an intent into a goal, acceptance criteria, type, and priority. Do not invent a specification.
+Turn an intent into a goal, acceptance criteria, context, type, and priority. Do not invent a specification.
+
+The worker sees only the task. It cannot open your conversation or any file outside its repository. So put in `description` what to do, in `acceptance_criteria` how we will know it is done, and in `context` why it is wanted, the limits, and every decision already made. Say the reasoning, do not point at it. Leave the raw wording out: it stays in the Inbox item.
+
+If a choice made here should outlive the task, add a criterion that the worker documents it in the repository's own docs, in the same change. Do not create a separate documentation task.
 
 Priority runs from 1 (highest) to 5 (lowest) and defaults to 5. Status defaults to `backlog` until criteria exist. Allowed statuses: `backlog`, `needs_rework`, `todo`, `doing`, `blocked`, `needs_review`, `done`, `archived`. Types: `feature`, `bug`, `research`, `review`, `maintenance`, `decision`.
 

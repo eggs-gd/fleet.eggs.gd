@@ -41,6 +41,9 @@ func (a *Adapter) Create(_ context.Context, input taskflow.CreateTask) (taskflow
 		Type:             input.Type,
 		Assignee:         input.Assignee,
 		AssignmentReason: input.AssignmentReason,
+		Acceptance:       input.Acceptance,
+		Context:          input.Context,
+		SourceInbox:      input.SourceInbox,
 		DependsOn:        append([]string{}, input.DependsOn...),
 	}
 	if input.Priority > 0 {
@@ -133,7 +136,7 @@ func (a *Adapter) AddComment(ctx context.Context, id string, text string) error 
 	}
 	author := taskflow.CommentAuthorFrom(ctx)
 	if author == "" {
-		author = "core"
+		author = tasklifecycle.SystemCommentAuthor
 	}
 	_, err := a.inner.Mutate(tasklifecycle.TaskPatch{
 		Path:          id,

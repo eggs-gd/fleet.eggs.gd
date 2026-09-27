@@ -26,8 +26,8 @@ type CardReport struct {
 // rewriting what people and the Manager wrote. It creates a missing card,
 // restores a missing frontmatter block, makes `aliases` a block list, and
 // syncs the `repositories` list. Every card also gets a ref `tag` when it has
-// none (see assignTags). The body, aliases, default_assignee and the Activity
-// Log are never touched. Cards for ids the registry does not know are kept
+// none (see assignTags). The body, aliases and default_assignee are never
+// touched. Cards for ids the registry does not know are kept
 // except for their tag. A registry that has not been scanned yet is not an
 // error.
 func MaintainCards(registryDir, workDir string) (CardReport, error) {
@@ -46,10 +46,8 @@ func MaintainCards(registryDir, workDir string) (CardReport, error) {
 		rendered := renderWorkspace(project)
 		existing, err := os.ReadFile(path)
 		if errors.Is(err, fs.ErrNotExist) {
-			for _, child := range []string{"tasks", "notes", "decisions", "inbox"} {
-				if err := os.MkdirAll(filepath.Join(dir, child), 0o755); err != nil {
-					return report, err
-				}
+			if err := os.MkdirAll(filepath.Join(dir, "tasks"), 0o755); err != nil {
+				return report, err
 			}
 			if err := writeFileAtomic(path, []byte(rendered)); err != nil {
 				return report, err

@@ -92,13 +92,13 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in draftMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Validate(ctx, in.Draft), nil
 		})
-	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_inbox", Description: "capture, promote, or list Inbox notes. Promote creates one task and records promoted_to."},
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_inbox", Description: "capture, promote, list, or show Inbox notes. list gives status/preview per item; show gives one item's full text and every task it produced (promoted_to). Promote creates one task and links it; call it again on the same ref for a second task from the same input."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in inboxMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Inbox(ctx, in.Action, in.Text, in.Ref, in.Project, in.Title), nil
 		})
-	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_project", Description: "Record an alias, note, or decision on the project card. Repeating the same text does not duplicate it."},
-		func(_ context.Context, _ *mcp.CallToolRequest, in projectMCPInput) (*mcp.CallToolResult, manager.Response, error) {
-			return nil, service.Project(in.Action, in.Project, in.Text), nil
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_alias", Description: "Record another name for a project so it is recognized next time. Repeating an alias does not duplicate it. What a project is belongs in its repository, not here."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in aliasMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Alias(in.Project, in.Alias), nil
 		})
 	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_answer", Description: "Record the person's answer, move a waiting task forward, and let the worker continue."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in answerMCPInput) (*mcp.CallToolResult, manager.Response, error) {
@@ -175,10 +175,9 @@ type inboxMCPInput struct {
 	Title   string `json:"title,omitempty"`
 }
 
-type projectMCPInput struct {
-	Action  string `json:"action"`
+type aliasMCPInput struct {
 	Project string `json:"project"`
-	Text    string `json:"text"`
+	Alias   string `json:"alias"`
 }
 
 type answerMCPInput struct {

@@ -47,15 +47,32 @@ Sessions are reused across tasks, see [AGENT_SESSION_REUSE](AGENT_SESSION_REUSE.
 
 ## Launch prompt
 
-`executionapi.BuildPrompt` (`internal/executionapi/prompt.go`) builds a fresh
-prompt from the task, never from chat memory. It gives the task ref, title,
-type, project, workspace, repository and card path, and points the worker at
-the data root's `_docs/TASK_LIFECYCLE.md`, `_docs/OPERATING_MODEL.md`,
-`Fleet/ROUTING.md` and `Fleet/LAUNCH_POLICY.md`. Its rules: work only on this
-task, leave physical artifacts in the target repository, do not commit, push or
-open a PR, do not edit any task card or generated index, and report the outcome
-as JSON. The card body is fenced in `<task-card>` tags and labeled as data. The
-worker must stop with `blocked` if it asks for something outside these rules.
+`executionapi.BuildPrompt` (`internal/executionapi/prompt.go`) is the worker's
+whole briefing. The worker runs in the target repository and cannot reach the
+data root, so the prompt names no file outside the repository and tells the
+worker that there is no task file to find, create or edit.
+
+The task arrives as text. `tasklifecycle.WorkerBrief` builds it from the card:
+the request, the acceptance criteria, the context, and the review comments
+people left. It leaves out the raw input, Fleet's own comments and log (session
+ids, resume commands, outcomes), the resolution notes, the hand-off boilerplate
+and paths into the data root. The task text is fenced in `<task>` tags and
+labeled as data. The worker must stop with `blocked` if it asks for something
+outside the rules.
+
+The prompt gives the task ref, title, type, project, workspace and repository,
+and these rules:
+
+- work only on this task, in the repository, and leave physical artifacts;
+- update a repository document that the change makes wrong, in the same
+  change, and record a decision that maintainers need where the repository
+  already keeps such things, without inventing a new documentation structure;
+- do not commit, push or open a PR;
+- do not set the task status or create a task-shaped file, and report the
+  outcome as JSON.
+
+Fleet's own comments carry the author `fleet`. Cards written earlier carry
+`core`, and both are treated as system comments.
 
 ## Worker outcome protocol
 

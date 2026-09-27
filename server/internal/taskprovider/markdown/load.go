@@ -61,6 +61,7 @@ func LoadTaskFile(root string, taskFile string) (tasklifecycle.Task, error) {
 		Assignee:         mdfile.Scalar(fm, "assignee", "unassigned"),
 		AssignmentReason: mdfile.Scalar(fm, "assignment_reason", ""),
 		Source:           mdfile.Scalar(fm, "source", ""),
+		SourceInbox:      mdfile.Scalar(fm, "source_inbox", ""),
 		CreatedAt:        mdfile.Scalar(fm, "created_at", ""),
 		UpdatedAt:        mdfile.Scalar(fm, "updated_at", ""),
 		Launch: tasklifecycle.Launch{

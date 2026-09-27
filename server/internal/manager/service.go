@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/workfiles"
 )
 
 // Transcriber turns audio into text. Production wiring uses gpt-4o-transcribe.
@@ -170,30 +172,46 @@ func (s *Service) createTask(ctx context.Context, intent Intent, path, source st
 		}
 	}
 
-	reason := "Created by Core Manager API."
+	reason := "Created by the Manager."
 	if source == "voice" {
-		reason = "Created by Core Manager API from voice input."
-	}
-	description := intent.Description
-	if strings.TrimSpace(intent.Acceptance) != "" {
-		description += "\n\n## Acceptance\n" + strings.TrimSpace(intent.Acceptance)
-	}
-	if strings.TrimSpace(intent.SourceInbox) != "" {
-		description += "\n\nsource_inbox: " + strings.TrimSpace(intent.SourceInbox)
+		reason = "Created by the Manager from voice input."
 	}
 	repository := intent.Repository
 	if repository == "" && len(intent.Repositories) > 0 {
 		repository = intent.Repositories[0]
 	}
-	task, err := createViaService(ctx, s.Tasks, intent.Title, description, intent.Project, repository, intent.Status, intent.Type, intent.Assignee, reason, source, intent.Priority, intent.DependsOn)
+	task, err := createViaService(ctx, s.Tasks, taskflow.CreateTask{
+		Title:            intent.Title,
+		Description:      intent.Description,
+		Acceptance:       intent.Acceptance,
+		Context:          intent.Context,
+		SourceInbox:      intent.SourceInbox,
+		Project:          intent.Project,
+		Repository:       repository,
+		Status:           taskflow.Status(intent.Status),
+		Type:             intent.Type,
+		Assignee:         intent.Assignee,
+		AssignmentReason: reason,
+		Source:           source,
+		DependsOn:        append([]string{}, intent.DependsOn...),
+	}, intent.Priority)
 	if err != nil {
 		return failureFromErr(err)
+	}
+	var warnings []string
+	// One capture can spawn several tasks (a decomposition). Link every one of
+	// them back onto the Inbox item instead of only the first, so a person or
+	// the Manager can always find every task a raw input produced.
+	if ref := strings.TrimSpace(intent.SourceInbox); ref != "" {
+		if err := workfiles.LinkInboxToTask(s.DataRoot, ref, task.Ref, time.Now()); err != nil {
+			warnings = append(warnings, fmt.Sprintf("task %s was created but %s could not be linked back to it: %s", task.Ref, ref, err))
+		}
 	}
 	return Response{
 		OK:     true,
 		Path:   path,
 		Intent: &intent,
-		Result: &Result{Action: "create_task", Ref: task.Ref, Path: task.RelativePath, Status: task.Status, Detail: task},
+		Result: &Result{Action: "create_task", Ref: task.Ref, Path: task.RelativePath, Status: task.Status, Detail: task, Warnings: warnings},
 	}
 }
 

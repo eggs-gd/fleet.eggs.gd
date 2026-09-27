@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
@@ -22,12 +21,11 @@ func projectCard(root, project string) string {
 	return filepath.Join(root, "Work", strings.TrimSpace(project), "PROJECT.md")
 }
 
-// AddProjectNote records an alias, note, or decision on an existing project
-// card. An alias goes into the frontmatter aliases list, where project
-// resolution reads it; every write also appends a timestamped Activity Log
-// line. Repeating an alias, note, or decision writes nothing. A project
-// without a card is an error: this does not invent projects.
-func AddProjectNote(root, project, kind, text string, now time.Time) (path string, wrote bool, err error) {
+// AddProjectAlias records an alias in the frontmatter `aliases` list of an
+// existing project card, where project resolution reads it. Repeating an alias
+// writes nothing. A project without a card is an error: this does not invent
+// projects.
+func AddProjectAlias(root, project, alias string) (path string, wrote bool, err error) {
 	mdfile.EditMu.Lock()
 	defer mdfile.EditMu.Unlock()
 	path = projectCard(root, project)
@@ -38,24 +36,14 @@ func AddProjectNote(root, project, kind, text string, now time.Time) (path strin
 	if err != nil {
 		return path, false, err
 	}
-	current := string(body)
-	if kind == "alias" {
-		next, added, err := mdfile.AddListItem(current, "aliases", text)
-		if err != nil {
-			return path, false, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
-		}
-		if !added {
-			return path, false, nil
-		}
-		current = next
-	} else if strings.Contains(current, " "+kind+": "+text+"\n") {
+	next, added, err := mdfile.AddListItem(string(body), "aliases", alias)
+	if err != nil {
+		return path, false, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	if !added {
 		return path, false, nil
 	}
-	if !strings.Contains(current, "## Activity Log") {
-		current = strings.TrimRight(current, "\n") + "\n\n## Activity Log\n"
-	}
-	current = strings.TrimRight(current, "\n") + fmt.Sprintf("\n- %s %s: %s\n", now.Format(time.RFC3339), kind, text)
-	return path, true, writeAtomic(path, []byte(current))
+	return path, true, writeAtomic(path, []byte(next))
 }
 
 // ProjectAliases returns the aliases on a project card. A project without a

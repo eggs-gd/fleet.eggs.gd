@@ -22,7 +22,7 @@ The MVP is intentionally small:
 - keep worker/agent definitions in `Fleet/`;
 - keep closed or ignored material in `Archive/`;
 - keep generated machine state in `_registry/`;
-- keep design notes and decisions in `_docs/`.
+- keep operating notes for this data root in `_docs/`.
 
 Do not build a UI, task manager, voice interface, or autonomous manager
 here — this tree holds data, not code, and none of that belongs in it
@@ -65,11 +65,11 @@ regardless of what the `_registry` looks like.
 | Path | Contract |
 |---|---|
 | `Inbox/` | Raw input only. Anything here may be unstructured and untrusted. |
-| `Work/` | Project/workspace folders with `PROJECT.md`, `tasks/`, `notes/`, `decisions/`, and `inbox/`. |
+| `Work/` | Project/workspace folders with `PROJECT.md` and `tasks/`. |
 | `Fleet/` | Worker definitions and capabilities. Fleet does not own tasks. |
 | `Archive/` | Closed or intentionally ignored material. Keep provenance when useful. |
 | `_registry/` | Generated or synced discovery state. Prefer machine-readable formats. |
-| `_docs/` | Operator-facing plans, decisions, and operating notes. |
+| `_docs/` | Operating notes for this data root. |
 
 ## Manager Mode
 

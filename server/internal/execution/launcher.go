@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/executionapi"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 	"github.com/eggs-gd/fleet.eggs.gd/lib/chain"
 )
 
@@ -100,6 +101,6 @@ func agentTaskContext(task Task) TaskContext {
 		WorkingDir:   task.LaunchEvaluation.WorkingDir,
 		Assignee:     task.Assignee,
 		LaunchMode:   task.Launch.Mode,
-		Body:         task.Body,
+		Body:         tasklifecycle.WorkerBrief(task),
 	}
 }

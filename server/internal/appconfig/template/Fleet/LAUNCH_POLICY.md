@@ -134,7 +134,7 @@ Missing priority is treated as `5`.
 Manual wakeup follows the same policy. If the operator opens an agent and asks
 it to find itself a task, the worker skips tasks whose project or repository
 already has another active agent session. If the operator explicitly says to
-ignore the limit for a specific task, record that in the task's `## Handoff`
+ignore the limit for a specific task, record that in the task's `## Context`
 and `## Activity Log`.
 
 ## Lock Model

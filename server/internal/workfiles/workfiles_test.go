@@ -35,28 +35,50 @@ func TestCaptureNumbersAndPromote(t *testing.T) {
 		t.Fatalf("second capture = %q", ref)
 	}
 	item, err := ReadInbox(root, "inbox-10")
-	if err != nil || item.Body != "look at billing\nsecond line" || item.PromotedTo != "" {
+	if err != nil || item.Body != "look at billing\nsecond line" || item.Status != "untriaged" || len(item.PromotedTo) != 0 {
 		t.Fatalf("read = %+v, %v", item, err)
 	}
-	if err := MarkPromoted(root, "INBOX-10", "CORE-7", testNow); err != nil {
+	if err := LinkInboxToTask(root, "INBOX-10", "CORE-7", testNow); err != nil {
+		t.Fatal(err)
+	}
+	// One capture can spawn several tasks: a second, different link appends
+	// instead of replacing.
+	if err := LinkInboxToTask(root, "INBOX-10", "CORE-8", testNow); err != nil {
+		t.Fatal(err)
+	}
+	// Linking the same task again is a no-op: no duplicate entry, no extra log line.
+	if err := LinkInboxToTask(root, "INBOX-10", "CORE-7", testNow); err != nil {
 		t.Fatal(err)
 	}
 	item, err = ReadInbox(root, "INBOX-10")
-	if err != nil || item.PromotedTo != "CORE-7" || item.Body != "look at billing\nsecond line" {
-		t.Fatalf("after promote = %+v, %v", item, err)
+	if err != nil || strings.Join(item.PromotedTo, ",") != "CORE-7,CORE-8" || item.Body != "look at billing\nsecond line" || item.Status != "promoted" {
+		t.Fatalf("after linking = %+v, %v", item, err)
 	}
 	raw, _ := os.ReadFile(path)
-	for _, want := range []string{"status: promoted", "promoted_to: CORE-7", "promoted to CORE-7", "status: promoted\n"} {
+	for _, want := range []string{"status: promoted", "promoted_to:\n  - CORE-7\n  - CORE-8", "promoted to CORE-7", "promoted to CORE-8"} {
 		if !strings.Contains(string(raw), want) {
-			t.Errorf("promoted file lacks %q:\n%s", want, raw)
+			t.Errorf("linked file lacks %q:\n%s", want, raw)
 		}
+	}
+	if strings.Count(string(raw), "promoted to CORE-7") != 1 {
+		t.Errorf("relinking the same task duplicated its log line:\n%s", raw)
 	}
 	if _, err := ReadInbox(root, "INBOX-99"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing = %v", err)
 	}
-	refs, _ := ListInbox(root)
+	items, _ := ListInbox(root)
+	var refs []string
+	for _, i := range items {
+		refs = append(refs, i.Ref)
+	}
 	if strings.Join(refs, ",") != "INBOX-10,INBOX-11" {
 		t.Fatalf("list = %v", refs)
+	}
+	if items[0].Preview != "look at billing" || items[0].Status != "promoted" {
+		t.Fatalf("list item summary = %+v", items[0])
+	}
+	if items[1].Status != "untriaged" || len(items[1].PromotedTo) != 0 {
+		t.Fatalf("unpromoted list item = %+v", items[1])
 	}
 	counters, _ := os.ReadFile(filepath.Join(root, "_registry", "counters.json"))
 	if !strings.Contains(string(counters), `"INBOX": 12`) {
@@ -114,10 +136,10 @@ func TestConcurrentCaptureNeverSharesANumber(t *testing.T) {
 	}
 }
 
-func TestProjectNotesAndAliases(t *testing.T) {
+func TestProjectAliases(t *testing.T) {
 	root := t.TempDir()
-	if _, _, err := AddProjectNote(root, "acme", "note", "x", testNow); err == nil {
-		t.Fatal("wrote a note for a project without a card")
+	if _, _, err := AddProjectAlias(root, "acme", "x"); err == nil {
+		t.Fatal("wrote an alias for a project without a card")
 	}
 	dir := filepath.Join(root, "Work", "acme")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -128,23 +150,17 @@ func TestProjectNotesAndAliases(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 2; i++ {
-		_, wrote, err := AddProjectNote(root, "acme", "alias", "Billing", testNow)
+		_, wrote, err := AddProjectAlias(root, "acme", "Billing")
 		if err != nil || wrote != (i == 0) {
 			t.Fatalf("alias write %d = %v, %v", i, wrote, err)
-		}
-	}
-	for i := 0; i < 2; i++ {
-		_, wrote, err := AddProjectNote(root, "acme", "decision", "use paid and open", testNow)
-		if err != nil || wrote != (i == 0) {
-			t.Fatalf("decision write %d = %v, %v", i, wrote, err)
 		}
 	}
 	got, _ := os.ReadFile(card)
 	if !strings.Contains(string(got), "aliases:\n  - existing\n  - Billing\nstatus: active\n---") {
 		t.Fatalf("aliases not in frontmatter:\n%s", got)
 	}
-	if strings.Count(string(got), "## Activity Log") != 1 || strings.Count(string(got), "decision: use paid and open") != 1 {
-		t.Fatalf("activity log = %s", got)
+	if strings.Contains(string(got), "Activity Log") {
+		t.Fatalf("an alias must not add a log entry:\n%s", got)
 	}
 	aliases, err := ProjectAliases(root, "acme")
 	if err != nil || strings.Join(aliases, ",") != "existing,Billing" {

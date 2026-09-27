@@ -39,15 +39,13 @@ Use the Fleet Manager API when:
 - the user is walking / mobile / not in a repo;
 - the task should be remembered for later;
 - the target worker is not obvious;
-- the input needs triage into task/note/decision/inbox;
+- the input needs triage into task/inbox;
 - aliases, project routing, or Fleet metadata should be updated.
 
 Manager tools write:
 
 - `Inbox/items/*.md` for ambiguous raw capture;
 - `Work/<project-id>/tasks/*.md` for actionable tasks;
-- `Work/<project-id>/notes/*.md` for project-specific non-task knowledge;
-- `Work/<project-id>/decisions/*.md` for durable decisions.
 
 ## Direct Agent Mode
 
@@ -270,8 +268,8 @@ daemon, Manager, and workers should not invent additional transitions.
 Chat output is not a task deliverable.
 
 Every task must leave a physical artifact in Fleet or in the target repository:
-code, docs, README, roadmap, decision, project note, generated file, or an
-updated task card with concrete findings. This applies to research and planning
+code, docs, README, roadmap, a generated file, or an updated task card with
+concrete findings. This applies to research and planning
 tasks as much as implementation tasks.
 
 If the worker only answered in chat, the task remains `doing` or `blocked`.

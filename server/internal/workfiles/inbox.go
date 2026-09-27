@@ -22,12 +22,16 @@ var inboxRefPattern = regexp.MustCompile(`(?i)^INBOX-(\d+)$`)
 // ErrNotFound is returned when an Inbox item does not exist.
 var ErrNotFound = errors.New("not found")
 
-// InboxItem is one captured note.
+// InboxItem is one captured note. Preview is the first line of the raw
+// input, cheap to show in a list. Body is the full raw input, read only when
+// one item is fetched by ref.
 type InboxItem struct {
 	Ref        string
 	Path       string
+	Status     string
+	Preview    string
 	Body       string
-	PromotedTo string
+	PromotedTo []string
 }
 
 // IsInboxRef reports whether ref looks like INBOX-<n>.
@@ -39,18 +43,19 @@ func inboxDir(root string) string {
 	return filepath.Join(root, "Inbox", "items")
 }
 
-// ListInbox returns the refs of every captured item, sorted by number.
-func ListInbox(root string) ([]string, error) {
+// ListInbox returns every captured item, oldest first, without reading
+// bodies twice: Preview is already the first line of the raw input.
+func ListInbox(root string) ([]InboxItem, error) {
 	items, err := scanInbox(root)
 	if err != nil {
 		return nil, err
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].num < items[j].num })
-	refs := make([]string, 0, len(items))
-	for _, item := range items {
-		refs = append(refs, item.ref)
+	out := make([]InboxItem, len(items))
+	for i, item := range items {
+		out[i] = item.InboxItem
 	}
-	return refs, nil
+	return out, nil
 }
 
 // CaptureInbox stores text as a new Inbox item with the next INBOX ref from
@@ -77,7 +82,7 @@ func CaptureInbox(root, text string, now time.Time) (ref, path string, err error
 		if i > 1 {
 			base = fmt.Sprintf("%s-%d", base, i)
 		}
-		body := fmt.Sprintf("---\nid: inbox-%s\nref: %s\nstatus: untriaged\nsource: manager\ncreated_at: %s\nupdated_at: %s\npromoted_to:\n---\n\n## Raw Input\n\n%s\n\n## Activity Log\n\n- %s captured\n",
+		body := fmt.Sprintf("---\nid: inbox-%s\nref: %s\nstatus: untriaged\nsource: manager\ncreated_at: %s\nupdated_at: %s\npromoted_to: []\n---\n\n## Raw Input\n\n%s\n\n## Activity Log\n\n- %s captured\n",
 			base, ref, stamp, stamp, text, stamp)
 		path = filepath.Join(dir, base+".md")
 		f, openErr := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
@@ -96,7 +101,7 @@ func CaptureInbox(root, text string, now time.Time) (ref, path string, err error
 	}
 }
 
-// ReadInbox loads one item by ref.
+// ReadInbox loads one item by ref, with its full body.
 func ReadInbox(root, ref string) (InboxItem, error) {
 	ref = strings.ToUpper(strings.TrimSpace(ref))
 	if !IsInboxRef(ref) {
@@ -107,25 +112,17 @@ func ReadInbox(root, ref string) (InboxItem, error) {
 		return InboxItem{}, err
 	}
 	for _, item := range items {
-		if item.ref != ref {
-			continue
+		if item.Ref == ref {
+			return item.InboxItem, nil
 		}
-		fm, body, err := mdfile.ReadMarkdown(item.path)
-		if err != nil {
-			return InboxItem{}, err
-		}
-		return InboxItem{
-			Ref:        ref,
-			Path:       item.path,
-			Body:       rawInput(body),
-			PromotedTo: mdfile.Scalar(fm, "promoted_to", ""),
-		}, nil
 	}
 	return InboxItem{}, ErrNotFound
 }
 
-// MarkPromoted records the task an item became.
-func MarkPromoted(root, ref, taskRef string, now time.Time) error {
+// LinkInboxToTask records that ref produced taskRef. One capture may produce
+// several tasks (a decomposition), so this appends to promoted_to instead of
+// replacing it, and does nothing when taskRef is already linked.
+func LinkInboxToTask(root, ref, taskRef string, now time.Time) error {
 	mdfile.EditMu.Lock()
 	defer mdfile.EditMu.Unlock()
 	item, err := ReadInbox(root, ref)
@@ -136,9 +133,17 @@ func MarkPromoted(root, ref, taskRef string, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	stamp := now.Format(time.RFC3339)
 	text := string(raw)
-	for key, value := range map[string]string{"status": "promoted", "promoted_to": taskRef, "updated_at": stamp} {
+	next, added, err := mdfile.AddListItem(text, "promoted_to", taskRef)
+	if err != nil {
+		return fmt.Errorf("%s: %w", item.Path, err)
+	}
+	if !added {
+		return nil
+	}
+	text = next
+	stamp := now.Format(time.RFC3339)
+	for key, value := range map[string]string{"status": "promoted", "updated_at": stamp} {
 		if text, err = mdfile.SetScalar(text, key, value); err != nil {
 			return fmt.Errorf("%s: %w", item.Path, err)
 		}
@@ -151,9 +156,8 @@ func MarkPromoted(root, ref, taskRef string, now time.Time) error {
 }
 
 type inboxFile struct {
-	ref  string
-	num  int
-	path string
+	InboxItem
+	num int
 }
 
 func scanInbox(root string) ([]inboxFile, error) {
@@ -171,7 +175,7 @@ func scanInbox(root string) ([]inboxFile, error) {
 			continue
 		}
 		path := filepath.Join(dir, entry.Name())
-		fm, _, err := mdfile.ReadMarkdown(path)
+		fm, body, err := mdfile.ReadMarkdown(path)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +188,18 @@ func scanInbox(root string) ([]inboxFile, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: bad ref %q", path, ref)
 		}
-		items = append(items, inboxFile{ref: ref, num: num, path: path})
+		raw := rawInput(body)
+		items = append(items, inboxFile{
+			num: num,
+			InboxItem: InboxItem{
+				Ref:        ref,
+				Path:       path,
+				Status:     mdfile.Scalar(fm, "status", "untriaged"),
+				Preview:    firstLine(raw),
+				Body:       raw,
+				PromotedTo: mdfile.List(fm, "promoted_to"),
+			},
+		})
 	}
 	return items, nil
 }

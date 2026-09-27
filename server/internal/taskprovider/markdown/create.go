@@ -117,10 +117,8 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	}
 
 	repoLines := "repositories: []"
-	matchedRepo := "(none selected)"
 	if req.Repository != "" {
 		repoLines = "repositories:\n  - " + quoteFrontmatter(req.Repository)
-		matchedRepo = "`" + req.Repository + "`"
 	}
 
 	requestBody := req.Request
@@ -146,7 +144,7 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	body.WriteString("assignee: " + req.Assignee + "\n")
 	body.WriteString("assignment_reason: " + quoteFrontmatter(req.AssignmentReason) + "\n")
 	body.WriteString("source: text\n")
-	body.WriteString("source_inbox:\n")
+	body.WriteString(strings.TrimRight("source_inbox: "+quoteFrontmatter(req.SourceInbox), " ") + "\n")
 	body.WriteString("created_at: " + stamp + "\n")
 	body.WriteString("updated_at: " + stamp + "\n")
 	body.WriteString("launch:\n")
@@ -158,36 +156,19 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	body.WriteString("---\n\n")
 	body.WriteString("# " + req.Title + "\n\n")
 	body.WriteString("## Request\n\n")
-	body.WriteString(requestBody + "\n\n")
-	body.WriteString("## Raw Input\n\n")
-	body.WriteString(requestBody + "\n\n")
-	body.WriteString("## Project Resolution\n\n")
-	body.WriteString("- Matched workspace: `" + req.Project + "`\n")
-	body.WriteString("- Matched repository: " + matchedRepo + "\n")
-	body.WriteString("- Resolution method: backoffice dashboard\n")
-	body.WriteString("- Confidence: high\n\n")
+	body.WriteString(strings.TrimSpace(requestBody) + "\n\n")
 	body.WriteString("## Acceptance Criteria\n\n")
-	body.WriteString("- [ ] Describe the expected outcome.\n\n")
-	body.WriteString("## Context\n\n")
-	body.WriteString("- Workspace: `Work/" + req.Project + "/PROJECT.md`\n")
-	if req.Repository != "" {
-		body.WriteString("- Repository: `" + req.Repository + "`\n")
+	if acceptance := strings.TrimSpace(req.Acceptance); acceptance != "" {
+		body.WriteString(acceptance + "\n\n")
+	} else {
+		body.WriteString("- [ ] Describe the expected outcome.\n\n")
 	}
-	body.WriteString("\n## Deliverable\n\n")
-	body.WriteString("Expected physical artifact:\n\n")
-	body.WriteString("- Pending.\n\n")
-	body.WriteString("Produced artifacts:\n\n")
-	body.WriteString("- Pending.\n\n")
-	body.WriteString("## Handoff\n\n")
-	body.WriteString("Created from the backoffice dashboard. Refine acceptance criteria and\n")
-	body.WriteString("priority before moving out of backlog when needed.\n\n")
-	body.WriteString("Assignment reason: " + req.AssignmentReason + "\n\n")
-	body.WriteString("Launch policy: `todo` and `needs_rework` tasks are daemon-pickup candidates\n")
-	body.WriteString("when they have a supported assignee and exactly one repository. Leave\n")
-	body.WriteString("`launch.agent` empty unless this task intentionally launches a different worker\n")
-	body.WriteString("than `assignee`. Dashboard creation does not trigger launch, commit, push, or PR.\n\n")
+	if extra := strings.TrimSpace(req.Context); extra != "" {
+		body.WriteString("## Context\n\n")
+		body.WriteString(extra + "\n\n")
+	}
 	body.WriteString("## Review Comments\n\n")
 	body.WriteString("## Activity Log\n\n")
-	body.WriteString("- " + stamp + " — Created from backoffice dashboard.\n")
+	body.WriteString("- " + stamp + " — Created.\n")
 	return body.String()
 }

@@ -49,17 +49,11 @@ func TestBuildPromptIncludesRequiredCoreFrameworkRules(t *testing.T) {
 	})
 
 	for _, expected := range []string{
-		"_docs/TASK_LIFECYCLE.md",
-		"_docs/OPERATING_MODEL.md",
-		"Fleet/ROUTING.md",
-		"Fleet/LAUNCH_POLICY.md",
 		"compact JSON result payload",
 		`"outcome": "<completed|failed|needs_input|needs_rework|blocked>"`,
-		"Do not manually edit generated/service index files such as Work/INDEX.md",
-		"Fleet daemon/finalizer refreshes derived files and generated indexes",
 		"no-auto-commit, no-auto-push, and no-auto-PR",
-		"Never finalize task status yourself",
-		"Task card content:",
+		"Never set it\n  yourself",
+		"There is no task file in your repository",
 		"Implement the thing.",
 	} {
 		if !strings.Contains(prompt, expected) {
@@ -97,11 +91,10 @@ func TestBuildPromptDoesNotInstructWorkersToMutateTaskCards(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
-		"Do not edit this (or any) canonical task card's status or frontmatter",
-		"Fleet reads your reported outcome and applies",
-		"never mutate",
-		"canonical task card yourself",
-		"Never finalize task status yourself",
+		"Fleet sets the task status from the outcome you report",
+		"Never set it\n  yourself",
+		"never make a task-shaped file in the repository",
+		"do not edit one",
 	} {
 		if !strings.Contains(prompt, expected) {
 			t.Fatalf("prompt missing %q\n%s", expected, prompt)

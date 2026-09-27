@@ -16,10 +16,12 @@ import (
 )
 
 type memTasks struct {
-	tasks []taskflow.Task
+	tasks   []taskflow.Task
+	created []taskflow.CreateTask
 }
 
 func (m *memTasks) Create(_ context.Context, input taskflow.CreateTask) (taskflow.Task, error) {
+	m.created = append(m.created, input)
 	task := taskflow.Task{
 		Ref:          "CORE-" + itoa(len(m.tasks)+1),
 		ID:           "CORE-" + itoa(len(m.tasks)+1),
@@ -34,6 +36,7 @@ func (m *memTasks) Create(_ context.Context, input taskflow.CreateTask) (taskflo
 		DependsOn:    append([]string{}, input.DependsOn...),
 		Priority:     input.Priority,
 		Repositories: nil,
+		SourceInbox:  input.SourceInbox,
 	}
 	if task.Status == "" {
 		task.Status = taskflow.Status("backlog")
@@ -208,11 +211,46 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), "promoted_to: CORE-1") || !strings.Contains(mem.tasks[0].Body, "source_inbox: INBOX-1") {
-		t.Fatalf("promotion record = %s body %s", raw, mem.tasks[0].Body)
+	if !strings.Contains(string(raw), "promoted_to:\n  - CORE-1") || mem.created[0].SourceInbox != "INBOX-1" {
+		t.Fatalf("promotion record = %s created %#v", raw, mem.created[0])
+	}
+	if mem.created[0].Acceptance != "" {
+		t.Fatalf("the raw note must not be copied into the acceptance criteria: %#v", mem.created[0])
 	}
 
-	if resp := svc.Project("alias", "acme-web", "billing"); resp.OK {
+	// One capture decomposes into a second task: promote again on the same
+	// ref, both tasks stay linked, and manager_task exposes the link back.
+	again := svc.Inbox(context.Background(), "promote", "", "INBOX-1", "acme-web", "Second billing task")
+	if !again.OK || again.Result.Ref != "CORE-2" {
+		t.Fatalf("second promote = %+v", again)
+	}
+	raw, _ = os.ReadFile(captured.Result.Path)
+	if !strings.Contains(string(raw), "promoted_to:\n  - CORE-1\n  - CORE-2") {
+		t.Fatalf("second task not linked onto the same capture:\n%s", raw)
+	}
+	if mem.tasks[1].SourceInbox != "INBOX-1" {
+		t.Fatalf("created task did not carry source_inbox: %#v", mem.tasks[1])
+	}
+
+	shown := svc.Inbox(context.Background(), "show", "", "INBOX-1", "", "")
+	if !shown.OK {
+		t.Fatalf("show = %+v", shown)
+	}
+	detail := shown.Result.Detail.(map[string]any)
+	if detail["body"] != "look at billing later" || fmt.Sprint(detail["promoted_to"]) != "[CORE-1 CORE-2]" {
+		t.Fatalf("show detail = %#v", detail)
+	}
+
+	listed := svc.Inbox(context.Background(), "list", "", "", "", "")
+	if !listed.OK {
+		t.Fatalf("list = %+v", listed)
+	}
+	items := listed.Result.Detail.([]map[string]any)
+	if len(items) != 1 || items[0]["status"] != "promoted" || items[0]["preview"] != "look at billing later" {
+		t.Fatalf("list detail = %#v", items)
+	}
+
+	if resp := svc.Alias("acme-web", "billing"); resp.OK {
 		t.Fatal("wrote a card for a project that has none")
 	}
 	cardPath := filepath.Join(root, "Work", "acme-web", "PROJECT.md")
@@ -222,8 +260,8 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 	if err := os.WriteFile(cardPath, []byte("---\nid: acme-web\ntitle: Acme Web\naliases: []\n---\n\n# Acme Web\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	first := svc.Project("alias", "acme-web", "billing")
-	second := svc.Project("alias", "acme-web", "BILLING")
+	first := svc.Alias("acme-web", "billing")
+	second := svc.Alias("acme-web", "BILLING")
 	if !first.OK || !second.OK || first.Result.Detail.(map[string]any)["wrote"] != true || second.Result.Detail.(map[string]any)["wrote"] != false {
 		t.Fatalf("project writes = %+v / %+v", first, second)
 	}
@@ -231,7 +269,7 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(card), "  - billing") != 1 || !strings.Contains(string(card), "## Activity Log") || strings.Contains(string(card), "aliases: []") {
+	if strings.Count(string(card), "  - billing") != 1 || strings.Contains(string(card), "## Activity Log") || strings.Contains(string(card), "aliases: []") {
 		t.Fatalf("project card = %s", card)
 	}
 	resolve := NewService(mem, BoardView{Workspaces: []board.Workspace{{ID: "acme-web", Title: "Acme Web"}}})
@@ -240,19 +278,19 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 		t.Fatalf("alias does not resolve: %#v", got)
 	}
 
-	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-2", ID: "CORE-2", Locator: "CORE-2", Title: "Blocked", Status: taskflow.StatusBlocked})
-	answered := svc.Answer(context.Background(), "CORE-2", "use paid and open", "")
+	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-3", ID: "CORE-3", Locator: "CORE-3", Title: "Blocked", Status: taskflow.StatusBlocked})
+	answered := svc.Answer(context.Background(), "CORE-3", "use paid and open", "")
 	if !answered.OK || answered.Result.Status != "todo" {
 		t.Fatalf("answer = %+v", answered.Result)
 	}
 
-	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-3", ID: "CORE-3", Locator: "CORE-3", Title: "Review me", Status: "needs_review", Assignee: "claude"})
-	accepted := svc.Review(context.Background(), "CORE-3", "accept", "")
+	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-4", ID: "CORE-4", Locator: "CORE-4", Title: "Review me", Status: "needs_review", Assignee: "claude"})
+	accepted := svc.Review(context.Background(), "CORE-4", "accept", "")
 	if !accepted.OK || accepted.Result.Status != "done" {
 		t.Fatalf("accept = %+v", accepted.Result)
 	}
-	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-4", ID: "CORE-4", Locator: "CORE-4", Title: "Again", Status: "needs_review"})
-	rework := svc.Review(context.Background(), "CORE-4", "rework", "status is still hidden")
+	mem.tasks = append(mem.tasks, taskflow.Task{Ref: "CORE-5", ID: "CORE-5", Locator: "CORE-5", Title: "Again", Status: "needs_review"})
+	rework := svc.Review(context.Background(), "CORE-5", "rework", "status is still hidden")
 	if !rework.OK || rework.Result.Status != "needs_rework" {
 		t.Fatalf("rework = %+v", rework.Result)
 	}
@@ -471,3 +509,48 @@ func TestUpdateChecksThenPatches(t *testing.T) {
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// TestDirectTaskCreationLinksSourceInboxWithoutPromote proves the link back
+// to the raw capture does not depend on the promote convenience action: a
+// plain kind=task command with source_inbox set is enough. This is the path
+// intake uses when it decomposes one capture into several tasks.
+func TestDirectTaskCreationLinksSourceInboxWithoutPromote(t *testing.T) {
+	mem := &memTasks{}
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(`{"next_work_ref":1,"next_inbox_ref":1}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(mem, BoardView{})
+	svc.DataRoot = root
+
+	captured := svc.Inbox(context.Background(), "capture", "redesign the whole onboarding flow", "", "", "")
+	if !captured.OK {
+		t.Fatalf("capture = %+v", captured)
+	}
+	ref := captured.Result.Ref
+
+	for _, title := range []string{"Design the empty state", "Wire up the welcome email"} {
+		resp := svc.SubmitCommand(context.Background(), CommandRequest{Intent: Intent{
+			Kind: KindTask, Project: "acme-web", Title: title, Description: title,
+			Acceptance: "- [ ] done", SourceInbox: ref, Status: "backlog", Type: "feature",
+		}})
+		if !resp.OK {
+			t.Fatalf("create %q = %+v", title, resp)
+		}
+	}
+	raw, err := os.ReadFile(captured.Result.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "promoted_to:\n  - CORE-1\n  - CORE-2") {
+		t.Fatalf("both direct tasks must link back to %s:\n%s", ref, raw)
+	}
+	for i, want := range []string{"CORE-1", "CORE-2"} {
+		if mem.tasks[i].SourceInbox != ref {
+			t.Fatalf("task %s missing source_inbox: %#v", want, mem.tasks[i])
+		}
+	}
+}

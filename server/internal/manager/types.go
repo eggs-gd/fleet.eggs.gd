@@ -47,6 +47,7 @@ type Intent struct {
 	Title         string   `json:"title,omitempty"`
 	Description   string   `json:"description,omitempty"`
 	Acceptance    string   `json:"acceptance_criteria,omitempty"`
+	Context       string   `json:"context,omitempty"`
 	SourceInbox   string   `json:"source_inbox,omitempty"`
 	Priority      *int     `json:"priority,omitempty"`
 	Status        string   `json:"status,omitempty"`

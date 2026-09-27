@@ -24,6 +24,9 @@ func (p *Provider) flowCreate(_ context.Context, input taskflow.CreateTask) (tas
 		Type:             input.Type,
 		Assignee:         input.Assignee,
 		AssignmentReason: input.AssignmentReason,
+		Acceptance:       input.Acceptance,
+		Context:          input.Context,
+		SourceInbox:      input.SourceInbox,
 		DependsOn:        append([]string{}, input.DependsOn...),
 	}
 	if input.Priority > 0 {
@@ -119,7 +122,7 @@ func (p *Provider) flowAddComment(ctx context.Context, id string, text string) e
 	}
 	author := taskflow.CommentAuthorFrom(ctx)
 	if author == "" {
-		author = "core"
+		author = tasklifecycle.SystemCommentAuthor
 	}
 	_, err := p.Mutate(tasklifecycle.TaskPatch{
 		Path:          id,
@@ -158,6 +161,7 @@ func toFlowTask(task tasklifecycle.Task) taskflow.Task {
 		Assignee:         task.Assignee,
 		AssignmentReason: task.AssignmentReason,
 		Source:           task.Source,
+		SourceInbox:      task.SourceInbox,
 		CreatedAt:        task.CreatedAt,
 		UpdatedAt:        task.UpdatedAt,
 		Summary:          task.Summary,

@@ -171,8 +171,8 @@ controls.
 - For active `todo` pickup, choose by priority: `1` is highest, `5` is lowest,
   then natural ref order.
 - Do not start or pick up work that violates `Fleet/LAUNCH_POLICY.md`.
-- Record why a non-obvious assignee was chosen in the Work item's `## Handoff`
-  or `## Project Resolution`.
+- Record why a non-obvious assignee was chosen in the task's
+  `assignment_reason`.
 - If task category and project override conflict, project override wins.
 - If the task asks the active Manager chat to implement immediately, assign
   `codex` and proceed unless the user says otherwise.

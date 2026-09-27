@@ -40,7 +40,7 @@ read or edit:
 6. A high-confidence fuzzy match.
 7. Ask, or park in `backlog` or the Inbox.
 
-A newly learned alias is stored in the card (`manager_project`), not left in
+A newly learned alias is stored in the card (`manager_alias`), not left in
 chat.
 
 ## Assignee

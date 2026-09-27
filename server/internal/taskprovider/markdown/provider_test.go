@@ -158,3 +158,61 @@ func TestSlugifyAndUniqueFileBase(t *testing.T) {
 		t.Fatalf("base = %q", base)
 	}
 }
+
+func TestCreatedCardHoldsTheStructuredParts(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Work", "acme", "PROJECT.md"), "---\nid: acme\ntag: \"ACME\"\n---\n\n# Acme\n")
+	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{"next":{"ACME":1,"INBOX":8}}`)
+
+	provider := New(root, Hooks{})
+	svc := taskprovider.NewService(provider)
+	defer svc.Close()
+
+	created, err := svc.Create(context.Background(), taskflow.CreateTask{
+		Title:       "Fix the invoice total",
+		Description: "The total ignores the discount.",
+		Acceptance:  "- [ ] Totals match the ledger.",
+		Context:     "Finance signs off on the ledger, so do not round per line. Decision: round once at the end.",
+		SourceInbox: "INBOX-7",
+		Project:     "acme",
+		Status:      taskflow.StatusBacklog,
+		Type:        "bug",
+		Assignee:    "codex",
+		Priority:    2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(root, created.Locator))
+	if err != nil {
+		t.Fatal(err)
+	}
+	card := string(raw)
+	for _, want := range []string{
+		"source_inbox: INBOX-7\n",
+		"## Request\n\nThe total ignores the discount.",
+		"## Acceptance Criteria\n\n- [ ] Totals match the ledger.",
+		"## Context\n\nFinance signs off on the ledger",
+	} {
+		if !strings.Contains(card, want) {
+			t.Errorf("card lacks %q:\n%s", want, card)
+		}
+	}
+	if strings.Contains(card, "Describe the expected outcome") {
+		t.Errorf("a placeholder was written although criteria were given:\n%s", card)
+	}
+
+	bare, err := svc.Create(context.Background(), taskflow.CreateTask{
+		Title: "No context", Description: "Just do it.", Project: "acme", Status: taskflow.StatusBacklog, Type: "feature", Assignee: "codex", Priority: 3,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ = os.ReadFile(filepath.Join(root, bare.Locator))
+	if strings.Contains(string(raw), "## Context") {
+		t.Errorf("an empty context must not leave a heading:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), "- [ ] Describe the expected outcome.") {
+		t.Errorf("a card without criteria keeps its placeholder:\n%s", raw)
+	}
+}

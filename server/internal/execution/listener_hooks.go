@@ -15,7 +15,7 @@ func ActiveExecutionGuard(service taskprovider.TaskService) func(locator string,
 		flowReverted, err := service.Patch(context.Background(), locator, taskflow.PatchInput{
 			Status:              taskflow.StatusDoing,
 			Comment:             tasklifecycle.ActiveExecutionGuardComment(session.ClaimID),
-			CommentAuthor:       "core",
+			CommentAuthor:       tasklifecycle.SystemCommentAuthor,
 			Actor:               "runtime",
 			AllowStatusOverride: true,
 		})

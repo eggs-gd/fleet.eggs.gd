@@ -35,14 +35,23 @@ worked but needs the person's attention carries `warnings`.
 | Command | `manager_command` executes one structured `Intent` |
 | Read | `manager_board`, `manager_task`, `manager_workers`, `manager_events` |
 | Decide | `manager_resolve_project`, `manager_similar`, `manager_route`, `manager_validate` (dry run, writes nothing) |
-| Write | `manager_inbox`, `manager_project`, `manager_answer`, `manager_review`, `manager_update` |
+| Write | `manager_inbox`, `manager_alias`, `manager_answer`, `manager_review`, `manager_update` |
 
-`manager_command` covers creating a task, changing status, assignee or
+`manager_command` covers creating a task (`description`, `acceptance_criteria`, `context`), changing status, assignee or
 priority, adding a comment, cancelling (requires `confirm: true`), and looking
 up a task or the board. It is deterministic. The calling agent is already the
 LLM, so no classification runs. `manager_events` returns `task.*` audit rows
 after a row id; Fleet pushes nothing into the session. Each tool's behavior is
 in [manager-skills](specs/manager-skills.md).
+
+`manager_inbox` is where a person's own wording is kept: `capture` is the one
+durable copy of raw voice or chat input, and `intake` calls it before any new
+task. `promote` (or a direct `manager_command` with `source_inbox` set) creates
+a task from a capture and links it back; calling it again on the same ref links
+another task, since one capture can decompose into several. `list` gives a
+status and preview per item, `show` gives one item's full text and every task
+it produced. `manager_task` shows a task's own `source_inbox`, so the path from
+a captured sentence to the task it became is visible both ways.
 
 The skills are also served as MCP prompts under the same names (`intake`,
 `shape-task`, `resolve-project`, `route`, `triage-attention`, `review`,

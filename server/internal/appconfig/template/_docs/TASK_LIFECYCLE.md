@@ -251,17 +251,21 @@ Valid artifacts:
 - code changes in the target repository;
 - tests, fixtures, migrations, or config changes;
 - updates to README, docs, roadmap, specs, or architecture notes;
-- a new or updated decision record or project note;
 - a refined task card with concrete findings and next steps;
 - generated output saved to a file.
 
 For research, investigation, architecture, planning, or documentation tasks
-the artifact may be Markdown. The worker writes the conclusion somewhere
-durable: `Work/<project-id>/notes/`, `Work/<project-id>/decisions/`, project
-docs, or the task card itself.
+the artifact may be Markdown. The worker writes the conclusion where the
+project keeps its docs, or in the reported outcome.
 
-When a task reaches `needs_review`, `## Deliverable` lists the changed files
-or created artifacts. With no artifact the task stays `doing` or `blocked`.
+A worker's outcome lists the changed files or created artifacts. With no
+artifact the task stays `doing` or `blocked`.
+
+Documentation is part of the change. When a change makes a document in the
+repository wrong, the worker updates it in the same change. A decision that
+whoever maintains the code needs is written where the repository already keeps
+such things. The worker does not invent a new documentation structure, and
+Fleet does not keep a second copy of project knowledge.
 
 AI workers do not move their own implementation tasks to `done`. The
 operator is the default closer.
