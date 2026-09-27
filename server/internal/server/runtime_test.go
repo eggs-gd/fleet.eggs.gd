@@ -2814,12 +2814,10 @@ exit 1
 	}
 
 	app.Exec.StartLaunchCandidate(ctx, task)
-	time.Sleep(100 * time.Millisecond)
 
-	state := app.State()
-	if len(state.RuntimeSessions) != 1 {
-		t.Fatalf("runtime sessions = %#v, want active session", state.RuntimeSessions)
-	}
+	// The launch starts a few shell processes, so how long it takes depends on
+	// the machine. Wait for the session instead of guessing a delay.
+	state := waitForRuntimeState(t, app, func(s State) bool { return len(s.RuntimeSessions) == 1 })
 	session := state.RuntimeSessions[0]
 	if session.ExecutionStatus == "operator_attention" || !session.IsActive() {
 		t.Fatalf("active heartbeat session was treated as idle: %#v", session)
@@ -2916,10 +2914,9 @@ exit 1
 	// The background session must still be reported as active: Core applied
 	// the task transition from the transcript without tearing the session
 	// down, because Alex may still be chatting with it on the phone.
-	state := app.State()
-	if len(state.RuntimeSessions) != 1 || !state.RuntimeSessions[0].IsActive() {
-		t.Fatalf("runtime sessions = %#v, want the still-active background session to remain visible", state.RuntimeSessions)
-	}
+	state := waitForRuntimeState(t, app, func(s State) bool {
+		return len(s.RuntimeSessions) == 1 && s.RuntimeSessions[0].IsActive()
+	})
 	if state.RuntimeSessions[0].Result == nil || state.RuntimeSessions[0].Result.Outcome != "completed" {
 		t.Fatalf("session.Result = %#v, want the parsed completed outcome", state.RuntimeSessions[0].Result)
 	}
@@ -3302,7 +3299,7 @@ func waitForNoRuntimeSessions(t *testing.T, app *App) {
 func waitForRuntimeState(t *testing.T, app *App, ok func(State) bool) State {
 	t.Helper()
 
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		state := app.State()
 		if ok(state) {
@@ -3318,7 +3315,7 @@ func waitForRuntimeState(t *testing.T, app *App, ok func(State) bool) State {
 func waitForNoActiveRuntimeSessions(t *testing.T, app *App) {
 	t.Helper()
 
-	deadline := time.Now().Add(2 * time.Second)
+	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		active := 0
 		for _, session := range app.State().RuntimeSessions {
