@@ -554,3 +554,58 @@ func TestDirectTaskCreationLinksSourceInboxWithoutPromote(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectFactsAndDescribe(t *testing.T) {
+	root := t.TempDir()
+	readme := filepath.Join(root, "README.md")
+	if err := os.WriteFile(readme, []byte("# Acme\n\nA tool that reconciles invoices.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repos := `{"repositories": [{"relative_path": "acme", "summary": "No short prose summary was detected.", "summary_source": "readme-title", "readme_path": "` + readme + `"}]}`
+	if err := os.WriteFile(filepath.Join(root, "_registry", "repositories.json"), []byte(repos), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "Work", "acme"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(root, "Work", "acme", "PROJECT.md")
+	if err := os.WriteFile(card, []byte("---\nid: \"acme\"\nsummary_source: \"generated\"\n---\n\n# Acme\n\nNo short prose summary was detected.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewService(&memTasks{}, BoardView{Workspaces: []board.Workspace{
+		{ID: "acme", Title: "Acme", Kind: "standalone_repository", Repositories: []string{"acme"}, Summary: "No short prose summary was detected.", SummarySource: "generated"},
+	}})
+	svc.DataRoot = root
+
+	facts := svc.ProjectFacts("acme")
+	if !facts.OK {
+		t.Fatalf("facts = %+v", facts)
+	}
+	detail := facts.Result.Detail.(map[string]any)
+	if detail["summary_source"] != "generated" {
+		t.Fatalf("facts must show the project is still unconfirmed: %#v", detail)
+	}
+	repoFacts := detail["repositories"].([]map[string]any)
+	if len(repoFacts) != 1 || repoFacts[0]["readme_excerpt"] != "# Acme\n\nA tool that reconciles invoices." {
+		t.Fatalf("facts did not read the real README: %#v", repoFacts)
+	}
+
+	if resp := svc.Describe("acme", "   "); resp.OK {
+		t.Fatal("wrote an empty description")
+	}
+	described := svc.Describe("acme", "A tool that reconciles invoices.")
+	if !described.OK {
+		t.Fatalf("describe = %+v", described)
+	}
+	raw, _ := os.ReadFile(card)
+	if !strings.Contains(string(raw), "\n# Acme\n\nA tool that reconciles invoices.\n") {
+		t.Fatalf("card not updated:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), `summary_source: "confirmed"`) {
+		t.Fatalf("summary_source not confirmed:\n%s", raw)
+	}
+}

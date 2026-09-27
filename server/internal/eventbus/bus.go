@@ -9,13 +9,14 @@ import (
 	"sync"
 )
 
-// Channel is a named stream of events. Task is the only channel with a
-// publisher today. The others exist so a later publisher can use the same
+// Channel is a named stream of events. Task and Project are the channels with
+// a publisher today. The others exist so a later publisher can use the same
 // bus without a second delivery scheme.
 type Channel string
 
 const (
 	ChannelTask          Channel = "task"
+	ChannelProject       Channel = "project"
 	ChannelRelease       Channel = "release"
 	ChannelWorker        Channel = "worker"
 	ChannelPractice      Channel = "practice"
@@ -85,7 +86,7 @@ func (b *Bus) Publish(event Event) error {
 
 func knownChannel(channel Channel) bool {
 	switch channel {
-	case ChannelTask, ChannelRelease, ChannelWorker, ChannelPractice, ChannelConfiguration:
+	case ChannelTask, ChannelProject, ChannelRelease, ChannelWorker, ChannelPractice, ChannelConfiguration:
 		return true
 	default:
 		return false

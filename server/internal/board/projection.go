@@ -8,31 +8,37 @@ import (
 )
 
 type Workspace struct {
-	ID           string            `json:"id"`
-	Title        string            `json:"title"`
-	Tag          string            `json:"tag,omitempty"`
-	Kind         string            `json:"kind"`
-	ReviewStatus string            `json:"review_status"`
-	Status       string            `json:"status"`
-	Source       string            `json:"source"`
-	Repositories []string          `json:"repositories"`
-	Summary      string            `json:"summary"`
-	Path         string            `json:"path"`
-	RelativePath string            `json:"relative_path"`
-	Technology   TechnologySummary `json:"technology"`
+	ID           string   `json:"id"`
+	Title        string   `json:"title"`
+	Tag          string   `json:"tag,omitempty"`
+	Kind         string   `json:"kind"`
+	ReviewStatus string   `json:"review_status"`
+	Status       string   `json:"status"`
+	Source       string   `json:"source"`
+	Repositories []string `json:"repositories"`
+	Summary      string   `json:"summary"`
+	// SummarySource is "generated" for the scanner's own first guess, or
+	// "confirmed" once a person or the Manager has approved or written it
+	// (manager_describe). Cards written before this field existed read as
+	// "generated".
+	SummarySource string            `json:"summary_source"`
+	Path          string            `json:"path"`
+	RelativePath  string            `json:"relative_path"`
+	Technology    TechnologySummary `json:"technology"`
 }
 
 type Project struct {
-	ID           string            `json:"id"`
-	WorkspaceID  string            `json:"workspace_id"`
-	Title        string            `json:"title"`
-	Kind         string            `json:"kind"`
-	Source       string            `json:"source"`
-	Repositories []string          `json:"repositories"`
-	Summary      string            `json:"summary"`
-	Path         string            `json:"path"`
-	RelativePath string            `json:"relative_path"`
-	Technology   TechnologySummary `json:"technology"`
+	ID            string            `json:"id"`
+	WorkspaceID   string            `json:"workspace_id"`
+	Title         string            `json:"title"`
+	Kind          string            `json:"kind"`
+	Source        string            `json:"source"`
+	Repositories  []string          `json:"repositories"`
+	Summary       string            `json:"summary"`
+	SummarySource string            `json:"summary_source"`
+	Path          string            `json:"path"`
+	RelativePath  string            `json:"relative_path"`
+	Technology    TechnologySummary `json:"technology"`
 }
 
 type TechnologySummary struct {
@@ -95,16 +101,17 @@ func LoadWorkspaceFile(root, workspaceFile string) (Workspace, error) {
 	id := mdfile.Scalar(fm, "id", filepath.Base(filepath.Dir(workspaceFile)))
 	rel, _ := filepath.Rel(root, workspaceFile)
 	return Workspace{
-		ID:           id,
-		Title:        mdfile.Scalar(fm, "title", id),
-		Tag:          mdfile.Scalar(fm, "tag", ""),
-		Kind:         mdfile.Scalar(fm, "kind", "workspace"),
-		ReviewStatus: mdfile.Scalar(fm, "review_status", "draft"),
-		Status:       mdfile.Scalar(fm, "status", "discovered"),
-		Source:       mdfile.Scalar(fm, "source", ""),
-		Repositories: mdfile.List(fm, "repositories"),
-		Summary:      mdfile.FirstParagraph(body),
-		Path:         workspaceFile,
-		RelativePath: filepath.ToSlash(rel),
+		ID:            id,
+		Title:         mdfile.Scalar(fm, "title", id),
+		Tag:           mdfile.Scalar(fm, "tag", ""),
+		Kind:          mdfile.Scalar(fm, "kind", "workspace"),
+		ReviewStatus:  mdfile.Scalar(fm, "review_status", "draft"),
+		Status:        mdfile.Scalar(fm, "status", "discovered"),
+		Source:        mdfile.Scalar(fm, "source", ""),
+		Repositories:  mdfile.List(fm, "repositories"),
+		Summary:       mdfile.FirstParagraph(body),
+		SummarySource: mdfile.Scalar(fm, "summary_source", "generated"),
+		Path:          workspaceFile,
+		RelativePath:  filepath.ToSlash(rel),
 	}, nil
 }

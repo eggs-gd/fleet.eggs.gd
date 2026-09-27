@@ -10,15 +10,16 @@ import (
 func ProjectsFromWorkspace(workspace Workspace) []Project {
 	projects := []Project{
 		{
-			ID:           workspace.ID,
-			WorkspaceID:  workspace.ID,
-			Title:        workspace.Title,
-			Kind:         "workspace",
-			Source:       workspace.Source,
-			Repositories: append([]string{}, workspace.Repositories...),
-			Summary:      workspace.Summary,
-			Path:         workspace.Path,
-			RelativePath: workspace.RelativePath,
+			ID:            workspace.ID,
+			WorkspaceID:   workspace.ID,
+			Title:         workspace.Title,
+			Kind:          "workspace",
+			Source:        workspace.Source,
+			Repositories:  append([]string{}, workspace.Repositories...),
+			Summary:       workspace.Summary,
+			SummarySource: workspace.SummarySource,
+			Path:          workspace.Path,
+			RelativePath:  workspace.RelativePath,
 		},
 	}
 

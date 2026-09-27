@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/health"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
 )
@@ -36,11 +37,18 @@ type ScanStatus struct {
 type Scanner struct {
 	// Health, when set, is told about failing scans and workspace repairs.
 	Health *health.Monitor
+	// Publish, when set, is told when a project appears, its repositories
+	// change, or it drops out of the registry. In-process only: it is not
+	// replayed, so a project missing when serve starts is not reported.
+	Publish func(eventbus.Event) error
 
 	mu     sync.Mutex
 	status ScanStatus
 	sniff  func(scanRoots []string, registryDir string) error
 	reload func() error
+	// known is the project id set from the previous maintain pass, used only
+	// to notice one going missing. It is memory, not a durable record.
+	known map[string]bool
 }
 
 func NewScanner(sniff func(scanRoots []string, registryDir string) error, reload func() error) *Scanner {

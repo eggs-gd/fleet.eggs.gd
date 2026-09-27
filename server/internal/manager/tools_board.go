@@ -196,18 +196,19 @@ func (s *Service) Workers(ctx context.Context) Response {
 	}}}
 }
 
-// Events returns task.* audit rows after the given id.
+// Events returns task.* and project.* audit rows after the given id. Nothing
+// is pushed into a Manager session; a skill calls this each turn instead.
 func (s *Service) Events(since int64) Response {
 	if strings.TrimSpace(s.RuntimeRoot) == "" {
 		return failResponse(Failure{Code: FailureProviderError, Message: "runtime root is not configured"})
 	}
-	events, err := audit.TaskEventsAfter(s.RuntimeRoot, since)
+	events, err := audit.ManagerEventsAfter(s.RuntimeRoot, since)
 	if err != nil {
 		return failureFromErr(err)
 	}
 	result := &Result{Action: "events", Detail: events}
 	if problem, failing := s.Health.Has("audit"); failing {
-		result.Warnings = []string{"task events may be missing since " + problem.Since + ": " + problem.Error}
+		result.Warnings = []string{"events may be missing since " + problem.Since + ": " + problem.Error}
 	}
 	return Response{OK: true, Result: result}
 }

@@ -100,6 +100,14 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		func(_ context.Context, _ *mcp.CallToolRequest, in aliasMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Alias(in.Project, in.Alias), nil
 		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_project_facts", Description: "Read-only. The project's current one-line summary, whether it is still just a guess (summary_source), and its repository's own README (or, for a group, each member's), to write a real description from. Writes nothing."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in projectMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.ProjectFacts(in.Project), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_describe", Description: "Record the project's one-paragraph description and mark it confirmed, so the scanner stops overwriting it with a guess. Call this only after the person has approved the wording you read from manager_project_facts."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in describeMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.Describe(in.Project, in.Summary), nil
+		})
 	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_answer", Description: "Record the person's answer, move a waiting task forward, and let the worker continue."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in answerMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Answer(ctx, in.Ref, in.Text, in.Status), nil
@@ -178,6 +186,15 @@ type inboxMCPInput struct {
 type aliasMCPInput struct {
 	Project string `json:"project"`
 	Alias   string `json:"alias"`
+}
+
+type projectMCPInput struct {
+	Project string `json:"project"`
+}
+
+type describeMCPInput struct {
+	Project string `json:"project"`
+	Summary string `json:"summary"`
 }
 
 type answerMCPInput struct {

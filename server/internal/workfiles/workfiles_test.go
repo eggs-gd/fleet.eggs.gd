@@ -187,3 +187,35 @@ func TestDefaultAssignee(t *testing.T) {
 		t.Fatalf("traversal = %q", got)
 	}
 }
+
+func TestSetProjectSummary(t *testing.T) {
+	root := t.TempDir()
+	if _, err := SetProjectSummary(root, "acme", "A tool for the thing."); err == nil {
+		t.Fatal("wrote a summary for a project without a card")
+	}
+	dir := filepath.Join(root, "Work", "acme")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(dir, "PROJECT.md")
+	if err := os.WriteFile(card, []byte("---\nid: \"acme\"\nsummary_source: \"generated\"\n---\n\n# Acme\n\nWorkspace group containing 3 repositories under `acme/`.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetProjectSummary(root, "acme", "  "); err == nil {
+		t.Fatal("wrote an empty summary")
+	}
+	path, err := SetProjectSummary(root, "acme", "A tool for the thing.")
+	if err != nil || path != card {
+		t.Fatalf("SetProjectSummary = %q, %v", path, err)
+	}
+	got, _ := os.ReadFile(card)
+	if !strings.Contains(string(got), "\n# Acme\n\nA tool for the thing.\n") {
+		t.Fatalf("summary not written:\n%s", got)
+	}
+	if strings.Contains(string(got), "Workspace group containing") {
+		t.Fatalf("old summary not replaced:\n%s", got)
+	}
+	if !strings.Contains(string(got), `summary_source: "confirmed"`) {
+		t.Fatalf("summary_source not flipped to confirmed:\n%s", got)
+	}
+}

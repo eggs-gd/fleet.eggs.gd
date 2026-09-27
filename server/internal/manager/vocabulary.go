@@ -62,6 +62,10 @@ type VocabularyEntity struct {
 	Summary string   `json:"summary,omitempty"`
 	Aliases []string `json:"aliases,omitempty"`
 	Kind    string   `json:"kind"`
+	// SummarySource is "generated" (the scanner's own guess, may be wrong or
+	// boilerplate) or "confirmed" (a person or the Manager approved it via
+	// manager_describe). Empty for kinds that carry no card, such as agents.
+	SummarySource string `json:"summary_source,omitempty"`
 }
 
 // Vocabulary is the dynamic STT / manager-context payload.
@@ -101,11 +105,12 @@ func BuildVocabulary(view BoardView) Vocabulary {
 	workspaces := make([]VocabularyEntity, 0, len(view.Workspaces))
 	for _, ws := range view.Workspaces {
 		entity := VocabularyEntity{
-			ID:      strings.TrimSpace(ws.ID),
-			Title:   firstNonEmpty(ws.Title, ws.ID),
-			Summary: truncateRunes(strings.TrimSpace(ws.Summary), summaryEntityMaxRunes),
-			Aliases: uniqueFold(collectAliases(append([]string{ws.ID, ws.Title}, ws.Repositories...)...)),
-			Kind:    "workspace",
+			ID:            strings.TrimSpace(ws.ID),
+			Title:         firstNonEmpty(ws.Title, ws.ID),
+			Summary:       truncateRunes(strings.TrimSpace(ws.Summary), summaryEntityMaxRunes),
+			Aliases:       uniqueFold(collectAliases(append([]string{ws.ID, ws.Title}, ws.Repositories...)...)),
+			Kind:          "workspace",
+			SummarySource: firstNonEmpty(ws.SummarySource, "generated"),
 		}
 		if entity.ID == "" && entity.Title == "" {
 			continue
@@ -121,11 +126,12 @@ func BuildVocabulary(view BoardView) Vocabulary {
 	projects := make([]VocabularyEntity, 0, len(view.Projects))
 	for _, project := range view.Projects {
 		entity := VocabularyEntity{
-			ID:      strings.TrimSpace(project.ID),
-			Title:   firstNonEmpty(project.Title, project.ID),
-			Summary: truncateRunes(strings.TrimSpace(project.Summary), summaryEntityMaxRunes),
-			Aliases: uniqueFold(collectAliases(append([]string{project.ID, project.Title}, project.Repositories...)...)),
-			Kind:    "project",
+			ID:            strings.TrimSpace(project.ID),
+			Title:         firstNonEmpty(project.Title, project.ID),
+			Summary:       truncateRunes(strings.TrimSpace(project.Summary), summaryEntityMaxRunes),
+			Aliases:       uniqueFold(collectAliases(append([]string{project.ID, project.Title}, project.Repositories...)...)),
+			Kind:          "project",
+			SummarySource: firstNonEmpty(project.SummarySource, "generated"),
 		}
 		if entity.ID == "" && entity.Title == "" {
 			continue

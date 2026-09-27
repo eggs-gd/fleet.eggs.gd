@@ -129,6 +129,7 @@ func Serve(cfg Config) error {
 	defer stop()
 
 	settingsRT.scanner.Health = cfg.Health
+	settingsRT.scanner.Publish = coreRuntime.Publish
 	go settingsRT.scanner.Watch(ctx, cfg.CoreRoot, 2*time.Second)
 	go coreRuntime.Run(ctx)
 

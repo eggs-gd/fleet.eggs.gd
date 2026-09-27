@@ -13,6 +13,10 @@ func renderWorkspace(project Workspace) string {
 		"review_status: " + jsonString(project.ReviewStatus),
 		"status: " + jsonString(project.Status),
 		"source: " + jsonString(project.Source),
+		// The scanner's own first guess. manager_describe flips this to
+		// "confirmed" once a person or the Manager has approved or written
+		// the paragraph below; MaintainCards never touches it after that.
+		"summary_source: \"generated\"",
 		"repositories:",
 	}
 	for _, repo := range project.Repositories {

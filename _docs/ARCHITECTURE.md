@@ -111,8 +111,8 @@ reports where it can keep running.
   `Work/<id>/PROJECT.md` with the registry, gives a project without a tag one,
   and every 30 ticks checks `counters.json`. It does not rewrite a duplicate
   or invalid tag written by a person; it reports it.
-- **Audit**: every `task.*` bus event is written to `events` in `runtime.db`
-  before it is published.
+- **Audit**: every `task.*` and `project.*` bus event is written to `events`
+  in `runtime.db` before it is published.
 
 ## Task refs
 
@@ -125,10 +125,19 @@ digits, unique, not `INBOX`). Counters are per tag in
 ## Event bus
 
 `internal/eventbus` is an in-process bus with named channels (`task`,
-`release`, `worker`, `practice`, `configuration`). Only `task` has a
-publisher: `task.needs_attention` and `task.needs_review`. The bus has no disk
-queue and no retry. The Manager reads the audit rows through `manager_events`;
-nothing is pushed into a Manager session.
+`project`, `release`, `worker`, `practice`, `configuration`). Two have a
+publisher today:
+
+- `task`: `task.needs_attention` and `task.needs_review`, from execution.
+- `project`: `project.discovered`, `project.repos_changed` and
+  `project.missing`, from the scanner's every-2s pass (`Scanner.Watch`). Only
+  a discovered project or a changed repositories list fires; a project's
+  presence is tracked in memory, edge-triggered, so a project already missing
+  when `serve` starts, or already reported missing, is not reported again.
+
+The bus itself has no disk queue and no retry; durability comes from the
+audit write above. The Manager reads the audit rows through `manager_events`;
+nothing is pushed into a Manager session, so a skill calls it every turn.
 
 ## Code map
 

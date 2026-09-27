@@ -46,6 +46,36 @@ func AddProjectAlias(root, project, alias string) (path string, wrote bool, err 
 	return path, true, writeAtomic(path, []byte(next))
 }
 
+// SetProjectSummary writes the one paragraph under a project card's title and
+// marks it confirmed, so the scanner never overwrites it again. It is how
+// manager_describe records what a project is — read from the project's own
+// repository, approved by the person before it is written.
+func SetProjectSummary(root, project, summary string) (path string, err error) {
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
+	summary = strings.TrimSpace(summary)
+	if summary == "" {
+		return "", errors.New("summary is required")
+	}
+	path = projectCard(root, project)
+	body, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return path, fmt.Errorf("project %s has no card yet (%s); the scanner creates cards on its next pass", project, path)
+	}
+	if err != nil {
+		return path, err
+	}
+	text, err := mdfile.SetFirstParagraph(string(body), summary)
+	if err != nil {
+		return path, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	text, err = mdfile.SetScalar(text, "summary_source", `"confirmed"`)
+	if err != nil {
+		return path, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	return path, writeAtomic(path, []byte(text))
+}
+
 // ProjectAliases returns the aliases on a project card. A project without a
 // card has none.
 func ProjectAliases(root, project string) ([]string, error) {

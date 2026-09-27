@@ -82,6 +82,55 @@ func SetList(text, key string, items []string) (string, error) {
 	return joinFrontmatter(lines, rest), nil
 }
 
+// SetFirstParagraph replaces the first non-heading, non-empty paragraph after
+// the frontmatter block with paragraph, leaving any heading before it and
+// anything after the following blank line untouched. It appends the
+// paragraph after the frontmatter (and any leading headings) when the body
+// has no such paragraph yet.
+func SetFirstParagraph(text, paragraph string) (string, error) {
+	lines, rest, err := splitFrontmatter(text)
+	if err != nil {
+		return "", err
+	}
+	_, body, ok := strings.Cut(rest, "\n---")
+	if !ok {
+		return "", ErrNoFrontmatter
+	}
+	return joinFrontmatter(lines, "\n---"+replaceFirstParagraph(body, paragraph)), nil
+}
+
+func replaceFirstParagraph(body, paragraph string) string {
+	lines := strings.Split(body, "\n")
+	start, end := -1, len(lines)
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			if start >= 0 {
+				end = i
+				break
+			}
+			continue
+		}
+		if strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if start < 0 {
+			start = i
+		}
+	}
+	if start < 0 {
+		trimmed := strings.TrimRight(body, "\n")
+		if trimmed == "" {
+			return "\n\n" + paragraph
+		}
+		return trimmed + "\n\n" + paragraph
+	}
+	next := append([]string{}, lines[:start]...)
+	next = append(next, paragraph)
+	next = append(next, lines[end:]...)
+	return strings.Join(next, "\n")
+}
+
 // ListItems reads key as a block list or as an inline [a, b] list. Items come
 // back unquoted.
 func ListItems(text, key string) ([]string, error) {

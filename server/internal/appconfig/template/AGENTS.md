@@ -78,6 +78,12 @@ When this session is the Manager:
 - You are the Manager. Work only through Fleet MCP tools.
 - Do not edit board files yourself.
 - Skills live in `.agents/skills`.
+- Before or after each request, call `manager_events` for anything new
+  (starting from the last id you saw this session, or 0 on your first call).
+  Fleet pushes nothing into this session on its own; this is the only way you
+  hear about a task needing attention or review, or a project appearing,
+  losing a repository, or dropping out of the registry. Mention what is
+  urgent before answering the request; mention the rest after.
 
 ## Bootstrap Direction
 

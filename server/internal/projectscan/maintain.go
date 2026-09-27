@@ -20,6 +20,13 @@ type CardReport struct {
 	// Problems are cards a person has to fix: a duplicate or malformed tag, or a
 	// card without frontmatter that the registry does not know.
 	Problems []string
+	// ReposChanged lists projects whose repositories list actually differed
+	// from the registry — a subset of Repaired, which also fires for
+	// alias-format fixups that are not a repository change.
+	ReposChanged []string
+	// Known lists every project id the registry named this pass, so a caller
+	// can diff it against an earlier pass to notice a project going missing.
+	Known []string
 }
 
 // MaintainCards keeps Work/<id>/PROJECT.md in step with the registry, without
@@ -41,6 +48,7 @@ func MaintainCards(registryDir, workDir string) (CardReport, error) {
 		return report, fmt.Errorf("read registry: %w", err)
 	}
 	for _, project := range projects {
+		report.Known = append(report.Known, project.ID)
 		dir := filepath.Join(workDir, project.ID)
 		path := filepath.Join(dir, "PROJECT.md")
 		rendered := renderWorkspace(project)
@@ -58,9 +66,12 @@ func MaintainCards(registryDir, workDir string) (CardReport, error) {
 		if err != nil {
 			return report, err
 		}
-		repaired, changed, err := repairCard(string(existing), rendered, project)
+		repaired, changed, reposChanged, err := repairCard(string(existing), rendered, project)
 		if err != nil {
 			return report, fmt.Errorf("card %s: %w", path, err)
+		}
+		if reposChanged {
+			report.ReposChanged = append(report.ReposChanged, project.ID)
 		}
 		if !changed {
 			continue
@@ -73,21 +84,21 @@ func MaintainCards(registryDir, workDir string) (CardReport, error) {
 	return assignTags(workDir, report)
 }
 
-func repairCard(existing, rendered string, project Workspace) (string, bool, error) {
-	text := existing
+func repairCard(existing, rendered string, project Workspace) (text string, changed bool, reposChanged bool, err error) {
+	text = existing
 	if !strings.HasPrefix(text, "---\n") || !strings.Contains(text[4:], "\n---") {
 		head, _, ok := strings.Cut(rendered, "\n---\n")
 		if !ok {
-			return "", false, errors.New("rendered card has no frontmatter")
+			return "", false, false, errors.New("rendered card has no frontmatter")
 		}
 		text = head + "\n---\n\n" + strings.TrimLeft(existing, "\n")
 	}
-	if items, err := mdfile.ListItems(text, "aliases"); err != nil {
-		return "", false, err
+	if items, listErr := mdfile.ListItems(text, "aliases"); listErr != nil {
+		return "", false, false, listErr
 	} else if len(items) > 0 {
-		next, err := mdfile.SetList(text, "aliases", items)
-		if err != nil {
-			return "", false, err
+		next, setErr := mdfile.SetList(text, "aliases", items)
+		if setErr != nil {
+			return "", false, false, setErr
 		}
 		text = next
 	}
@@ -95,18 +106,19 @@ func repairCard(existing, rendered string, project Workspace) (string, bool, err
 	for _, repo := range project.Repositories {
 		want = append(want, jsonString(repo.RelativePath))
 	}
-	have, err := mdfile.ListItems(text, "repositories")
-	if err != nil {
-		return "", false, err
+	have, listErr := mdfile.ListItems(text, "repositories")
+	if listErr != nil {
+		return "", false, false, listErr
 	}
 	if !sameStrings(have, unquoted(want)) {
-		next, err := mdfile.SetList(text, "repositories", want)
-		if err != nil {
-			return "", false, err
+		next, setErr := mdfile.SetList(text, "repositories", want)
+		if setErr != nil {
+			return "", false, false, setErr
 		}
 		text = next
+		reposChanged = true
 	}
-	return text, text != existing, nil
+	return text, text != existing, reposChanged, nil
 }
 
 func unquoted(values []string) []string {

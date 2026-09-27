@@ -1,6 +1,10 @@
 package mdfile
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestSetScalarAndList(t *testing.T) {
 	text := "---\nid: a\nrepositories:\n  - x\n  - y\nstatus: old\n---\n\n# Body\n"
@@ -42,5 +46,48 @@ func TestFrontmatterHelpersRejectTextWithoutABlock(t *testing.T) {
 		if _, err := SetScalar(text, "a", "b"); err != ErrNoFrontmatter {
 			t.Fatalf("%q: err = %v", text, err)
 		}
+	}
+}
+
+func TestSetFirstParagraphReplacesJustThatParagraph(t *testing.T) {
+	card := "---\nid: \"acme\"\nsummary_source: \"generated\"\n---\n\n# Acme\n\nOld boilerplate summary.\n"
+	got, err := SetFirstParagraph(card, "A tool for the thing.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "---\nid: \"acme\"\nsummary_source: \"generated\"\n---\n\n# Acme\n\nA tool for the thing.\n"
+	if got != want {
+		t.Fatalf("got:\n%q\nwant:\n%q", got, want)
+	}
+}
+
+func TestSetFirstParagraphKeepsWhatComesAfterIt(t *testing.T) {
+	card := "---\nid: \"acme\"\n---\n\n# Acme\n\nOld summary.\n\n## Later Section\n\nUntouched.\n"
+	got, err := SetFirstParagraph(card, "New summary.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "New summary.\n\n## Later Section\n\nUntouched.\n") {
+		t.Fatalf("later content was not preserved:\n%s", got)
+	}
+	if strings.Contains(got, "Old summary.") {
+		t.Fatalf("old summary was not replaced:\n%s", got)
+	}
+}
+
+func TestSetFirstParagraphOnACardWithNoneYet(t *testing.T) {
+	card := "---\nid: \"acme\"\n---\n\n# Acme\n"
+	got, err := SetFirstParagraph(card, "First description.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(got, "# Acme\n\nFirst description.") {
+		t.Fatalf("got:\n%q", got)
+	}
+}
+
+func TestSetFirstParagraphOnMalformedCard(t *testing.T) {
+	if _, err := SetFirstParagraph("no frontmatter here", "x"); !errors.Is(err, ErrNoFrontmatter) {
+		t.Fatalf("err = %v", err)
 	}
 }

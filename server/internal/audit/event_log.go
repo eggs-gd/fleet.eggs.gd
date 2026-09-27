@@ -84,15 +84,22 @@ func EventLogText(root string) (string, error) {
 	return buf.String(), nil
 }
 
-// TaskEventsAfter returns task.* audit rows newer than after.
-func TaskEventsAfter(root string, after int64) ([]Event, error) {
-	rows, err := runtimedb.TaskEventsAfter(root, after)
+// ManagerEventsAfter returns task.* and project.* audit rows newer than
+// after — everything manager_events surfaces.
+func ManagerEventsAfter(root string, after int64) ([]Event, error) {
+	rows, err := runtimedb.ManagerEventsAfter(root, after)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]Event, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, Event{ID: row.ID, Type: row.Type, TaskRef: row.TaskRef, Message: row.Message})
+		event := Event{ID: row.ID, Type: row.Type, TaskRef: row.TaskRef, Path: row.Path, Message: row.Message}
+		if row.Details != "" {
+			if err := json.Unmarshal([]byte(row.Details), &event.Details); err != nil {
+				return nil, err
+			}
+		}
+		out = append(out, event)
 	}
 	return out, nil
 }

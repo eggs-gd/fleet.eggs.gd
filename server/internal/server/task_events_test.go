@@ -52,7 +52,7 @@ func TestAuditedBusRecordsBeforeDelivering(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitFor(t, wg)
-	rows, err := audit.TaskEventsAfter(root, 0)
+	rows, err := audit.ManagerEventsAfter(root, 0)
 	if err != nil || len(rows) != 1 || rows[0].TaskRef != "CORE-1" || rows[0].Type != "task.needs_review" {
 		t.Fatalf("audit rows = %+v, %v", rows, err)
 	}
@@ -70,9 +70,32 @@ func TestAuditedBusRecordsTheHumanRefWhenTheEventCarriesIt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rows, err := audit.TaskEventsAfter(root, 0)
+	rows, err := audit.ManagerEventsAfter(root, 0)
 	if err != nil || len(rows) != 1 || rows[0].TaskRef != "FLET-3" {
 		t.Fatalf("rows = %+v, %v", rows, err)
+	}
+}
+
+func TestAuditedBusAlsoRecordsTheProjectChannel(t *testing.T) {
+	root := t.TempDir()
+	pub := &auditedBus{bus: eventbus.New(), root: root, health: health.New()}
+	err := pub.Publish(eventbus.Event{
+		Channel: eventbus.ChannelProject, Type: "project.discovered", Text: "Project acme discovered.",
+		Fields: map[string]string{"project_id": "acme", "project_path": "Work/acme/PROJECT.md"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := audit.ManagerEventsAfter(root, 0)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("rows = %+v, %v", rows, err)
+	}
+	row := rows[0]
+	if row.Type != "project.discovered" || row.Path != "Work/acme/PROJECT.md" {
+		t.Fatalf("project row = %+v", row)
+	}
+	if row.Details["project_id"] != "acme" {
+		t.Fatalf("project row details = %#v", row.Details)
 	}
 }
 

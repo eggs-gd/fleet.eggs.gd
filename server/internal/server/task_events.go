@@ -21,13 +21,20 @@ type auditedBus struct {
 }
 
 func (a *auditedBus) Publish(event eventbus.Event) error {
-	if event.Channel != eventbus.ChannelTask || strings.TrimSpace(a.root) == "" {
+	audited := event.Channel == eventbus.ChannelTask || event.Channel == eventbus.ChannelProject
+	if !audited || strings.TrimSpace(a.root) == "" {
 		return a.bus.Publish(event)
+	}
+	var details map[string]any
+	if event.Channel == eventbus.ChannelProject {
+		details = projectEventDetails(event)
 	}
 	err := audit.AppendEvent(a.root, audit.Event{
 		Type:    event.Type,
 		TaskRef: taskRefOf(event),
+		Path:    event.Fields["project_path"],
 		Message: event.Text,
+		Details: details,
 	})
 	if err != nil {
 		err = a.health.Fail("audit", fmt.Errorf("record %s in the audit log: %w", event.Type, err))
@@ -47,4 +54,19 @@ func taskRefOf(event eventbus.Event) string {
 		return ref
 	}
 	return event.Fields["task_id"]
+}
+
+// projectEventDetails turns a project.* event's fields into the audit row's
+// JSON details, so manager_events can show more than the headline text.
+func projectEventDetails(event eventbus.Event) map[string]any {
+	details := map[string]any{}
+	for _, key := range []string{"project_id", "repositories_added", "repositories_removed"} {
+		if value := event.Fields[key]; value != "" {
+			details[key] = value
+		}
+	}
+	if len(details) == 0 {
+		return nil
+	}
+	return details
 }

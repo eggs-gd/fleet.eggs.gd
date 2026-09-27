@@ -30,6 +30,10 @@ type App struct {
 	TaskStore     taskprovider.Provider
 	Listener      chain.Processor
 	FinalizerProc chain.ChainProcessor
+	// Publish sends an event to the bus (and, for task/project channels, the
+	// audit log). The scanner uses it to report projects appearing, changing
+	// or going missing.
+	Publish func(eventbus.Event) error
 
 	errch       chan error
 	logger      *l.Logger
@@ -185,6 +189,7 @@ func Compose(cfg ComposeConfig) *App {
 		TaskStore:     taskStore,
 		Listener:      listener,
 		FinalizerProc: finalizerProc,
+		Publish:       events.Publish,
 		errch:         errch,
 		logger:        logger.Named("App"),
 		root:          cfg.CoreRoot,

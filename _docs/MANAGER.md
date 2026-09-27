@@ -33,16 +33,17 @@ worked but needs the person's attention carries `warnings`.
 |---|---|
 | Schema | `manager_schema` (the Intent JSON schema), `manager_vocabulary` (valid project ids, workspaces, assignees, statuses) |
 | Command | `manager_command` executes one structured `Intent` |
-| Read | `manager_board`, `manager_task`, `manager_workers`, `manager_events` |
+| Read | `manager_board`, `manager_task`, `manager_workers`, `manager_events`, `manager_project_facts` (read-only, writes nothing) |
 | Decide | `manager_resolve_project`, `manager_similar`, `manager_route`, `manager_validate` (dry run, writes nothing) |
-| Write | `manager_inbox`, `manager_alias`, `manager_answer`, `manager_review`, `manager_update` |
+| Write | `manager_inbox`, `manager_alias`, `manager_describe`, `manager_answer`, `manager_review`, `manager_update` |
 
 `manager_command` covers creating a task (`description`, `acceptance_criteria`, `context`), changing status, assignee or
 priority, adding a comment, cancelling (requires `confirm: true`), and looking
 up a task or the board. It is deterministic. The calling agent is already the
-LLM, so no classification runs. `manager_events` returns `task.*` audit rows
-after a row id; Fleet pushes nothing into the session. Each tool's behavior is
-in [manager-skills](specs/manager-skills.md).
+LLM, so no classification runs. `manager_events` returns `task.*` and
+`project.*` audit rows after a row id; Fleet pushes nothing into the session,
+so a skill calls it every turn instead. Each tool's behavior is in
+[manager-skills](specs/manager-skills.md).
 
 `manager_inbox` is where a person's own wording is kept: `capture` is the one
 durable copy of raw voice or chat input, and `intake` calls it before any new
@@ -52,6 +53,29 @@ another task, since one capture can decompose into several. `list` gives a
 status and preview per item, `show` gives one item's full text and every task
 it produced. `manager_task` shows a task's own `source_inbox`, so the path from
 a captured sentence to the task it became is visible both ways.
+
+## Describing a project
+
+`manager_vocabulary` marks each project's `summary_source`: `generated` (the
+scanner's own guess from a README, may say nothing real) or `confirmed` (a
+person or the Manager already approved it). `manager_project_facts` reads the
+current summary and the project's own README (each member's, for a group);
+`manager_describe` writes the paragraph the person approved and flips it to
+`confirmed`, and the scanner never overwrites it again. Aliasing is the only
+other thing the Manager writes on a project card — what a project is stays in
+its repository.
+
+## Watching the bus
+
+Fleet pushes nothing into a Manager session. Instead, the Manager checks:
+`manager_events` before or after each turn, starting from the last row id it
+saw (0 on a fresh session). `task.needs_attention` and `task.needs_review`
+come from execution; `project.discovered`, `project.repos_changed` and
+`project.missing` come from the scanner, edge-triggered so a project already
+reported missing is not reported again. The bus itself has no disk queue: an
+event fires when the scanner or the execution runtime notices the change, not
+on a fixed schedule, and a project already gone before Fleet started is not
+reported.
 
 The skills are also served as MCP prompts under the same names (`intake`,
 `shape-task`, `resolve-project`, `route`, `triage-attention`, `review`,

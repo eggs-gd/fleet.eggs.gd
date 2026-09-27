@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/eventbus"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
@@ -62,6 +63,9 @@ func (s *Scanner) maintain(coreRoot string, full bool) {
 		s.Health.Fail("workspace", errors.New(strings.Join(report.Problems, "; ")))
 	default:
 		s.Health.OK("workspace")
+	}
+	if err == nil {
+		s.publishProjectEvents(coreRoot, report)
 	}
 	if !full {
 		return
@@ -126,6 +130,49 @@ func (s *Scanner) watchOnce(coreRoot string, paths func(scanRoots []string) ([]s
 	s.Health.OK("scan")
 	seen.ready = true
 	seen.fingerprint = fingerprint
+}
+
+// publishProjectEvents tells the bus about a project appearing, its
+// repositories changing, or it dropping out of the registry. "Missing" is
+// edge-triggered against s.known, kept only in memory: it fires once, when a
+// project first drops out, not on every later tick it stays gone.
+func (s *Scanner) publishProjectEvents(coreRoot string, report projectscan.CardReport) {
+	if s.Publish == nil {
+		return
+	}
+	now := make(map[string]bool, len(report.Known))
+	for _, id := range report.Known {
+		now[id] = true
+	}
+	s.mu.Lock()
+	previous := s.known
+	s.known = now
+	s.mu.Unlock()
+
+	publish := func(kind string, id string) {
+		_ = s.Publish(eventbus.Event{
+			Channel: eventbus.ChannelProject,
+			Type:    "project." + kind,
+			Text:    "Project " + id + " " + strings.ReplaceAll(kind, "_", " ") + ".",
+			Fields: map[string]string{
+				"project_id":   id,
+				"project_path": filepath.Join(coreRoot, "Work", id, "PROJECT.md"),
+			},
+		})
+	}
+	for _, id := range report.Created {
+		publish("discovered", id)
+	}
+	for _, id := range report.ReposChanged {
+		publish("repos_changed", id)
+	}
+	if previous != nil {
+		for id := range previous {
+			if !now[id] {
+				publish("missing", id)
+			}
+		}
+	}
 }
 
 func repoPaths(scanRoots []string) ([]string, error) {
