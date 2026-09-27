@@ -26,7 +26,7 @@ func (a *auditedBus) Publish(event eventbus.Event) error {
 	}
 	err := audit.AppendEvent(a.root, audit.Event{
 		Type:    event.Type,
-		TaskRef: event.Fields["task_id"],
+		TaskRef: taskRefOf(event),
 		Message: event.Text,
 	})
 	if err != nil {
@@ -38,4 +38,13 @@ func (a *auditedBus) Publish(event eventbus.Event) error {
 		err = pubErr
 	}
 	return err
+}
+
+// taskRefOf is the human ref of the task an event is about. Events name the task
+// by provider locator (task_id), and carry the ref when the publisher knew it.
+func taskRefOf(event eventbus.Event) string {
+	if ref := event.Fields["task_ref"]; ref != "" {
+		return ref
+	}
+	return event.Fields["task_id"]
 }

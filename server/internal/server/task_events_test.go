@@ -61,6 +61,21 @@ func TestAuditedBusRecordsBeforeDelivering(t *testing.T) {
 	}
 }
 
+func TestAuditedBusRecordsTheHumanRefWhenTheEventCarriesIt(t *testing.T) {
+	root := t.TempDir()
+	pub := &auditedBus{bus: eventbus.New(), root: root, health: health.New()}
+	err := pub.Publish(eventbus.Event{Channel: eventbus.ChannelTask, Type: "task.needs_review", Fields: map[string]string{
+		"task_id": "Work/acme/tasks/2026-09-27-x.md", "task_ref": "FLET-3",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, err := audit.TaskEventsAfter(root, 0)
+	if err != nil || len(rows) != 1 || rows[0].TaskRef != "FLET-3" {
+		t.Fatalf("rows = %+v, %v", rows, err)
+	}
+}
+
 func TestAuditedBusFailureIsReturnedAndReportedButEventStillDelivered(t *testing.T) {
 	blocker := filepath.Join(t.TempDir(), "not-a-directory")
 	if err := os.WriteFile(blocker, []byte("x"), 0o644); err != nil {

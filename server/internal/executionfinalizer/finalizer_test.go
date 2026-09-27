@@ -132,6 +132,9 @@ func TestFinalizerPublishesTaskEvents(t *testing.T) {
 			if event.Fields["task_id"] != locator {
 				t.Fatalf("task_id = %q", event.Fields["task_id"])
 			}
+			if event.Fields["task_ref"] != updated.Ref || updated.Ref == "" {
+				t.Fatalf("task_ref = %q, want the task's ref %q", event.Fields["task_ref"], updated.Ref)
+			}
 			if !strings.Contains(event.Text, tc.wantText) || !strings.Contains(event.Text, locator) {
 				t.Fatalf("text = %q", event.Text)
 			}

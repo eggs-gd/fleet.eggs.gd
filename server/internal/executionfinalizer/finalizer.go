@@ -124,9 +124,8 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 		}
 		return Task{}, err
 	}
-	f.publish(applied)
-
 	updated, err := f.load(locator)
+	f.publish(applied, updated.Ref)
 	if err != nil {
 		return Task{}, err
 	}
@@ -136,13 +135,19 @@ func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {
 	return updated, nil
 }
 
-func (f *Finalizer) publish(result taskflow.ExecutionResult) {
+// publish announces the outcome. ref is the task's human ref (FLET-12); the
+// event's task_id stays the provider locator, and task_ref carries the ref for
+// readers such as manager_events.
+func (f *Finalizer) publish(result taskflow.ExecutionResult, ref string) {
 	if f.publisher == nil {
 		return
 	}
 	event, ok := taskEvent(result)
 	if !ok {
 		return
+	}
+	if ref = strings.TrimSpace(ref); ref != "" {
+		event.Fields["task_ref"] = ref
 	}
 	_ = f.publisher.Publish(event)
 }

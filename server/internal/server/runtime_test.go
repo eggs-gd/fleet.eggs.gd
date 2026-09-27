@@ -2833,15 +2833,12 @@ exit 1
 	waitForNoActiveRuntimeSessions(t, app)
 }
 
-// TestBackgroundRemoteSessionFinalizesTaskFromTranscriptWhileSessionStaysActive
-// is the CORE-97 regression test for the core outcome-routing gap: before
-// this fix, a Claude background-remote session's task only got finalized
-// when the background session itself reached a terminal state, which does
-// not happen while a phone-visible session stays open for further chat.
-// Core must instead detect the worker's compact JSON result payload in the
-// polled transcript and finalize the task immediately, leaving the (still
-// live) session alone.
-func TestBackgroundRemoteSessionFinalizesTaskFromTranscriptWhileSessionStaysActive(t *testing.T) {
+// TestBackgroundRemoteSessionFinalizesTaskFromTranscript is the CORE-97
+// regression test for the outcome-routing gap: a Claude background-remote
+// session's task must be finalized from the worker's compact JSON result in the
+// polled transcript, without waiting for the provider to end the session. The
+// session is then stopped for reuse and keeps the result in its record.
+func TestBackgroundRemoteSessionFinalizesTaskFromTranscript(t *testing.T) {
 	root := t.TempDir()
 	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-03-result.md")
 	writeTestFile(t, taskPath, testTaskMarkdown("CORE-97", "Report outcome from transcript", "todo"))
@@ -2876,12 +2873,6 @@ exit 1
 
 	restorePoll := execution.SetBackgroundRemotePollIntervalForTest(5 * time.Millisecond)
 	defer restorePoll()
-	t.Cleanup(func() {
-		if t.Failed() {
-			text, _ := audit.EventLogText(root)
-			t.Logf("event log:\n%s", text)
-		}
-	})
 
 	ctx, cancel := context.WithCancel(t.Context())
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
@@ -2917,15 +2908,11 @@ exit 1
 		t.Fatalf("comments = %#v, want the worker's reported summary", loaded.Comments)
 	}
 
-	// The background session must still be reported as active: Core applied
-	// the task transition from the transcript without tearing the session
-	// down, because Alex may still be chatting with it on the phone.
-	state := waitForRuntimeState(t, app, func(s State) bool {
-		return len(s.RuntimeSessions) == 1 && s.RuntimeSessions[0].IsActive()
-	})
-	if state.RuntimeSessions[0].Result == nil || state.RuntimeSessions[0].Result.Outcome != "completed" {
-		t.Fatalf("session.Result = %#v, want the parsed completed outcome", state.RuntimeSessions[0].Result)
-	}
+	// The task moved because of the result in the transcript, not because the
+	// session ended. Once the outcome is applied Fleet stops the background
+	// session so the next task for the same project can resume it (session
+	// reuse), so the session is gone soon after and its record keeps the result.
+	waitForNoActiveRuntimeSessions(t, app)
 
 	records, err := execution.LoadRuntimeSessionRecords(root)
 	if err != nil {
