@@ -13,7 +13,7 @@ export const PILL_TONES = [
   'slate'
 ];
 
-export const TASK_TYPE_TONES = {
+export const TASK_TYPE_TONES: Record<string, string> = {
   bug: 'red',
   feature: 'blue',
   research: 'purple',
@@ -31,23 +31,23 @@ export const TASK_TYPE_TONES = {
   infrastructure: 'slate'
 };
 
-const toneHash = (value) =>
+const toneHash = (value: unknown): number =>
   [...String(value)].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) >>> 0, 0);
 
-export const normalizeTaskType = (type) =>
+export const normalizeTaskType = (type: unknown): string =>
   String(type || '')
     .trim()
     .toLowerCase();
 
-export const typeTone = (type) => {
+export const typeTone = (type: unknown): string => {
   const key = normalizeTaskType(type);
   if (!key) return 'slate';
   if (TASK_TYPE_TONES[key]) return TASK_TYPE_TONES[key];
   return PILL_TONES[toneHash(key) % PILL_TONES.length];
 };
 
-export const typeLabel = (type) => normalizeTaskType(type) || 'task';
+export const typeLabel = (type: unknown): string => normalizeTaskType(type) || 'task';
 
-export const pillClass = (tone) => `pill pill-tone-${tone}`;
+export const pillClass = (tone: string): string => `pill pill-tone-${tone}`;
 
-export const typePillClass = (type) => `${pillClass(typeTone(type))} pill-type`;
+export const typePillClass = (type: unknown): string => `${pillClass(typeTone(type))} pill-type`;

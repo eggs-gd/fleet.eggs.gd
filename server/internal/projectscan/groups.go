@@ -9,7 +9,6 @@ import (
 func buildRepositories(root, registryDir, workDir string) ([]Repository, error) {
 	seenAt := utcNow()
 	previous := loadPreviousSeen(registryDir)
-	protection := loadProtectionRules(registryDir)
 	overrides := loadOverrides(registryDir)
 	cards := parseProjectCardOverrides(workDir)
 	repoPaths, err := discoverGitRepos(root)
@@ -74,11 +73,7 @@ func buildRepositories(root, registryDir, workDir string) ([]Repository, error) 
 			FirstSeenAt:         firstSeen,
 			LastSeenAt:          seenAt,
 		}
-		protected, reason := protectedRepository(relative, protection)
-		if !protected {
-			reason = ""
-		}
-		repo.Effective = composeEffective(detected, repositoryOverride(repo, relative, overrides), projectOverrideFor(relative, cards, overrides), reason)
+		repo.Effective = composeEffective(detected, repositoryOverride(repo, relative, overrides), projectOverrideFor(relative, cards, overrides))
 		repo.Stack = stackFrom(repo.Effective.TechLists)
 		repo.Markers = markersFrom(detected)
 		repositories = append(repositories, repo)

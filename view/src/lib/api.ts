@@ -1,4 +1,4 @@
-export function apiFetch(input, init = {}) {
+export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers || {});
   if (!headers.has('Authorization') && typeof document !== 'undefined') {
     const token = document.querySelector('meta[name="fleet-token"]')?.getAttribute('content') || '';
@@ -10,7 +10,7 @@ export function apiFetch(input, init = {}) {
 // readApiError turns a failed response into a message for the person. The
 // server answers with {"error": "...", "code": "..."}; anything else is shown
 // as a short line, never as a page of raw output.
-export async function readApiError(response) {
+export async function readApiError(response: Response): Promise<string> {
   const text = await response.text();
   try {
     const body = JSON.parse(text);

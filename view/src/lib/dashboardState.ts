@@ -1,30 +1,40 @@
-export const taskKey = (task) => task?.path || task?.relative_path || task?.id || task?.ref || '';
+import type { AnyRecord, Project, Session, SessionGroup, Task, Workspace } from './types.ts';
 
-export const sessionKey = (session) =>
+/** Any object identified by an id — accordion-key helpers key on id alone,
+ * so they accept task/project/workspace groups as well as the real entities. */
+type Identified = { id?: string } | null | undefined;
+
+export const taskKey = (task?: Task | null): string =>
+  task?.path || task?.relative_path || task?.id || task?.ref || '';
+
+export const sessionKey = (session?: Session | null): string =>
   session?.claim_id ||
   `${session?.task_ref || session?.task_id || 'session'}:${session?.agent || ''}:${session?.repository || session?.project_id || ''}`;
 
-export const orphanKey = (orphan) =>
+export const orphanKey = (orphan?: AnyRecord | null): string =>
   `${orphan?.task_path || orphan?.task_id || orphan?.task_ref || 'orphan'}:${orphan?.assignee || ''}:${orphan?.repository || orphan?.project_id || ''}`;
 
-export const sessionGroupKey = (group) =>
+export const sessionGroupKey = (group?: SessionGroup | null): string =>
   group?.task_path || group?.task_id || group?.task_ref || 'session-group';
 
-export const workspaceAccordionKey = (workspace) => `workspace:${workspace?.id || ''}`;
+export const workspaceAccordionKey = (workspace?: Identified): string =>
+  `workspace:${workspace?.id || ''}`;
 
-export const projectAccordionKey = (project) => `project:${project?.id || ''}`;
+export const projectAccordionKey = (project?: Identified): string => `project:${project?.id || ''}`;
 
-export const repositoryAccordionKey = (project, repo) =>
+export const repositoryAccordionKey = (project?: Identified, repo?: AnyRecord | null): string =>
   `repository:${project?.id || ''}:${repo?.relative_path || repo?.path || repo?.id || ''}`;
 
-export const executionHistoryPanelKey = () => 'execution-history:panel';
+export const executionHistoryPanelKey = (): string => 'execution-history:panel';
 
-export const executionHistoryGroupKey = (group) => `execution-history:${sessionGroupKey(group)}`;
+export const executionHistoryGroupKey = (group?: SessionGroup | null): string =>
+  `execution-history:${sessionGroupKey(group)}`;
 
-export const archiveWorkspaceAccordionKey = (workspace) =>
+export const archiveWorkspaceAccordionKey = (workspace?: Identified): string =>
   `archive-workspace:${workspace?.id || ''}`;
 
-export const archiveProjectAccordionKey = (project) => `archive-project:${project?.id || ''}`;
+export const archiveProjectAccordionKey = (project?: Identified): string =>
+  `archive-project:${project?.id || ''}`;
 
 export const EXECUTION_HISTORY_LIMITS = {
   maxTaskGroups: 12,
@@ -43,20 +53,27 @@ const ACTIVE_SESSION_STATUSES = new Set([
   'resumable'
 ]);
 
-export const isAccordionOpen = (accordionOpen, key, defaultOpen = false) =>
-  accordionOpen[key] ?? defaultOpen;
+export const isAccordionOpen = (
+  accordionOpen: Record<string, boolean>,
+  key: string,
+  defaultOpen = false
+): boolean => accordionOpen[key] ?? defaultOpen;
 
-export const updateAccordionOpen = (accordionOpen, key, open) => ({
+export const updateAccordionOpen = (
+  accordionOpen: Record<string, boolean>,
+  key: string,
+  open: boolean
+): Record<string, boolean> => ({
   ...accordionOpen,
   [key]: open
 });
 
-export const sameTaskRecord = (a, b, fallbackPath = '') => {
+export const sameTaskRecord = (a?: Task | null, b?: Task | null, fallbackPath = ''): boolean => {
   if (!a || !b) return false;
   if (fallbackPath && (a.path === fallbackPath || a.relative_path === fallbackPath)) {
     return true;
   }
-  return (
+  return Boolean(
     (a.path && b.path && a.path === b.path) ||
     (a.relative_path && b.relative_path && a.relative_path === b.relative_path) ||
     (a.path && b.relative_path && a.path === b.relative_path) ||
@@ -66,12 +83,16 @@ export const sameTaskRecord = (a, b, fallbackPath = '') => {
   );
 };
 
-export const applyTaskUpdate = (tasks, updatedTask, fallbackPath = '') => {
+export const applyTaskUpdate = (
+  tasks: Task[] | null | undefined,
+  updatedTask: Task | null | undefined,
+  fallbackPath = ''
+): Task[] => {
   const list = Array.isArray(tasks) ? tasks : [];
   if (!updatedTask) return list;
 
-  let merged = null;
-  const next = [];
+  let merged: Task | null = null;
+  const next: Task[] = [];
   for (const task of list) {
     if (!sameTaskRecord(task, updatedTask, fallbackPath)) {
       next.push(task);
@@ -90,8 +111,8 @@ export const applyTaskUpdate = (tasks, updatedTask, fallbackPath = '') => {
   return next;
 };
 
-export const preferTaskRecord = (a, b) => {
-  if (!a) return b;
+export const preferTaskRecord = (a?: Task | null, b?: Task | null): Task | null => {
+  if (!a) return b ?? null;
   if (!b) return a;
   if (a.updated_at && b.updated_at && a.updated_at !== b.updated_at) {
     return a.updated_at > b.updated_at ? { ...b, ...a } : { ...a, ...b };
@@ -105,13 +126,13 @@ export const preferTaskRecord = (a, b) => {
   return { ...a, ...b };
 };
 
-export const dedupeTasksByIdentity = (tasks) => {
+export const dedupeTasksByIdentity = (tasks: Task[] | null | undefined): Task[] => {
   const list = Array.isArray(tasks) ? tasks : [];
-  const next = [];
+  const next: Task[] = [];
   for (const task of list) {
     const duplicateIndex = next.findIndex((existing) => sameTaskRecord(existing, task));
     if (duplicateIndex >= 0) {
-      next[duplicateIndex] = preferTaskRecord(next[duplicateIndex], task);
+      next[duplicateIndex] = preferTaskRecord(next[duplicateIndex], task) as Task;
       continue;
     }
     next.push(task);
@@ -119,12 +140,12 @@ export const dedupeTasksByIdentity = (tasks) => {
   return next;
 };
 
-export const isArchivedStatus = (status) => status === 'archived';
+export const isArchivedStatus = (status?: string | null): boolean => status === 'archived';
 
-export const isBoardStatus = (status) =>
+export const isBoardStatus = (status?: string | null): boolean =>
   Boolean(status) && status !== 'backlog' && status !== 'archived';
 
-export const partitionTasksByBoard = (tasks) => {
+export const partitionTasksByBoard = (tasks: Task[] | null | undefined) => {
   const list = Array.isArray(tasks) ? tasks : [];
   return {
     backlog: list.filter((task) => task.status === 'backlog'),
@@ -133,9 +154,14 @@ export const partitionTasksByBoard = (tasks) => {
   };
 };
 
-const techRepositories = (item) => item?.technology?.repositories || [];
+const techRepositories = (item?: AnyRecord | null): AnyRecord[] =>
+  item?.technology?.repositories || [];
 
-export const accordionKeysForState = (state) => {
+export const accordionKeysForState = (state?: {
+  workspaces?: Workspace[];
+  projects?: Project[];
+  session_groups?: SessionGroup[];
+}): Set<string> => {
   const keys = new Set([executionHistoryPanelKey()]);
   for (const workspace of state?.workspaces ?? []) {
     keys.add(workspaceAccordionKey(workspace));
@@ -154,9 +180,12 @@ export const accordionKeysForState = (state) => {
   return keys;
 };
 
-export const pruneAccordionOpen = (accordionOpen, state) => {
+export const pruneAccordionOpen = (
+  accordionOpen: Record<string, boolean>,
+  state?: { workspaces?: Workspace[]; projects?: Project[]; session_groups?: SessionGroup[] }
+): Record<string, boolean> => {
   const keys = accordionKeysForState(state);
-  const nextOpen = {};
+  const nextOpen: Record<string, boolean> = {};
   let changed = false;
   for (const [key, open] of Object.entries(accordionOpen)) {
     if (keys.has(key)) {
@@ -168,12 +197,15 @@ export const pruneAccordionOpen = (accordionOpen, state) => {
   return changed ? nextOpen : accordionOpen;
 };
 
-export const reconcileSelectedTaskFromState = (selectedTask, state) => {
+export const reconcileSelectedTaskFromState = (
+  selectedTask: Task | null | undefined,
+  state?: { tasks?: Task[] }
+): Task | null => {
   if (!selectedTask) return null;
   return (state?.tasks ?? []).find((task) => sameTaskRecord(task, selectedTask)) || null;
 };
 
-export const sessionIsActive = (session) =>
+export const sessionIsActive = (session?: Session | null): boolean =>
   ACTIVE_SESSION_STATUSES.has(session?.execution_status || session?.status || '');
 
 const OPERATOR_RELEASE_STATUSES = new Set([
@@ -185,14 +217,14 @@ const OPERATOR_RELEASE_STATUSES = new Set([
   'unknown'
 ]);
 
-export const sessionAllowsOperatorRelease = (session) => {
+export const sessionAllowsOperatorRelease = (session?: Session | null): boolean => {
   if (!session?.claim_id) return false;
   if (session.provider_controllable) return false;
   const state = session.execution_status || session.status || '';
   return OPERATOR_RELEASE_STATUSES.has(state);
 };
 
-export const sessionActivityAt = (session) =>
+export const sessionActivityAt = (session?: Session | null): string =>
   session?.last_output_at ||
   session?.last_event_at ||
   session?.last_status_change_at ||
@@ -200,14 +232,14 @@ export const sessionActivityAt = (session) =>
   session?.claimed_at ||
   '';
 
-export const groupLatestSession = (group) => {
+export const groupLatestSession = (group?: SessionGroup | null): Session | null => {
   const sessions = group?.sessions ?? [];
   return (
     sessions.find((session) => session?.role === 'current') || sessions[sessions.length - 1] || null
   );
 };
 
-export const groupActivityAt = (group) => {
+export const groupActivityAt = (group?: SessionGroup | null): string => {
   let latest = '';
   for (const session of group?.sessions ?? []) {
     const at = sessionActivityAt(session);
@@ -216,7 +248,10 @@ export const groupActivityAt = (group) => {
   return latest;
 };
 
-export const taskTitleForSessionGroup = (group, tasks = []) => {
+export const taskTitleForSessionGroup = (
+  group?: SessionGroup | null,
+  tasks: Task[] = []
+): string => {
   const match = (tasks ?? []).find(
     (task) =>
       (group?.task_path &&
@@ -227,16 +262,20 @@ export const taskTitleForSessionGroup = (group, tasks = []) => {
   return match?.title || '';
 };
 
-const parseTimestampMs = (value) => {
+const parseTimestampMs = (value?: string | null): number => {
   if (!value) return NaN;
   const ms = Date.parse(value);
   return Number.isFinite(ms) ? ms : NaN;
 };
 
 export const visibleSessionsForGroup = (
-  group,
-  { expanded = false, now = Date.now(), limits = EXECUTION_HISTORY_LIMITS } = {}
-) => {
+  group: SessionGroup | null | undefined,
+  {
+    expanded = false,
+    now = Date.now(),
+    limits = EXECUTION_HISTORY_LIMITS
+  }: { expanded?: boolean; now?: number; limits?: typeof EXECUTION_HISTORY_LIMITS } = {}
+): { sessions: Session[]; hiddenCount: number } => {
   const sessions = [...(group?.sessions ?? [])].reverse();
   const cutoff =
     now - (limits.hideTerminalOlderThanMs ?? EXECUTION_HISTORY_LIMITS.hideTerminalOlderThanMs);
@@ -258,14 +297,14 @@ export const REFRESH_BUSY_DELAY_MS = 320;
 
 /** Fixed-width clock for the last-updated slot (tabular digits, padded fields). */
 export const formatRefreshClock = (
-  iso,
-  formatTime = (value) =>
+  iso?: string | null,
+  formatTime: (value: string) => string = (value) =>
     new Date(value).toLocaleTimeString(undefined, {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
     })
-) => {
+): string => {
   if (!iso) return '';
   try {
     return formatTime(iso) || '';
@@ -282,7 +321,8 @@ export const shouldShowRefreshBusy = ({
   manual = false,
   elapsedMs = 0,
   delayMs = REFRESH_BUSY_DELAY_MS
-} = {}) => Boolean(manual) || elapsedMs >= delayMs;
+}: { manual?: boolean; elapsedMs?: number; delayMs?: number } = {}): boolean =>
+  Boolean(manual) || elapsedMs >= delayMs;
 
 /** Stable labels for the dashboard auto-refresh strip (reserved-width UI). */
 export const refreshStatusPresentation = ({
@@ -290,6 +330,11 @@ export const refreshStatusPresentation = ({
   refreshError = '',
   lastRefreshAt = '',
   formatTime
+}: {
+  refreshing?: boolean;
+  refreshError?: string;
+  lastRefreshAt?: string;
+  formatTime?: (value: string) => string;
 } = {}) => {
   const updatedAt = lastRefreshAt || '';
   const clock = formatRefreshClock(updatedAt, formatTime);
@@ -304,7 +349,7 @@ export const refreshStatusPresentation = ({
   };
 };
 
-export const sessionGroupProjectId = (group, tasks = []) => {
+export const sessionGroupProjectId = (group?: SessionGroup | null, tasks: Task[] = []): string => {
   const task = (tasks ?? []).find(
     (item) =>
       (group?.task_path &&
@@ -317,10 +362,14 @@ export const sessionGroupProjectId = (group, tasks = []) => {
   return session?.project_id || '';
 };
 
-export const closedSessionsInGroup = (group) =>
+export const closedSessionsInGroup = (group?: SessionGroup | null): Session[] =>
   (group?.sessions ?? []).filter((session) => !sessionIsActive(session));
 
-const sessionWithGroupContext = (session, group, tasks = []) => {
+const sessionWithGroupContext = (
+  session: Session,
+  group: SessionGroup,
+  tasks: Task[] = []
+): Session => {
   const projectId = session.project_id || sessionGroupProjectId(group, tasks);
   return {
     ...session,
@@ -338,8 +387,12 @@ const sessionWithGroupContext = (session, group, tasks = []) => {
 // old grouped Execution History view used (12 task groups x 5 sessions).
 export const MAX_CLOSED_SESSIONS = 60;
 
-export const flattenClosedSessions = (groups, tasks = [], limit = MAX_CLOSED_SESSIONS) => {
-  const rows = [];
+export const flattenClosedSessions = (
+  groups: SessionGroup[] | null | undefined,
+  tasks: Task[] = [],
+  limit: number = MAX_CLOSED_SESSIONS
+): Session[] => {
+  const rows: Session[] = [];
   for (const group of groups ?? []) {
     for (const session of closedSessionsInGroup(group)) {
       rows.push(sessionWithGroupContext(session, group, tasks));
@@ -349,17 +402,39 @@ export const flattenClosedSessions = (groups, tasks = [], limit = MAX_CLOSED_SES
   return limit ? rows.slice(0, limit) : rows;
 };
 
+export interface ExecutionHistoryRow {
+  key: string;
+  accordionKey: string;
+  group: SessionGroup;
+  title: string;
+  latest: Session | null;
+  activityAt: string;
+  sessionCount: number;
+  agent: string;
+  status: string;
+  expanded: boolean;
+  visibleSessions: Session[];
+  hiddenSessionCount: number;
+}
+
 export const prepareExecutionHistory = (
-  groups,
+  groups: SessionGroup[] | null | undefined,
   {
     tasks = [],
     now = Date.now(),
     limits = EXECUTION_HISTORY_LIMITS,
-    expandedGroupKeys = new Set(),
+    expandedGroupKeys = new Set<string>(),
     projectId = '',
     closedOnly = false
+  }: {
+    tasks?: Task[];
+    now?: number;
+    limits?: typeof EXECUTION_HISTORY_LIMITS;
+    expandedGroupKeys?: Set<string>;
+    projectId?: string;
+    closedOnly?: boolean;
   } = {}
-) => {
+): { totalGroups: number; hiddenGroupCount: number; groups: ExecutionHistoryRow[] } => {
   const maxGroups = limits.maxTaskGroups ?? EXECUTION_HISTORY_LIMITS.maxTaskGroups;
   const source = (groups ?? [])
     .map((group) => {
@@ -367,9 +442,9 @@ export const prepareExecutionHistory = (
       const sessions = closedSessionsInGroup(group);
       return sessions.length ? { ...group, sessions } : null;
     })
-    .filter(Boolean)
+    .filter((group): group is SessionGroup => Boolean(group))
     .filter((group) => !projectId || sessionGroupProjectId(group, tasks) === projectId);
-  const ranked = source
+  const ranked: ExecutionHistoryRow[] = source
     .map((group) => {
       const latest = groupLatestSession(group);
       const key = sessionGroupKey(group);

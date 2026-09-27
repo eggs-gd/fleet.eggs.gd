@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {
     blockedReason,
     launchReason,
@@ -7,22 +7,24 @@
     timeAgo,
     agentColorClass,
     assigneeLabel
-  } from './lib/taskDisplay.js';
-  import { taskKey } from './lib/dashboardState.js';
+  } from './lib/taskDisplay';
+  import { taskKey } from './lib/dashboardState';
   import Icon from './Icon.svelte';
   import StatusActions from './StatusActions.svelte';
   import TypePill from './TypePill.svelte';
+  import type { Task } from './lib/types';
 
-  export let tasks = [];
+  export let tasks: Task[] = [];
   export let open = true;
-  export let transitions = null;
-  export let onToggle = () => {};
-  export let onOpenTask = () => {};
-  export let onShowAll = () => {};
-  export let onTransitionTask = null;
+  export let transitions: Record<string, string[]> | null = null;
+  export let onToggle: () => void = () => {};
+  export let onOpenTask: (task: Task) => void = () => {};
+  export let onShowAll: () => void = () => {};
+  export let onTransitionTask: ((task: Task, status: string) => void) | null = null;
 
   $: items = [...tasks].sort((a, b) => {
-    const rank = (task) => (operatorPause(task).waiting ? 0 : task.status === 'blocked' ? 1 : 2);
+    const rank = (task: Task) =>
+      operatorPause(task).waiting ? 0 : task.status === 'blocked' ? 1 : 2;
     const diff = rank(a) - rank(b);
     if (diff) return diff;
     return (b.updated_at || '').localeCompare(a.updated_at || '');

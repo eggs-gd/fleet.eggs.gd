@@ -1,27 +1,35 @@
-import { taskProjectId } from './taskDisplay.js';
+import { taskProjectId } from './taskDisplay.ts';
+import type { Project, Task, Workspace } from './types.ts';
 
-const byRelevance = (aCount, bCount, aId, bId, aTitle, bTitle) => {
+const byRelevance = (
+  aCount: number,
+  bCount: number,
+  aId: string,
+  bId: string,
+  aTitle: string,
+  bTitle: string
+): number => {
   const diff = bCount - aCount;
   if (diff) return diff;
   return String(aTitle || '').localeCompare(String(bTitle || ''));
 };
 
-export const projectHue = (id) =>
+export const projectHue = (id: unknown): number =>
   [...String(id || '')].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) % 360, 0);
 
-export const projectColor = (id) => `hsl(${projectHue(id)} 62% 46%)`;
+export const projectColor = (id: unknown): string => `hsl(${projectHue(id)} 62% 46%)`;
 
-export const projectInitial = (title, id) =>
+export const projectInitial = (title: unknown, id: unknown): string =>
   String(title || id || '?')
     .trim()
     .slice(0, 1)
     .toUpperCase() || '?';
 
-export const projectOpenCount = (tasks, projectId) =>
+export const projectOpenCount = (tasks: Task[] | null | undefined, projectId: string): number =>
   (tasks ?? []).filter((task) => taskProjectId(task) === projectId && task.status !== 'archived')
     .length;
 
-export const workspaceOpenCount = (tasks, workspaceId) =>
+export const workspaceOpenCount = (tasks: Task[] | null | undefined, workspaceId: string): number =>
   (tasks ?? []).filter((task) => task.workspace_id === workspaceId && task.status !== 'archived')
     .length;
 
@@ -29,8 +37,8 @@ export const workspaceOpenCount = (tasks, workspaceId) =>
 // itself in the list, else falls back to "a", etc. Shared by the sidebar tree
 // below and Project Settings' nested-project inspection, so both agree on
 // what "child project" means at any nesting depth, not just one level.
-export const parentIdOf = (ids, id) => {
-  let parent = null;
+export const parentIdOf = (ids: string[], id: string): string | null => {
+  let parent: string | null = null;
   for (const candidate of ids) {
     if (candidate === id) continue;
     if (!id.startsWith(`${candidate}/`)) continue;
@@ -39,7 +47,7 @@ export const parentIdOf = (ids, id) => {
   return parent;
 };
 
-export const childIdsOf = (ids, id) => {
+export const childIdsOf = (ids: string[], id: string): string[] => {
   // `id` itself may not be a member of `ids` (e.g. a workspace id with no
   // matching project entry) — it still needs to count as a candidate
   // ancestor, otherwise nothing under it is ever recognized as a direct child.
@@ -47,22 +55,28 @@ export const childIdsOf = (ids, id) => {
   return ids.filter((candidate) => candidate !== id && parentIdOf(candidates, candidate) === id);
 };
 
-const nestById = (projects, tasks) => {
-  const nodes = projects.map((project) => ({
+interface TreeNode {
+  project: Project;
+  children: TreeNode[];
+  taskCount: number;
+}
+
+const nestById = (projects: Project[], tasks: Task[] | null | undefined): TreeNode[] => {
+  const nodes: TreeNode[] = projects.map((project) => ({
     project,
     children: [],
     taskCount: projectOpenCount(tasks, project.id)
   }));
   const byId = new Map(nodes.map((node) => [node.project.id, node]));
   const ids = nodes.map((node) => node.project.id);
-  const roots = [];
+  const roots: TreeNode[] = [];
   for (const node of nodes) {
     const parentId = parentIdOf(ids, node.project.id);
     const parent = parentId ? byId.get(parentId) : null;
     if (parent) parent.children.push(node);
     else roots.push(node);
   }
-  const sortNodes = (list) => {
+  const sortNodes = (list: TreeNode[]) => {
     list.sort((a, b) =>
       byRelevance(
         a.taskCount,
@@ -79,7 +93,20 @@ const nestById = (projects, tasks) => {
   return roots;
 };
 
-export const buildSidebarTree = (workspaces, projects, tasks) =>
+export interface SidebarTreeEntry {
+  workspace: Workspace;
+  isGroup: boolean;
+  leafProject: Project | null;
+  rootNode: TreeNode | null;
+  children: TreeNode[];
+  taskCount: number;
+}
+
+export const buildSidebarTree = (
+  workspaces: Workspace[] | null | undefined,
+  projects: Project[] | null | undefined,
+  tasks: Task[] | null | undefined
+): SidebarTreeEntry[] =>
   [...(workspaces ?? [])]
     .sort((a, b) =>
       byRelevance(
@@ -87,8 +114,8 @@ export const buildSidebarTree = (workspaces, projects, tasks) =>
         workspaceOpenCount(tasks, b.id),
         a.id,
         b.id,
-        a.title,
-        b.title
+        a.title || a.id,
+        b.title || b.id
       )
     )
     .map((workspace) => {

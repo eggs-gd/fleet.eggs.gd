@@ -1,11 +1,12 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
-  import { projectSettingsInspect } from './lib/projectSettings.js';
+  import { projectSettingsInspect } from './lib/projectSettings';
+  import type { Project, Repository, Workspace } from './lib/types';
 
-  export let project = null;
-  export let workspaces = [];
-  export let projects = [];
-  export let repositories = [];
+  export let project: Project | null = null;
+  export let workspaces: Workspace[] = [];
+  export let projects: Project[] = [];
+  export let repositories: Repository[] = [];
 
   $: inspect = projectSettingsInspect(project, { workspaces, projects, repositories });
   $: showNestCols = (inspect?.repositories || []).some(

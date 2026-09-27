@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { TASK_TYPE_TONES, typePillClass, typeTone } from './taskTags.js';
+import { TASK_TYPE_TONES, typePillClass, typeTone } from './taskTags.ts';
 
 test('known task types keep a stable highlighted tone', () => {
   assert.equal(typeTone('bug'), 'red');

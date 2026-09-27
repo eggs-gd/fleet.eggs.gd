@@ -1,33 +1,36 @@
-<script context="module">
-  let cachedSnapshot = null;
+<script context="module" lang="ts">
+  import type { AnyRecord } from './lib/types';
+
+  let cachedSnapshot: AnyRecord | null = null;
 </script>
 
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
-  import { apiFetch } from './lib/api.js';
-  import { settingsSectionLabel } from './lib/settingsNav.js';
-  import { draftFromSnapshot, patchFromDraft } from './lib/settingsDraft.js';
+  import { apiFetch } from './lib/api';
+  import { settingsSectionLabel } from './lib/settingsNav';
+  import { draftFromSnapshot, patchFromDraft } from './lib/settingsDraft';
   import SettingsAgents from './SettingsAgents.svelte';
   import SettingsDiagnostics from './SettingsDiagnostics.svelte';
   import SettingsGeneral from './SettingsGeneral.svelte';
   import SettingsIntegrations from './SettingsIntegrations.svelte';
   import SettingsManager from './SettingsManager.svelte';
   import SettingsWorkflow from './SettingsWorkflow.svelte';
+  import type { SettingsDraft, SettingsDraftAgent } from './lib/types';
 
   export let section = 'general';
   export let title = '';
   export let themePref = 'system';
-  export let onThemeChange = () => {};
+  export let onThemeChange: (pref: string) => void = () => {};
   export let refreshMs = 5000;
-  export let onRefreshChange = () => {};
+  export let onRefreshChange: (ms: number) => void = () => {};
 
-  let snapshot = cachedSnapshot;
+  let snapshot: AnyRecord | null = cachedSnapshot;
   let error = '';
-  let warnings = [];
+  let warnings: string[] = [];
   let loading = false;
   let saving = false;
-  let baseline = null;
-  let draft = null;
+  let baseline: SettingsDraft | null = null;
+  let draft: SettingsDraft | null = null;
 
   $: scanKey = draft
     ? `${JSON.stringify(draft.scanRoots)}|${draft.sessionTimeout || ''}|${draft.launch || ''}|${JSON.stringify(draft.agents)}|${JSON.stringify(draft.manager)}`
@@ -37,7 +40,7 @@
     : '';
   $: dirty = Boolean(draft && baseline && scanKey !== baseKey);
 
-  function acceptSnapshot(next) {
+  function acceptSnapshot(next: AnyRecord) {
     snapshot = next;
     cachedSnapshot = next;
     if (!dirty) {
@@ -56,7 +59,7 @@
       }
       acceptSnapshot(await response.json());
       error = '';
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       loading = false;
@@ -83,7 +86,7 @@
       snapshot = result.snapshot;
       cachedSnapshot = result.snapshot;
       error = '';
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       saving = false;
@@ -107,7 +110,7 @@
       }
       acceptSnapshot(await response.json());
       error = '';
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       loading = false;
@@ -133,17 +136,17 @@
           scanTimer = 0;
         }
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     }
   }
 
-  function updateAgent(id, patch) {
+  function updateAgent(id: string, patch: SettingsDraftAgent) {
     draft = {
       ...draft,
       agents: {
-        ...draft.agents,
-        [id]: { ...draft.agents[id], ...patch }
+        ...draft?.agents,
+        [id]: { ...draft?.agents?.[id], ...patch }
       }
     };
   }
@@ -198,7 +201,7 @@
         general={snapshot.general}
         projects={snapshot.projects}
         scanRoots={draft.scanRoots}
-        scanDirty={JSON.stringify(draft.scanRoots) !== JSON.stringify(baseline.scanRoots)}
+        scanDirty={JSON.stringify(draft.scanRoots) !== JSON.stringify(baseline?.scanRoots)}
         onScanRoots={(value) => (draft = { ...draft, scanRoots: value })}
         sessionTimeout={draft.sessionTimeout || ''}
         onSessionTimeout={(value) => (draft = { ...draft, sessionTimeout: value })}

@@ -10,7 +10,7 @@ import {
   repositoryTechnologyView,
   technologyIconMap,
   technologyTagDisplay
-} from './technologyDisplay.js';
+} from './technologyDisplay.ts';
 
 test('repoWebUrl normalizes scp-style and full ssh:// remotes to https, and leaves https alone', () => {
   assert.equal(
@@ -113,29 +113,27 @@ test('technology groups flatten variants into one overflow-aware row', () => {
   assert.equal(shown.visible[2].variant, 'tooling');
 });
 
-test('project technology view separates primary technology, tooling, and capabilities', () => {
+test('project technology view separates primary technology from tooling', () => {
   const project = {
     technology: {
-      effective_tags: ['eff typescript', 'frontend', 'npm', 'custom-signal'],
-      detected_tags: ['raw javascript', 'backend', 'vite'],
+      effective_tags: ['eff typescript', 'npm', 'custom-signal'],
+      detected_tags: ['raw javascript', 'vite'],
       repositories: [
         {
           effective: {
             languages: ['eff typescript'],
             frameworks: ['effective:svelte'],
             runtimes: ['nodejs'],
-            tooling: ['npm'],
-            capabilities: ['frontend']
+            tooling: ['npm']
           },
           detected: {
             languages: ['raw javascript', 'typescript'],
             frameworks: [],
             runtimes: [],
-            tooling: ['vite'],
-            capabilities: ['backend']
+            tooling: ['vite']
           },
-          effective_tags: ['typescript', 'svelte', 'node', 'npm', 'frontend'],
-          detected_tags: ['javascript', 'typescript', 'vite', 'backend']
+          effective_tags: ['typescript', 'svelte', 'node', 'npm'],
+          detected_tags: ['javascript', 'typescript', 'vite']
         }
       ]
     }
@@ -145,15 +143,14 @@ test('project technology view separates primary technology, tooling, and capabil
 
   assert.deepEqual(view.primary, ['typescript', 'svelte', 'node', 'javascript']);
   assert.deepEqual(view.tooling, ['npm', 'vite']);
-  assert.deepEqual(view.capabilities, ['frontend', 'backend']);
   assert.equal(view.primary.includes('custom-signal'), false);
 });
 
-test('flat fallback keeps known primary tags without promoting broad buckets', () => {
+test('flat fallback keeps known primary tags without promoting unknown ones', () => {
   const project = {
     technology: {
-      effective_tags: ['eff typescript', 'frontend', 'docker', 'unknown-profile-label'],
-      detected_tags: ['raw javascript', 'backend', 'npm'],
+      effective_tags: ['eff typescript', 'docker', 'unknown-profile-label'],
+      detected_tags: ['raw javascript', 'npm'],
       repositories: []
     }
   };
@@ -162,7 +159,6 @@ test('flat fallback keeps known primary tags without promoting broad buckets', (
 
   assert.deepEqual(view.primary, ['typescript', 'javascript']);
   assert.deepEqual(view.tooling, ['docker', 'npm']);
-  assert.deepEqual(view.capabilities, ['frontend', 'backend']);
 });
 
 test('repository view keeps runtimes primary and deduplicates raw/effective copies', () => {
@@ -171,23 +167,20 @@ test('repository view keeps runtimes primary and deduplicates raw/effective copi
       languages: ['golang'],
       frameworks: [],
       runtimes: ['dotnet'],
-      tooling: ['docker compose'],
-      capabilities: ['backend']
+      tooling: ['docker compose']
     },
     detected: {
       languages: ['raw go'],
       frameworks: [],
       runtimes: ['eff dotnet'],
-      tooling: ['docker-compose'],
-      capabilities: ['frontend']
+      tooling: ['docker-compose']
     },
-    effective_tags: ['golang', 'dotnet', 'docker compose', 'backend'],
-    detected_tags: ['raw go', 'eff dotnet', 'docker-compose', 'frontend']
+    effective_tags: ['golang', 'dotnet', 'docker compose'],
+    detected_tags: ['raw go', 'eff dotnet', 'docker-compose']
   };
 
   const view = repositoryTechnologyView(repo);
 
   assert.deepEqual(view.primary, ['go', 'dotnet']);
   assert.deepEqual(view.tooling, ['docker-compose']);
-  assert.deepEqual(view.capabilities, ['backend', 'frontend']);
 });

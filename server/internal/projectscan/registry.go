@@ -270,9 +270,6 @@ func ensureEffective(effective Effective) Effective {
 	if effective.Tooling == nil {
 		effective.Tooling = []string{}
 	}
-	if effective.Capabilities == nil {
-		effective.Capabilities = []string{}
-	}
 	return effective
 }
 

@@ -1,12 +1,13 @@
-<script>
-  import { apiFetch } from './lib/api.js';
+<script lang="ts">
+  import { apiFetch } from './lib/api';
   import SettingsField from './SettingsField.svelte';
-  import { timeAgo } from './lib/taskDisplay.js';
+  import { timeAgo } from './lib/taskDisplay';
+  import type { AnyRecord } from './lib/types';
 
-  export let manager = {};
-  export let onReload = async () => {};
+  export let manager: AnyRecord = {};
+  export let onReload: () => Promise<void> = async () => {};
 
-  let threads = [];
+  let threads: AnyRecord[] = [];
   let threadsLoading = false;
   let threadsNote = '';
   let adoptError = '';
@@ -16,7 +17,7 @@
   $: agent = session ? manager.provider : '';
   $: workspace = session?.workspace || '';
 
-  async function loadThreads(nextAgent, nextWorkspace) {
+  async function loadThreads(nextAgent: string, nextWorkspace: string) {
     threads = [];
     threadsNote = '';
     if (!nextAgent || !nextWorkspace) return;
@@ -33,10 +34,10 @@
         }
         throw new Error(body || `Failed to list sessions (${response.status})`);
       }
-      const listed = body ? JSON.parse(body) : [];
+      const listed: AnyRecord[] = body ? JSON.parse(body) : [];
       threads = listed.filter((thread) => thread.cwd);
       if (!threads.length) threadsNote = 'No other sessions use this data root.';
-    } catch (err) {
+    } catch (err: any) {
       threadsNote = err.message || String(err);
     } finally {
       threadsLoading = false;
@@ -45,7 +46,7 @@
 
   $: loadThreads(agent, workspace);
 
-  async function adopt(threadId) {
+  async function adopt(threadId: string) {
     adopting = threadId;
     adoptError = '';
     try {
@@ -56,7 +57,7 @@
       });
       if (!response.ok) throw new Error(await response.text());
       await onReload();
-    } catch (err) {
+    } catch (err: any) {
       adoptError = err.message || String(err);
     } finally {
       adopting = '';

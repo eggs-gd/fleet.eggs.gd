@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { normalizeThemePref, resolveTheme, THEME_PREFS } from './theme.js';
+import { normalizeThemePref, resolveTheme, THEME_PREFS } from './theme.ts';
 
 test('theme prefs are light, dark, or system', () => {
   assert.deepEqual(THEME_PREFS, ['light', 'dark', 'system']);

@@ -5,6 +5,6 @@ export const operatorAssignee = 'owner';
 export const AGENT_ASSIGNEES = ['claude', 'codex', 'cursor', 'gemini'];
 const agentAssignees = new Set(AGENT_ASSIGNEES);
 
-export function isOperatorAssignee(assignee) {
-  return Boolean(assignee) && assignee !== 'unassigned' && !agentAssignees.has(assignee);
+export function isOperatorAssignee(assignee: string | null | undefined): boolean {
+  return Boolean(assignee) && assignee !== 'unassigned' && !agentAssignees.has(assignee as string);
 }

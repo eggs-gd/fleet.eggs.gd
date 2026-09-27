@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { childProjects, parentProjectId, projectSettingsInspect } from './projectSettings.js';
+import { childProjects, parentProjectId, projectSettingsInspect } from './projectSettings.ts';
 
 test('parent and child ids follow slash nesting against the real project/workspace id list', () => {
   const ids = [
@@ -74,7 +74,7 @@ test('standalone project inspects PROJECT.md and the bound repo without header f
       workspaces: [{ id: 'core-eggs-gd', title: 'Core' }],
       projects: [{ id: 'core-eggs-gd', title: 'Core' }]
     }
-  );
+  )!;
   assert.equal(inspect.kind, 'repository_project');
   assert.equal(inspect.projectMd, '/Users/me/Projects/core.eggs.gd/Work/core.eggs.gd/PROJECT.md');
   assert.equal(inspect.membership, null);
@@ -121,10 +121,10 @@ test('nested project shows workspace membership and enriches git nesting from re
         { id: 'luajit-1', name: 'luajit', relative_path: 'Audiophile/jivemax-lua/luajit' }
       ]
     }
-  );
-  assert.equal(inspect.membership.id, 'audiophile');
-  assert.equal(inspect.parent.id, 'audiophile');
-  assert.equal(inspect.parent.title, 'Audiophile');
+  )!;
+  assert.equal(inspect.membership!.id, 'audiophile');
+  assert.equal(inspect.parent!.id, 'audiophile');
+  assert.equal(inspect.parent!.title, 'Audiophile');
   assert.equal(inspect.projectMd, 'Work/audiophile/PROJECT.md');
   assert.deepEqual(inspect.repositories[0].nests, ['Audiophile/jivemax-lua/luajit']);
 });
@@ -135,6 +135,6 @@ test('missing item is empty inspect', () => {
 
 test('inspect shows the ref tag from the workspace card', () => {
   const workspace = { id: 'eggs-gd', title: 'Eggs', tag: 'EGGS', path: 'Work/eggs-gd/PROJECT.md' };
-  assert.equal(projectSettingsInspect(workspace, { workspaces: [workspace] }).tag, 'EGGS');
-  assert.equal(projectSettingsInspect({ id: 'bare' }, {}).tag, '');
+  assert.equal(projectSettingsInspect(workspace, { workspaces: [workspace] })!.tag, 'EGGS');
+  assert.equal(projectSettingsInspect({ id: 'bare' }, {})!.tag, '');
 });

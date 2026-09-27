@@ -1,7 +1,8 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import type { AnyRecord } from './lib/types';
 
-  export let workflow = {};
+  export let workflow: AnyRecord = {};
 </script>
 
 <section class="settings-block" aria-label="Concurrency">
@@ -57,7 +58,7 @@
 <section class="settings-block" aria-label="Operator transitions">
   <h3>Operator transitions</h3>
   {#each Object.entries(workflow.operator_transitions || {}) as [from, next] (from)}
-    <SettingsField label={from} value={(next || []).join(' → ') || '—'} />
+    <SettingsField label={from} value={((next as string[]) || []).join(' → ') || '—'} />
   {/each}
 </section>
 

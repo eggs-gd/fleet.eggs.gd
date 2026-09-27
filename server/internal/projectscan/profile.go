@@ -10,10 +10,9 @@ import (
 )
 
 type techOverride struct {
-	Add          []string `json:"add"`
-	Remove       []string `json:"remove"`
-	Capabilities []string `json:"capabilities"`
-	ProjectID    string   `json:"-"`
+	Add       []string `json:"add"`
+	Remove    []string `json:"remove"`
+	ProjectID string   `json:"-"`
 }
 
 type overrideFile struct {
@@ -86,7 +85,7 @@ func readJSON(path string, dest any) error {
 	return json.Unmarshal(data, dest)
 }
 
-func composeEffective(detected Detected, repoOverride, projectOverride techOverride, protectionReason string) Effective {
+func composeEffective(detected Detected, repoOverride, projectOverride techOverride) Effective {
 	techs := map[string]struct{}{}
 	for _, name := range append(append(append(append([]string{}, detected.Languages...), detected.Frameworks...), detected.Runtimes...), detected.Tooling...) {
 		techs[name] = struct{}{}
@@ -103,29 +102,7 @@ func composeEffective(detected Detected, repoOverride, projectOverride techOverr
 	for name := range techs {
 		names = append(names, name)
 	}
-	effective := Effective{TechLists: categorize(names), Capabilities: []string{}}
-	caps := map[string]struct{}{}
-	for _, tech := range names {
-		for _, capability := range technologyCatalog[tech].capabilities {
-			caps[capability] = struct{}{}
-		}
-	}
-	for _, override := range []techOverride{projectOverride, repoOverride} {
-		for _, item := range override.Capabilities {
-			item = strings.ToLower(strings.TrimSpace(item))
-			if item != "" {
-				caps[item] = struct{}{}
-			}
-		}
-	}
-	if protectionReason != "" {
-		caps["protected-layout"] = struct{}{}
-	}
-	for capability := range caps {
-		effective.Capabilities = append(effective.Capabilities, capability)
-	}
-	sort.Strings(effective.Capabilities)
-	return effective
+	return Effective{TechLists: categorize(names)}
 }
 
 func repositoryOverride(repo Repository, relativePath string, file overrideFile) techOverride {
@@ -148,11 +125,10 @@ func projectOverrideFor(relativePath string, cards map[string]techOverride, file
 		registry = file.Projects[card.ProjectID]
 	}
 	merged := techOverride{
-		Add:          append(append([]string{}, registry.Add...), card.Add...),
-		Remove:       append(append([]string{}, registry.Remove...), card.Remove...),
-		Capabilities: append(append([]string{}, registry.Capabilities...), card.Capabilities...),
+		Add:    append(append([]string{}, registry.Add...), card.Add...),
+		Remove: append(append([]string{}, registry.Remove...), card.Remove...),
 	}
-	if len(merged.Add) == 0 && len(merged.Remove) == 0 && len(merged.Capabilities) == 0 {
+	if len(merged.Add) == 0 && len(merged.Remove) == 0 {
 		return techOverride{}
 	}
 	return merged
@@ -230,7 +206,7 @@ func parseProjectCardOverrides(workDir string) map[string]techOverride {
 		}
 		section := strings.SplitN(strings.SplitN(text, marker, 2)[1], "\n## ", 2)[0]
 		override := parseOverrideSection(section)
-		if len(override.Add) == 0 && len(override.Remove) == 0 && len(override.Capabilities) == 0 {
+		if len(override.Add) == 0 && len(override.Remove) == 0 {
 			continue
 		}
 		if projectID == "" {
@@ -248,7 +224,6 @@ func parseOverrideSection(section string) techOverride {
 	aliases := map[string]string{
 		"add_languages": "add", "add_frameworks": "add", "add_runtimes": "add", "add_tooling": "add",
 		"remove_languages": "remove", "remove_frameworks": "remove", "remove_runtimes": "remove", "remove_tooling": "remove",
-		"capabilities": "capabilities",
 	}
 	lists := map[string][]string{}
 	current := ""
@@ -273,9 +248,8 @@ func parseOverrideSection(section string) techOverride {
 		}
 	}
 	override := techOverride{
-		Add:          normalizeTechnologies(lists["add"]),
-		Remove:       normalizeTechnologies(lists["remove"]),
-		Capabilities: sortedUnique(lowerStrings(lists["capabilities"])),
+		Add:    normalizeTechnologies(lists["add"]),
+		Remove: normalizeTechnologies(lists["remove"]),
 	}
 	return override
 }
@@ -288,17 +262,6 @@ func parseInlineValues(value string) []string {
 		item = strings.Trim(item, ",")
 		if item != "" {
 			out = append(out, item)
-		}
-	}
-	return out
-}
-
-func lowerStrings(values []string) []string {
-	out := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.ToLower(strings.TrimSpace(value))
-		if value != "" {
-			out = append(out, value)
 		}
 	}
 	return out

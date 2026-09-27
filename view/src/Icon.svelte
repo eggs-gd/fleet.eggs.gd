@@ -1,9 +1,9 @@
-<script>
+<script lang="ts">
   export let name = '';
   export let size = 16;
   export let filled = false;
 
-  const paths = {
+  const paths: Record<string, string | string[]> = {
     star: 'M12 3.5l2.47 5.24 5.78.7-4.24 4.03 1.12 5.71L12 16.9l-5.13 2.28 1.12-5.71-4.24-4.03 5.78-.7L12 3.5z',
     home: 'M4 11.5L12 4l8 7.5M6 10v9h5v-5h2v5h5v-9',
     users:

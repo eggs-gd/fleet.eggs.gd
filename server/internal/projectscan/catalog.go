@@ -5,33 +5,32 @@ package projectscan
 // _registry/repositories.json stays readable by the board.
 
 type techSpec struct {
-	category     string
-	capabilities []string
+	category string
 }
 
 var technologyCatalog = map[string]techSpec{
-	"csharp":         {category: "language", capabilities: []string{"dotnet"}},
-	"dart":           {category: "language", capabilities: []string{"mobile"}},
-	"go":             {category: "language", capabilities: []string{"backend"}},
-	"javascript":     {category: "language", capabilities: []string{"frontend"}},
-	"php":            {category: "language", capabilities: []string{"backend"}},
-	"python":         {category: "language", capabilities: []string{"backend"}},
-	"ruby":           {category: "language", capabilities: []string{"backend"}},
-	"rust":           {category: "language", capabilities: []string{"backend"}},
-	"typescript":     {category: "language", capabilities: []string{"frontend"}},
-	"flutter":        {category: "framework", capabilities: []string{"mobile"}},
-	"react":          {category: "framework", capabilities: []string{"frontend"}},
-	"svelte":         {category: "framework", capabilities: []string{"frontend"}},
-	"tauri":          {category: "framework", capabilities: []string{"desktop"}},
-	"unity":          {category: "framework", capabilities: []string{"game-engine"}},
-	"vite":           {category: "framework", capabilities: []string{"frontend"}},
-	"dotnet":         {category: "runtime", capabilities: []string{"dotnet"}},
-	"node":           {category: "runtime", capabilities: []string{"frontend"}},
-	"docker":         {category: "tooling", capabilities: []string{"containers"}},
-	"docker-compose": {category: "tooling", capabilities: []string{"containers"}},
-	"npm":            {category: "tooling", capabilities: []string{"frontend"}},
-	"pnpm":           {category: "tooling", capabilities: []string{"frontend"}},
-	"yarn":           {category: "tooling", capabilities: []string{"frontend"}},
+	"csharp":         {category: "language"},
+	"dart":           {category: "language"},
+	"go":             {category: "language"},
+	"javascript":     {category: "language"},
+	"php":            {category: "language"},
+	"python":         {category: "language"},
+	"ruby":           {category: "language"},
+	"rust":           {category: "language"},
+	"typescript":     {category: "language"},
+	"flutter":        {category: "framework"},
+	"react":          {category: "framework"},
+	"svelte":         {category: "framework"},
+	"tauri":          {category: "framework"},
+	"unity":          {category: "framework"},
+	"vite":           {category: "framework"},
+	"dotnet":         {category: "runtime"},
+	"node":           {category: "runtime"},
+	"docker":         {category: "tooling"},
+	"docker-compose": {category: "tooling"},
+	"npm":            {category: "tooling"},
+	"pnpm":           {category: "tooling"},
+	"yarn":           {category: "tooling"},
 }
 
 var stackMarkers = map[string][]string{

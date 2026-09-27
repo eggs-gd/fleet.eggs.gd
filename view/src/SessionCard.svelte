@@ -1,19 +1,21 @@
-<script>
+<script lang="ts">
   import {
     agentColorClass,
     elapsedClock,
     orphanRecoveryLabel,
     toolUsageHasMissing
-  } from './lib/taskDisplay.js';
-  import { sessionOutcomeLabel, sessionOutcomeTone } from './lib/sessionOutcome.js';
+  } from './lib/taskDisplay';
+  import { sessionOutcomeLabel, sessionOutcomeTone } from './lib/sessionOutcome';
   import Icon from './Icon.svelte';
+  import type { Session } from './lib/types';
 
-  export let session;
+  export let session: Session;
   export let kind = 'live';
   export let now = Date.now();
-  export let onOpen = () => {};
-  export let onResolveOrphan = null;
-  export let onReleaseSession = null;
+  export let onOpen: (session: Session, kind: string) => void = () => {};
+  export let onResolveOrphan: ((session: Session, status: string) => void) | null = null;
+  export let onReleaseSession:
+    ((session: Session, action: string, targetStatus: string) => void) | null = null;
 
   const ORPHAN_RESOLVE_ACTIONS = [
     { status: 'blocked', label: 'Blocked', icon: 'x-circle' },
@@ -39,7 +41,7 @@
     onOpen(session, kind);
   }
 
-  function onKey(event) {
+  function onKey(event: KeyboardEvent) {
     // Ignore keydowns that bubbled up from a nested action button (e.g.
     // pressing Space to click "Blocked") — only the card itself opening the
     // modal on Enter/Space should reach here.
@@ -50,13 +52,13 @@
     }
   }
 
-  function resolve(event, targetStatus) {
+  function resolve(event: Event, targetStatus: string) {
     event.preventDefault();
     event.stopPropagation();
     onResolveOrphan?.(session, targetStatus);
   }
 
-  function releaseClaim(event) {
+  function releaseClaim(event: Event) {
     event.preventDefault();
     event.stopPropagation();
     onReleaseSession?.(
@@ -137,3 +139,195 @@
     </div>
   {/if}
 </section>
+
+<style>
+  .session-card {
+    min-width: 0;
+    min-height: 0;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+    padding: var(--space-lg);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .session-card:last-child {
+    border-right: none;
+  }
+
+  .session-card:hover,
+  .session-card:focus-visible {
+    background: var(--surface-muted);
+  }
+
+  .session-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .session-card--success {
+    border-left: 3px solid var(--green);
+    background: var(--session-success-bg);
+  }
+
+  .session-card--success:hover,
+  .session-card--success:focus-visible {
+    background: var(--session-success-bg-hover);
+  }
+
+  .session-card--fail {
+    border-left: 3px solid var(--red);
+    background: var(--session-fail-bg);
+  }
+
+  .session-card--fail:hover,
+  .session-card--fail:focus-visible {
+    background: var(--session-fail-bg-hover);
+  }
+
+  .session-card--hitl {
+    border-left: 3px solid var(--amber);
+    background: var(--session-hitl-bg);
+  }
+
+  .session-card--hitl:hover,
+  .session-card--hitl:focus-visible {
+    background: var(--session-hitl-bg-hover);
+  }
+
+  .session-card--live {
+    border-left: 3px solid var(--green);
+  }
+
+  .session-card--orphaned,
+  .session-card--orphan {
+    border-left: 3px solid var(--amber);
+    background: var(--amber-soft);
+  }
+
+  /* At-a-glance flag for a live/closed session missing required tool evidence
+     — independent of the tone-based left border above, so it stays visible
+     whatever the session's outcome color is. */
+  .session-card.tool-evidence-warning {
+    box-shadow: inset 0 0 0 1px var(--amber);
+  }
+
+  .session-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+  }
+
+  .session-card-agent {
+    font-size: var(--text-md);
+    text-transform: capitalize;
+  }
+
+  .session-card-status {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    max-width: 58%;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-card-project {
+    margin: var(--space-md) 0 0;
+    overflow: hidden;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-card-task {
+    margin: var(--space-2xs) 0;
+    overflow: hidden;
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-card-status .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  .session-card-status.is-live,
+  .session-card-status--live,
+  .session-card-status--success {
+    color: var(--green-text);
+  }
+
+  .session-card-status.is-live .status-dot,
+  .session-card-status--live .status-dot,
+  .session-card-status--success .status-dot {
+    background: var(--green);
+  }
+
+  .session-card-status--fail {
+    color: var(--red-text);
+  }
+
+  .session-card-status--fail .status-dot {
+    background: var(--red);
+  }
+
+  .session-card-status--hitl {
+    color: var(--amber-text);
+  }
+
+  .session-card-status--hitl .status-dot {
+    background: var(--amber);
+  }
+
+  .session-card-status--orphan,
+  .session-card-status--orphaned {
+    color: var(--red-text);
+  }
+
+  .session-card-activity {
+    margin: 0;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-md);
+  }
+
+  .session-card-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    min-height: 26px;
+    padding: 0;
+    border-color: var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+  }
+
+  .session-card-actions button:hover {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+</style>

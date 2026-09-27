@@ -1,6 +1,14 @@
-export function draftFromSnapshot(snapshot) {
-  const agents = {};
+import type {
+  SettingsSnapshot,
+  SettingsDraft,
+  SettingsDraftAgent,
+  SettingsFieldMeta
+} from './types.ts';
+
+export function draftFromSnapshot(snapshot?: SettingsSnapshot | null): SettingsDraft {
+  const agents: SettingsDraft['agents'] = {};
   for (const agent of snapshot?.agents?.providers || []) {
+    if (!agent.id) continue;
     agents[agent.id] = {
       enabled: agent.enabled?.value !== false,
       executable: agent.configured_executable?.value || '',
@@ -12,7 +20,7 @@ export function draftFromSnapshot(snapshot) {
   }
   return {
     scanRoots: Array.isArray(snapshot?.projects?.scan_roots)
-      ? [...snapshot.projects.scan_roots]
+      ? [...(snapshot!.projects!.scan_roots as string[])]
       : [],
     sessionTimeout: snapshot?.general?.session_timeout_config?.value || '',
     launch: snapshot?.general?.launch_config?.value || '',
@@ -24,22 +32,25 @@ export function draftFromSnapshot(snapshot) {
   };
 }
 
-export function patchFromDraft(draft, baseline) {
-  const patch = {};
+export function patchFromDraft(
+  draft?: SettingsDraft | null,
+  baseline?: SettingsDraft | null
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
   if (JSON.stringify(draft?.scanRoots || []) !== JSON.stringify(baseline?.scanRoots || [])) {
-    patch.scanRoots = draft.scanRoots || [];
+    patch.scanRoots = draft?.scanRoots || [];
   }
   if ((draft?.sessionTimeout || '') !== (baseline?.sessionTimeout || '')) {
-    patch.sessionTimeout = draft.sessionTimeout || '';
+    patch.sessionTimeout = draft?.sessionTimeout || '';
   }
   if ((draft?.launch || '') !== (baseline?.launch || '')) {
-    patch.launch = draft.launch || '';
+    patch.launch = draft?.launch || '';
   }
-  const agents = {};
+  const agents: SettingsDraft['agents'] = {};
   for (const id of Object.keys(draft?.agents || {})) {
-    const cur = draft.agents[id] || {};
+    const cur = draft?.agents?.[id] || {};
     const prev = baseline?.agents?.[id] || {};
-    const item = {};
+    const item: SettingsDraftAgent = {};
     if (cur.enabled !== prev.enabled) item.enabled = cur.enabled;
     if ((cur.executable || '') !== (prev.executable || '')) item.executable = cur.executable || '';
     if ((cur.routingInstructions || '') !== (prev.routingInstructions || '')) {
@@ -59,13 +70,13 @@ export function patchFromDraft(draft, baseline) {
   return patch;
 }
 
-export function draftsEqual(a, b) {
+export function draftsEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function fieldHint(field) {
+export function fieldHint(field?: SettingsFieldMeta | null): string {
   if (!field) return '';
-  const parts = [];
+  const parts: string[] = [];
   if (field.source) parts.push(field.source);
   if (field.overridden_by) parts.push(`overridden by ${field.overridden_by}`);
   if (field.warning) parts.push(field.warning);

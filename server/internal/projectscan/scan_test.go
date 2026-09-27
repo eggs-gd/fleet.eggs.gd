@@ -56,13 +56,11 @@ func TestEffectiveProfileCompositionAppliesOverrides(t *testing.T) {
 	detected.Tooling = []string{"npm"}
 
 	effective := composeEffective(detected, techOverride{
-		Remove:       []string{"javascript", "react", "node", "npm"},
-		Add:          []string{"python"},
-		Capabilities: []string{"documentation"},
+		Remove: []string{"javascript", "react", "node", "npm"},
+		Add:    []string{"python"},
 	}, techOverride{
-		Add:          []string{"docker"},
-		Capabilities: []string{"containers"},
-	}, "")
+		Add: []string{"docker"},
+	})
 
 	if !reflect.DeepEqual(effective.Languages, []string{"python"}) {
 		t.Fatalf("languages = %#v", effective.Languages)
@@ -72,9 +70,6 @@ func TestEffectiveProfileCompositionAppliesOverrides(t *testing.T) {
 	}
 	if !reflect.DeepEqual(effective.Tooling, []string{"docker"}) {
 		t.Fatalf("tooling = %#v", effective.Tooling)
-	}
-	if !reflect.DeepEqual(effective.Capabilities, []string{"backend", "containers", "documentation"}) {
-		t.Fatalf("capabilities = %#v", effective.Capabilities)
 	}
 }
 
@@ -111,8 +106,8 @@ func TestWorkspaceGeneratorUsesEffectiveRepositoryView(t *testing.T) {
     {"id": "web", "name": "web", "relative_path": "Space/web", "stack": ["javascript"]}
   ],
   "effective_repositories": [
-    {"id": "api", "name": "api", "relative_path": "Space/api", "effective": {"languages": ["python"], "frameworks": [], "runtimes": [], "tooling": [], "capabilities": ["backend"]}},
-    {"id": "web", "name": "web", "relative_path": "Space/web", "effective": {"languages": ["typescript"], "frameworks": ["svelte"], "runtimes": ["node"], "tooling": [], "capabilities": ["frontend"]}}
+    {"id": "api", "name": "api", "relative_path": "Space/api", "effective": {"languages": ["python"], "frameworks": [], "runtimes": [], "tooling": []}},
+    {"id": "web", "name": "web", "relative_path": "Space/web", "effective": {"languages": ["typescript"], "frameworks": ["svelte"], "runtimes": ["node"], "tooling": []}}
   ]
 }`
 	groups := `{"groups": [{"kind": "workspace_group", "reason": "same top-level folder", "suggested_project_id": "space", "repository_ids": ["api", "web"]}]}`

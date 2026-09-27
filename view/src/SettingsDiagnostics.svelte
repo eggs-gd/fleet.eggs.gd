@@ -1,10 +1,11 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import type { AnyRecord } from './lib/types';
 
-  export let diagnostics = {};
-  export let inventory = [];
+  export let diagnostics: AnyRecord = {};
+  export let inventory: AnyRecord[] = [];
 
-  const tone = (status) =>
+  const tone = (status: string) =>
     status === 'ok' ? 'ok' : status === 'warn' ? 'warn' : status === 'error' ? 'fail' : 'muted';
 </script>
 

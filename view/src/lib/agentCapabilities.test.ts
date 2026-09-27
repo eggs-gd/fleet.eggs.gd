@@ -6,7 +6,7 @@ import {
   launchesAutomatically,
   plainText,
   reuseSummary
-} from './agentCapabilities.js';
+} from './agentCapabilities.ts';
 
 const gemini = {
   live_ready: true,

@@ -1,26 +1,27 @@
-<script>
+<script lang="ts">
   import ThemeSwitch from './ThemeSwitch.svelte';
   import SettingsField from './SettingsField.svelte';
   import SettingsDataRoot from './SettingsDataRoot.svelte';
   import SettingsProjects from './SettingsProjects.svelte';
-  import { AUTO_REFRESH_MS } from './lib/layoutPrefs.js';
+  import { AUTO_REFRESH_MS } from './lib/layoutPrefs';
+  import type { AnyRecord } from './lib/types';
 
-  export let general = {};
-  export let projects = {};
-  export let scanRoots = [];
+  export let general: AnyRecord = {};
+  export let projects: AnyRecord = {};
+  export let scanRoots: string[] = [];
   export let scanDirty = false;
-  export let onScanRoots = () => {};
-  export let onRescan = () => {};
+  export let onScanRoots: (roots: string[]) => void = () => {};
+  export let onRescan: () => void = () => {};
   export let sessionTimeout = '';
-  export let onSessionTimeout = () => {};
+  export let onSessionTimeout: (value: string) => void = () => {};
   export let launch = '';
-  export let onLaunch = () => {};
+  export let onLaunch: (value: string) => void = () => {};
   export let themePref = 'system';
-  export let onThemeChange = () => {};
+  export let onThemeChange: (pref: string) => void = () => {};
   export let refreshMs = 5000;
-  export let onRefreshChange = () => {};
+  export let onRefreshChange: (ms: number) => void = () => {};
 
-  const label = (ms) => `${Math.round(ms / 1000)}s`;
+  const label = (ms: number) => `${Math.round(ms / 1000)}s`;
 </script>
 
 <section class="settings-block" aria-label="Runtime">
@@ -32,7 +33,11 @@
   <div class="settings-row">
     <span class="settings-key">Saved launch mode</span>
     <span class="settings-val">
-      <select class="settings-input" value={launch} on:change={(e) => onLaunch(e.target.value)}>
+      <select
+        class="settings-input"
+        value={launch}
+        on:change={(e) => onLaunch(e.currentTarget.value)}
+      >
         <option value="">Default (dry-run)</option>
         <option value="dry-run">Dry-run: plan launches only</option>
         <option value="live">Live: start agents for ready tasks</option>
@@ -62,7 +67,7 @@
         class="settings-input"
         value={sessionTimeout}
         placeholder="10m"
-        on:input={(e) => onSessionTimeout(e.target.value)}
+        on:input={(e) => onSessionTimeout(e.currentTarget.value)}
       />
     </span>
   </div>
@@ -97,7 +102,7 @@
       <select
         class="settings-input"
         value={refreshMs}
-        on:change={(e) => onRefreshChange(Number(e.target.value))}
+        on:change={(e) => onRefreshChange(Number(e.currentTarget.value))}
       >
         {#each AUTO_REFRESH_MS as ms}
           <option value={ms}>{label(ms)}</option>

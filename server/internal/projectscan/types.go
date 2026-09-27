@@ -42,7 +42,6 @@ type Detected struct {
 // Effective is the profile downstream launch and workspace cards read.
 type Effective struct {
 	TechLists
-	Capabilities []string `json:"capabilities"`
 }
 
 // Evidence is one marker that contributed technologies.

@@ -1,4 +1,5 @@
-import { orphanKey, sessionKey } from './dashboardState.js';
+import { orphanKey, sessionKey } from './dashboardState.ts';
+import type { Session } from './types.ts';
 
 const HITL_OUTCOMES = new Set(['blocked', 'needs_input', 'waiting_input', 'needs_rework']);
 const HITL_STATUSES = new Set(['waiting_input', 'operator_attention', 'stalled', 'needs_input']);
@@ -8,15 +9,17 @@ const SUCCESS_OUTCOMES = new Set(['completed']);
 const SUCCESS_STATUSES = new Set(['succeeded', 'released', 'completed']);
 const LIVE_STATUSES = new Set(['queued', 'claimed', 'starting', 'running', 'resumable']);
 
-export const sessionStatus = (session) =>
+export const sessionStatus = (session?: Session | null): string =>
   String(
     session?.execution_status || session?.status || session?.execution_state || ''
   ).toLowerCase();
 
-export const sessionWorkerOutcome = (session) =>
+export const sessionWorkerOutcome = (session?: Session | null): string =>
   String(session?.result?.outcome || '').toLowerCase();
 
-export const sessionOutcomeTone = (session, kind = 'closed') => {
+export type SessionKind = 'orphan' | 'live' | 'closed';
+
+export const sessionOutcomeTone = (session?: Session | null, kind: string = 'closed'): string => {
   if (kind === 'orphan') return 'orphan';
   const status = sessionStatus(session);
   const outcome = sessionWorkerOutcome(session);
@@ -29,12 +32,12 @@ export const sessionOutcomeTone = (session, kind = 'closed') => {
   return 'muted';
 };
 
-const titleCase = (value) =>
+const titleCase = (value: unknown): string =>
   String(value || '')
     .replace(/_/g, ' ')
     .replace(/^\w/, (ch) => ch.toUpperCase());
 
-export const sessionOutcomeLabel = (session, kind = 'closed') => {
+export const sessionOutcomeLabel = (session?: Session | null, kind: string = 'closed'): string => {
   const tone = sessionOutcomeTone(session, kind);
   const status = sessionStatus(session);
   const outcome = sessionWorkerOutcome(session);
@@ -60,7 +63,10 @@ export const sessionOutcomeLabel = (session, kind = 'closed') => {
   return titleCase(status) || 'Closed';
 };
 
-export const elapsedClockPrecise = (startedAt, now = Date.now()) => {
+export const elapsedClockPrecise = (
+  startedAt?: string | null,
+  now: number = Date.now()
+): string => {
   if (!startedAt) return '';
   const startMs = Date.parse(startedAt);
   if (!Number.isFinite(startMs)) return '';
@@ -74,7 +80,23 @@ export const elapsedClockPrecise = (startedAt, now = Date.now()) => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export const resolveOpenSession = (selected, live = [], closed = [], orphans = []) => {
+export interface SelectedSessionRef {
+  kind: string;
+  key: string;
+  snapshot?: Session | null;
+}
+
+export interface OpenSession {
+  session: Session;
+  kind: string;
+}
+
+export const resolveOpenSession = (
+  selected?: SelectedSessionRef | null,
+  live: Session[] = [],
+  closed: Session[] = [],
+  orphans: Session[] = []
+): OpenSession | null => {
   if (!selected) return null;
   if (selected.kind === 'orphan') {
     const session = orphans.find((item) => orphanKey(item) === selected.key) || selected.snapshot;

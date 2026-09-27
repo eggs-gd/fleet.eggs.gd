@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { readApiError } from './api.js';
+import { readApiError } from './api.ts';
 
-const failed = (body, status = 400) => new Response(body, { status });
+const failed = (body: string, status = 400) => new Response(body, { status });
 
 test('a JSON error from the server is shown as its message', async () => {
   const message = await readApiError(

@@ -1,17 +1,18 @@
-<script>
-  import { agentColorClass, timeAgo, assigneeLabel } from './lib/taskDisplay.js';
-  import { taskKey } from './lib/dashboardState.js';
+<script lang="ts">
+  import { agentColorClass, timeAgo, assigneeLabel } from './lib/taskDisplay';
+  import { taskKey } from './lib/dashboardState';
   import Icon from './Icon.svelte';
   import StatusActions from './StatusActions.svelte';
   import TypePill from './TypePill.svelte';
+  import type { Task } from './lib/types';
 
-  export let tasks = [];
+  export let tasks: Task[] = [];
   export let open = true;
-  export let transitions = null;
-  export let onToggle = () => {};
-  export let onOpenTask = () => {};
-  export let onShowAll = () => {};
-  export let onTransitionTask = null;
+  export let transitions: Record<string, string[]> | null = null;
+  export let onToggle: () => void = () => {};
+  export let onOpenTask: (task: Task) => void = () => {};
+  export let onShowAll: () => void = () => {};
+  export let onTransitionTask: ((task: Task, status: string) => void) | null = null;
   export let limit = 14;
 
   $: recent = [...tasks]

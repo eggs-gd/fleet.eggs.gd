@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
   import Icon from './Icon.svelte';
 
   export let pref = 'system';
-  export let onChange = () => {};
+  export let onChange: (pref: string) => void = () => {};
 
   const options = [
     { id: 'light', icon: 'sun', label: 'Light' },
@@ -27,3 +27,42 @@
     </button>
   {/each}
 </div>
+
+<style>
+  .theme-switch {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 1px;
+    margin-left: auto;
+    padding: var(--space-2xs);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+  }
+
+  .theme-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    min-height: 0;
+    height: 22px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-faint);
+  }
+
+  .theme-switch-btn:hover {
+    background: var(--surface);
+    color: var(--text-muted);
+  }
+
+  .theme-switch-btn.is-active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+</style>

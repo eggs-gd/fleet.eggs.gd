@@ -6,7 +6,7 @@ import {
   resolveOpenSession,
   sessionOutcomeLabel,
   sessionOutcomeTone
-} from './sessionOutcome.js';
+} from './sessionOutcome.ts';
 
 test('blocked / needs_input / needs_rework are HITL, not fail', () => {
   assert.equal(
@@ -95,14 +95,14 @@ test('resolveOpenSession follows a live session into closed after it finishes', 
     snapshot: { claim_id: 'claim-1', execution_status: 'running' }
   };
   const live = [{ claim_id: 'claim-1', execution_status: 'running', last_event: 'working' }];
-  const opened = resolveOpenSession(selected, live, [], []);
+  const opened = resolveOpenSession(selected, live, [], [])!;
   assert.equal(opened.kind, 'live');
   assert.equal(opened.session.last_event, 'working');
 
   const closed = [
     { claim_id: 'claim-1', execution_status: 'succeeded', result: { outcome: 'completed' } }
   ];
-  const finished = resolveOpenSession(selected, [], closed, []);
+  const finished = resolveOpenSession(selected, [], closed, [])!;
   assert.equal(finished.kind, 'closed');
-  assert.equal(finished.session.result.outcome, 'completed');
+  assert.equal(finished.session.result!.outcome, 'completed');
 });

@@ -1,26 +1,27 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
-  import { fieldHint } from './lib/settingsDraft.js';
+  import { fieldHint } from './lib/settingsDraft';
   import {
     capabilityRows,
     launchesAutomatically,
     plainText,
     reuseSummary
-  } from './lib/agentCapabilities.js';
+  } from './lib/agentCapabilities';
+  import type { AnyRecord, SettingsDraft, SettingsDraftAgent } from './lib/types';
 
-  export let agents = {};
-  export let draft = { agents: {} };
-  export let onUpdate = () => {};
-  export let onRecheck = () => {};
+  export let agents: AnyRecord = {};
+  export let draft: SettingsDraft = { agents: {} };
+  export let onUpdate: (id: string, patch: SettingsDraftAgent) => void = () => {};
+  export let onRecheck: () => void = () => {};
   export let dirty = false;
 
   let openId = '';
 
-  function toggle(id) {
+  function toggle(id: string) {
     openId = openId === id ? '' : id;
   }
 
-  const statusTone = (agent) => {
+  const statusTone = (agent: AnyRecord) => {
     if (agent.enabled?.value === false) return 'muted';
     if (agent.status === 'ready') return 'ok';
     if (agent.status === 'non_canonical') return 'warn';
@@ -28,7 +29,7 @@
     return 'muted';
   };
 
-  const statusLabel = (agent) => {
+  const statusLabel = (agent: AnyRecord) => {
     if (agent.enabled?.value === false) {
       const n = agent.active_sessions || 0;
       return n ? `Disabled · ${n} active session(s)` : 'Disabled';
@@ -77,7 +78,7 @@
                 <input
                   type="checkbox"
                   checked={draft.agents?.[agent.id]?.enabled !== false}
-                  on:change={(e) => onUpdate(agent.id, { enabled: e.target.checked })}
+                  on:change={(e) => onUpdate(agent.id, { enabled: e.currentTarget.checked })}
                 />
                 Launch new sessions
               </label>
@@ -94,7 +95,7 @@
                 type="text"
                 value={draft.agents?.[agent.id]?.executable || ''}
                 placeholder="absolute path, empty = PATH/bundled"
-                on:input={(e) => onUpdate(agent.id, { executable: e.target.value })}
+                on:input={(e) => onUpdate(agent.id, { executable: e.currentTarget.value })}
               />
             </span>
           </div>
@@ -164,7 +165,7 @@
             rows="5"
             placeholder={agent.preferred_use || 'Fleet Best At'}
             value={draft.agents?.[agent.id]?.routingInstructions || ''}
-            on:input={(e) => onUpdate(agent.id, { routingInstructions: e.target.value })}
+            on:input={(e) => onUpdate(agent.id, { routingInstructions: e.currentTarget.value })}
           ></textarea>
           <p class="settings-hint">
             {fieldHint(agent.routing_instructions)} · empty Save keeps Fleet Best At

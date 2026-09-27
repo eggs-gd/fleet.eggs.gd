@@ -1,14 +1,26 @@
-<script>
-  import { projectAccordionKey } from './lib/dashboardState.js';
-  import { projectColor, projectInitial } from './lib/projectTree.js';
+<script lang="ts">
+  import { projectAccordionKey } from './lib/dashboardState';
+  import { projectColor, projectInitial } from './lib/projectTree';
   import Icon from './Icon.svelte';
   import SidebarBranch from './SidebarBranch.svelte';
+  import type { Project } from './lib/types';
 
-  export let node;
+  interface TreeNode {
+    project: Project;
+    children: TreeNode[];
+    taskCount: number;
+  }
+
+  export let node: TreeNode;
   export let depth = 1;
   export let selectedProjectId = '';
-  export let accordionOpen = {};
-  export let onActivate = () => {};
+  export let accordionOpen: Record<string, boolean> = {};
+  export let onActivate: (
+    projectId: string,
+    key: string,
+    isOpen: boolean,
+    hasChildren: boolean
+  ) => void = () => {};
 
   $: key = projectAccordionKey(node.project);
   $: open = accordionOpen[key] ?? node.taskCount > 0;
@@ -52,3 +64,10 @@
     </ul>
   {/if}
 </li>
+
+<style>
+  .sidebar-branch {
+    padding-left: calc(var(--tree-depth, 1) * var(--space-lg));
+    min-width: 0;
+  }
+</style>

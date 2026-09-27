@@ -1,22 +1,40 @@
-<script>
+<script lang="ts">
   import { onDestroy } from 'svelte';
-  import { orphanKey, sessionKey } from './lib/dashboardState.js';
-  import { resolveOpenSession } from './lib/sessionOutcome.js';
+  import { orphanKey, sessionKey } from './lib/dashboardState';
+  import { resolveOpenSession, type SelectedSessionRef } from './lib/sessionOutcome';
   import Icon from './Icon.svelte';
   import SessionCard from './SessionCard.svelte';
   import SessionModal from './SessionModal.svelte';
+  import type { Session } from './lib/types';
 
-  export let runtimeSessions = [];
-  export let closedSessions = [];
-  export let orphanedTasks = [];
-  export let onControlSession = async () => {};
-  export let onReleaseSession = async () => {};
-  export let onResolveOrphan = async () => {};
-  export let refreshStatus = null;
+  interface RefreshStatus {
+    label: string;
+    warning: boolean;
+    busy: boolean;
+    busyLabel: string;
+    updatedAt: string;
+    updatedText: string;
+  }
+
+  export let runtimeSessions: Session[] = [];
+  export let closedSessions: Session[] = [];
+  export let orphanedTasks: Session[] = [];
+  export let onControlSession: (
+    session: Session,
+    action: string,
+    input?: string
+  ) => Promise<void> = async () => {};
+  export let onReleaseSession: (
+    session: Session,
+    action: string,
+    targetStatus: string
+  ) => Promise<void> = async () => {};
+  export let onResolveOrphan: (session: Session, status: string) => Promise<void> = async () => {};
+  export let refreshStatus: RefreshStatus | null = null;
 
   let tab = 'active';
   let expanded = false;
-  let selected = null;
+  let selected: SelectedSessionRef | null = null;
   let now = Date.now();
   let tick = setInterval(() => (now = Date.now()), 30000);
   onDestroy(() => clearInterval(tick));
@@ -26,12 +44,12 @@
   $: emptyText = tab === 'active' ? 'No active sessions.' : 'No closed sessions.';
   $: openSession = resolveOpenSession(selected, runtimeSessions, closedSessions, orphanedTasks);
 
-  function setTick(ms) {
+  function setTick(ms: number) {
     clearInterval(tick);
     tick = setInterval(() => (now = Date.now()), ms);
   }
 
-  function openSelected(session, kind) {
+  function openSelected(session: Session, kind: string) {
     selected = {
       key: kind === 'orphan' ? orphanKey(session) : sessionKey(session),
       kind,
@@ -140,3 +158,150 @@
     {onResolveOrphan}
   />
 {/if}
+
+<style>
+  .runtime-strip {
+    flex: 0 0 auto;
+  }
+
+  .runtime-strip-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+  }
+
+  .runtime-strip-header strong {
+    font-size: var(--text-md);
+  }
+
+  .runtime-strip-header span {
+    min-width: 22px;
+    border-radius: var(--radius-full);
+    background: var(--surface-muted);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    padding: var(--space-2xs) var(--space-sm);
+    text-align: center;
+  }
+
+  .runtime-strip-refresh {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+  }
+
+  .runtime-strip-refresh.refresh-warning {
+    color: var(--amber-text);
+    font-weight: 600;
+  }
+
+  .refresh-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 12px;
+    height: 12px;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .refresh-indicator.is-busy {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .refresh-spinner {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--border-strong);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: refresh-spin 0.7s linear infinite;
+  }
+
+  .session-tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+  }
+
+  .session-tabs button {
+    min-height: 26px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 0 var(--space-lg);
+  }
+
+  .session-tabs button:hover {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+
+  .session-tabs button.active {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+
+  .view-all-sessions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 0;
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: 0 var(--space-xs);
+  }
+
+  .view-all-sessions.active {
+    color: var(--accent-hover);
+  }
+
+  .runtime-strip-orphan-flag {
+    min-width: 0 !important;
+    border-radius: var(--radius-full);
+    background: var(--amber-soft) !important;
+    color: var(--amber-text) !important;
+  }
+
+  .session-grid {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    padding-bottom: 0;
+    scrollbar-width: thin;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+
+  .runtime-strip.is-expanded .session-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 42vh;
+    gap: 1px;
+    background: var(--border);
+  }
+
+  .session-grid > :global(.empty) {
+    flex: 1 1 auto;
+    margin: 0;
+    padding: var(--space-lg);
+  }
+</style>

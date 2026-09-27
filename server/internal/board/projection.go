@@ -63,11 +63,10 @@ type RepositoryTechnology struct {
 }
 
 type TechnologyProfile struct {
-	Languages    []string `json:"languages,omitempty"`
-	Frameworks   []string `json:"frameworks,omitempty"`
-	Runtimes     []string `json:"runtimes,omitempty"`
-	Tooling      []string `json:"tooling,omitempty"`
-	Capabilities []string `json:"capabilities,omitempty"`
+	Languages  []string `json:"languages,omitempty"`
+	Frameworks []string `json:"frameworks,omitempty"`
+	Runtimes   []string `json:"runtimes,omitempty"`
+	Tooling    []string `json:"tooling,omitempty"`
 }
 
 type TechnologyEvidence struct {

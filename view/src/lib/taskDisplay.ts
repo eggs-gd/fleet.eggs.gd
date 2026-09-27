@@ -1,18 +1,20 @@
 /** Pure display helpers shared by backoffice dashboard components. */
 
-export const assigneeLabel = (value) => value || 'unassigned';
+import type { AnyRecord, Project, Session, Task, ToolCall, Workspace } from './types.ts';
 
-export const priorityValue = (task) => {
+export const assigneeLabel = (value: unknown): string => (value as string) || 'unassigned';
+
+export const priorityValue = (task?: Task | null): number => {
   const value = Number(task?.priority);
   return value >= 1 && value <= 5 ? value : 5;
 };
 
-export const priorityLabel = (task) => `P${priorityValue(task)}`;
+export const priorityLabel = (task?: Task | null): string => `P${priorityValue(task)}`;
 
-export const refNumber = (task) =>
+export const refNumber = (task?: Task | null): number =>
   Number((task?.ref || '').split('-')[1]) || Number.MAX_SAFE_INTEGER;
 
-export const taskPickupCompare = (a, b) => {
+export const taskPickupCompare = (a: Task, b: Task): number => {
   const priorityDiff = priorityValue(a) - priorityValue(b);
   if (priorityDiff) return priorityDiff;
   const refDiff = refNumber(a) - refNumber(b);
@@ -20,27 +22,27 @@ export const taskPickupCompare = (a, b) => {
   return (a.relative_path || '').localeCompare(b.relative_path || '');
 };
 
-export const taskUpdatedCompare = (a, b) => {
-  const stamp = (task) => task?.updated_at || task?.created_at || '';
+export const taskUpdatedCompare = (a: Task, b: Task): number => {
+  const stamp = (task: Task) => task?.updated_at || task?.created_at || '';
   const diff = stamp(b).localeCompare(stamp(a));
   if (diff) return diff;
   return taskPickupCompare(a, b);
 };
 
-export const taskAgent = (task) =>
+export const taskAgent = (task?: Task | null): string =>
   task?.execution?.agent || task?.launch?.agent || task?.assignee || '';
 
-export const hasProjectTasks = (tasks, workspaceId) =>
+export const hasProjectTasks = (tasks: Task[], workspaceId: string): boolean =>
   tasks.some((task) => task.workspace_id === workspaceId);
 
-export const workspaceRank = (tasks, workspace) => {
+export const workspaceRank = (tasks: Task[], workspace: Workspace): number => {
   return hasProjectTasks(tasks, workspace.id) ? 1 : 2;
 };
 
-export const workspaceTitle = (workspaces, workspaceId) =>
+export const workspaceTitle = (workspaces: Workspace[], workspaceId: string): string =>
   workspaces.find((workspace) => workspace.id === workspaceId)?.title || workspaceId;
 
-export const projectById = (projects, projectId) =>
+export const projectById = (projects: Project[], projectId: string): Project =>
   projects.find((project) => project.id === projectId) || {
     id: projectId,
     title: projectId,
@@ -48,35 +50,41 @@ export const projectById = (projects, projectId) =>
     repositories: []
   };
 
-export const projectTitle = (projects, projectId) =>
+export const projectTitle = (projects: Project[], projectId: string): string =>
   projectById(projects, projectId).title || projectId;
 
-export const columnStatuses = (column) => column.statuses || [column.id];
+export const columnStatuses = (column: { statuses?: string[]; id: string }): string[] =>
+  column.statuses || [column.id];
 
-export const taskProjectId = (task) => task.project_id || task.project || task.workspace_id;
+export const taskProjectId = (task: Task): string =>
+  task.project_id || task.project || task.workspace_id || '';
 
-export const launchEvaluation = (task) => task.launch_evaluation || {};
+export const launchEvaluation = (task: Task) => task.launch_evaluation || {};
 
-export const launchOutcome = (task) => launchEvaluation(task).outcome || '';
+export const launchOutcome = (task: Task): string => launchEvaluation(task).outcome || '';
 
-export const execution = (task) => task.execution || { state: 'none', visibility_mode: 'unknown' };
+export const execution = (task: Task) =>
+  task.execution || { state: 'none', visibility_mode: 'unknown' };
 
-export const executionState = (task) => execution(task).state || 'none';
+export const executionState = (task: Task): string => execution(task).state || 'none';
 
-export const executionVisibility = (task) => execution(task).visibility_mode || 'unknown';
+export const executionVisibility = (task: Task): string =>
+  execution(task).visibility_mode || 'unknown';
 
-export const executionPointer = (task) => execution(task).session_pointer || '';
+export const executionPointer = (task: Task): string => execution(task).session_pointer || '';
 
-export const executionLabel = (task) => `${executionState(task)} · ${executionVisibility(task)}`;
+export const executionLabel = (task: Task): string =>
+  `${executionState(task)} · ${executionVisibility(task)}`;
 
-export const launchVisibility = (task) => launchEvaluation(task).visibility_mode || '';
+export const launchVisibility = (task: Task): string =>
+  launchEvaluation(task).visibility_mode || '';
 
-export const launchVisibilityLabel = (task) => {
+export const launchVisibilityLabel = (task: Task): string => {
   const mode = launchVisibility(task);
   return mode ? `visibility ${mode}` : '';
 };
 
-export const executionClass = (task) => {
+export const executionClass = (task: Task): string => {
   const state = executionState(task);
   if (['running', 'starting', 'claimed', 'resumable'].includes(state)) return 'execution-live';
   if (['waiting_input', 'operator_attention', 'stalled'].includes(state))
@@ -87,15 +95,15 @@ export const executionClass = (task) => {
   return 'execution-none';
 };
 
-export const showExecutionSignal = (task) =>
+export const showExecutionSignal = (task: Task): boolean =>
   task.status === 'doing' || executionState(task) !== 'none';
 
-export const executionReason = (task) =>
+export const executionReason = (task: Task): string =>
   execution(task).blocking_reason || execution(task).terminal_reason || '';
 
 const pauseStates = ['waiting_input', 'operator_attention', 'stalled'];
 
-export const latestCommentText = (task) => {
+export const latestCommentText = (task?: Task | null): string => {
   const comments = task?.comments || [];
   for (let i = comments.length - 1; i >= 0; i -= 1) {
     const text = String(comments[i]?.text || '').trim();
@@ -104,7 +112,12 @@ export const latestCommentText = (task) => {
   return '';
 };
 
-export const operatorPause = (task) => {
+export interface OperatorPause {
+  waiting: boolean;
+  question: string;
+}
+
+export const operatorPause = (task: Task): OperatorPause => {
   const state = executionState(task);
   if (pauseStates.includes(state)) {
     return { waiting: true, question: executionReason(task) };
@@ -118,14 +131,17 @@ export const operatorPause = (task) => {
   return { waiting: true, question: (match?.[1] || text).trim() };
 };
 
-export const cardStatusLabel = (task) => {
+export const cardStatusLabel = (task: Task): string => {
   if (operatorPause(task).waiting) return 'waiting for a decision';
   return String(task?.status || '').replaceAll('_', ' ');
 };
 
-export const sessionCoversTask = (session, task) => {
+export const sessionCoversTask = (
+  session: Session | null | undefined,
+  task: Task | null | undefined
+): boolean => {
   if (!session || !task) return false;
-  return (
+  return Boolean(
     (session.task_path &&
       (task.path === session.task_path || task.relative_path === session.task_path)) ||
     (session.task_id && task.id === session.task_id) ||
@@ -133,44 +149,53 @@ export const sessionCoversTask = (session, task) => {
   );
 };
 
-export const taskShownOnRight = (task) =>
+export const taskShownOnRight = (task: Task): boolean =>
   task?.status === 'done' ||
   task?.status === 'blocked' ||
   task?.status === 'needs_review' ||
   operatorPause(task).waiting;
 
-export const taskInBacklog = (task, liveSessions = []) => {
+export const taskInBacklog = (
+  task: Task | null | undefined,
+  liveSessions: Session[] = []
+): boolean => {
   if (!task || task.status === 'archived') return false;
   if (taskShownOnRight(task)) return false;
   return !liveSessions.some((session) => sessionCoversTask(session, task));
 };
 
-export const providerErrorReason = (record) => record?.provider_error?.reason || '';
+export const providerErrorReason = (record?: AnyRecord | null): string =>
+  record?.provider_error?.reason || '';
 
-export const providerErrorDetail = (record) => record?.provider_error?.detail || '';
+export const providerErrorDetail = (record?: AnyRecord | null): string =>
+  record?.provider_error?.detail || '';
 
-export const providerErrorKind = (record) => record?.provider_error?.kind || '';
+export const providerErrorKind = (record?: AnyRecord | null): string =>
+  record?.provider_error?.kind || '';
 
-export const providerErrorSuggestedAction = (record) =>
+export const providerErrorSuggestedAction = (record?: AnyRecord | null): string =>
   record?.provider_error?.suggested_action || '';
 
-export const providerErrorRetryPolicy = (record) => record?.provider_error?.retry_policy || '';
+export const providerErrorRetryPolicy = (record?: AnyRecord | null): string =>
+  record?.provider_error?.retry_policy || '';
 
-export const sessionRoleClass = (session) => `session-role role-${session?.role || 'historical'}`;
+export const sessionRoleClass = (session?: AnyRecord | null): string =>
+  `session-role role-${session?.role || 'historical'}`;
 
-export const sessionResumeLabel = (session) => {
+export const sessionResumeLabel = (session?: AnyRecord | null): string => {
   if (!session?.resume_attempted) return '';
   if (session.resume_outcome === 'resumed') return 'resumed prior session';
   if (session.resume_outcome === 'fallback_new') return 'resume failed, started new session';
   return 'resume in progress';
 };
 
-export const remoteThreadTitle = (record) =>
+export const remoteThreadTitle = (record?: AnyRecord | null): string =>
   record?.codex_thread_title || record?.thread_title || '';
 
-export const remoteHostLabel = (record) => record?.host_name || record?.host_id || '';
+export const remoteHostLabel = (record?: AnyRecord | null): string =>
+  record?.host_name || record?.host_id || '';
 
-export const codexRemoteInstruction = (record) => {
+export const codexRemoteInstruction = (record?: AnyRecord | null): string => {
   const title =
     remoteThreadTitle(record) ||
     record?.task_ref ||
@@ -190,7 +215,7 @@ export const codexRemoteInstruction = (record) => {
     .join(' · ');
 };
 
-export const orphanRecoveryLabel = (orphan) => {
+export const orphanRecoveryLabel = (orphan?: AnyRecord | null): string => {
   const state = orphan?.execution_state || 'orphaned';
   if (state === 'resumable') return 'orphaned but resumable';
   if (state === 'dead' || state === 'terminal') return 'orphaned and dead';
@@ -198,7 +223,7 @@ export const orphanRecoveryLabel = (orphan) => {
   return state;
 };
 
-export const orphanCapabilitySummary = (orphan) => {
+export const orphanCapabilitySummary = (orphan?: AnyRecord | null): string => {
   const caps = orphan?.capabilities;
   if (!caps) return '';
   return [
@@ -211,7 +236,7 @@ export const orphanCapabilitySummary = (orphan) => {
   ].join(' · ');
 };
 
-export const executionIdentity = (record) =>
+export const executionIdentity = (record?: AnyRecord | null): string[] =>
   [
     remoteThreadTitle(record) ? `title ${remoteThreadTitle(record)}` : '',
     remoteHostLabel(record) ? `host ${remoteHostLabel(record)}` : '',
@@ -228,74 +253,74 @@ export const executionIdentity = (record) =>
     record?.log_path ? record.log_path : ''
   ].filter(Boolean);
 
-export const toolUsage = (record) => record?.tool_usage || null;
+export const toolUsage = (record?: AnyRecord | null) => record?.tool_usage || null;
 
-export const toolUsageWarning = (record) =>
+export const toolUsageWarning = (record?: AnyRecord | null): string =>
   record?.tool_usage?.warning || record?.tool_warning || '';
 
-export const toolUsageHasMissing = (record) => {
+export const toolUsageHasMissing = (record?: AnyRecord | null): boolean => {
   const missing = record?.tool_usage?.missing;
   return Array.isArray(missing) && missing.length > 0;
 };
 
-export const toolUsageProfiles = (record) => {
+export const toolUsageProfiles = (record?: AnyRecord | null): string[] => {
   const profiles = record?.tool_usage?.profiles;
   return Array.isArray(profiles) ? profiles : [];
 };
 
-export const toolUsageRequired = (record) => {
+export const toolUsageRequired = (record?: AnyRecord | null): string[] => {
   const required = record?.tool_usage?.required;
   return Array.isArray(required) ? required : [];
 };
 
-export const toolUsageUsed = (record) => {
+export const toolUsageUsed = (record?: AnyRecord | null): ToolCall[] => {
   const used = record?.tool_usage?.used;
   return Array.isArray(used) ? used : [];
 };
 
-export const toolUsageMissing = (record) => {
+export const toolUsageMissing = (record?: AnyRecord | null): string[] => {
   const missing = record?.tool_usage?.missing;
   return Array.isArray(missing) ? missing : [];
 };
 
 // One chip per required tool: "missing X" when unmet, "req X" when observed.
 // Do not also render a separate missing list — that produced "req X missing X".
-export const formatRequiredToolChip = (tool, record) => {
+export const formatRequiredToolChip = (tool: string, record?: AnyRecord | null): string => {
   if (!tool) return '';
   return toolUsageMissing(record).includes(tool) ? `missing ${tool}` : `req ${tool}`;
 };
 
-export const formatToolCall = (call) => {
+export const formatToolCall = (call?: ToolCall | null): string => {
   if (!call?.name) return '';
   const when = call.called_at ? new Date(call.called_at).toLocaleTimeString() : '';
   const bits = [call.name, call.status, when].filter(Boolean);
   return bits.join(' · ');
 };
 
-export async function copyText(value) {
+export async function copyText(value: string | null | undefined): Promise<void> {
   if (!value) return;
   await navigator.clipboard?.writeText(value);
 }
 
-export const launchReason = (task) => {
+export const launchReason = (task: Task): string => {
   const evaluation = launchEvaluation(task);
   if (evaluation.waiting?.reason) return evaluation.waiting.reason;
   return evaluation.failed_gates?.[0] || '';
 };
 
-export const blockedReason = (task) =>
-  task?.status === 'blocked' ? task?.blocked_reason || launchReason(task) : '';
+export const blockedReason = (task?: Task | null): string =>
+  task?.status === 'blocked' ? task?.blocked_reason || launchReason(task!) : '';
 
-export const dependsOnList = (task) =>
+export const dependsOnList = (task?: Task | null): string[] =>
   Array.isArray(task?.depends_on)
-    ? task.depends_on.map((ref) => String(ref || '').trim()).filter(Boolean)
+    ? task!.depends_on!.map((ref) => String(ref || '').trim()).filter(Boolean)
     : [];
 
-export const dependsOnDraft = (task) => dependsOnList(task).join(', ');
+export const dependsOnDraft = (task?: Task | null): string => dependsOnList(task).join(', ');
 
-export const parseDependsOnDraft = (text) => {
-  const seen = new Set();
-  const out = [];
+export const parseDependsOnDraft = (text: unknown): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
   for (const part of String(text || '').split(/[\n,]+/)) {
     const ref = part.trim();
     if (!ref) continue;
@@ -307,19 +332,19 @@ export const parseDependsOnDraft = (text) => {
   return out;
 };
 
-export const showLaunchSignal = (task) => {
+export const showLaunchSignal = (task: Task): boolean => {
   const outcome = launchOutcome(task);
-  return outcome && outcome !== 'launchable';
+  return Boolean(outcome) && outcome !== 'launchable';
 };
 
 const KNOWN_AGENT_COLORS = new Set(['claude', 'codex', 'cursor', 'gemini']);
 
-export const agentColorClass = (agent) => {
+export const agentColorClass = (agent: unknown): string => {
   const name = String(agent || '').toLowerCase();
   return KNOWN_AGENT_COLORS.has(name) ? `agent-${name}` : 'agent-other';
 };
 
-export const elapsedClock = (startedAt, now = Date.now()) => {
+export const elapsedClock = (startedAt?: string | null, now: number = Date.now()): string => {
   if (!startedAt) return '';
   const startMs = Date.parse(startedAt);
   if (!Number.isFinite(startMs)) return '';
@@ -329,7 +354,7 @@ export const elapsedClock = (startedAt, now = Date.now()) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
 
-export const timeAgo = (iso, now = Date.now()) => {
+export const timeAgo = (iso?: string | null, now: number = Date.now()): string => {
   if (!iso) return '';
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return '';
@@ -342,14 +367,37 @@ export const timeAgo = (iso, now = Date.now()) => {
   return `${diffDays}d ago`;
 };
 
-export const archiveListMode = (selectedProjectId, selectedWorkspaceId) => {
+export const archiveListMode = (
+  selectedProjectId?: string | null,
+  selectedWorkspaceId?: string | null
+): 'flat' | 'projects' | 'workspaces' => {
   if (selectedProjectId) return 'flat';
   if (selectedWorkspaceId) return 'projects';
   return 'workspaces';
 };
 
-export const groupedByWorkspaceAndProject = (sourceTasks, workspaces, projects) => {
-  const workspaceIds = Array.from(new Set(sourceTasks.map((task) => task.workspace_id))).sort(
+export interface WorkspaceProjectGroup {
+  id: string;
+  title: string;
+  source: Project;
+  tasks: Task[];
+}
+
+export interface WorkspaceTaskGroup {
+  id: string;
+  title: string;
+  source?: Workspace;
+  isGroup: boolean;
+  tasks: Task[];
+  projects: WorkspaceProjectGroup[];
+}
+
+export const groupedByWorkspaceAndProject = (
+  sourceTasks: Task[],
+  workspaces: Workspace[],
+  projects: Project[]
+): WorkspaceTaskGroup[] => {
+  const workspaceIds = Array.from(new Set(sourceTasks.map((task) => task.workspace_id || ''))).sort(
     (a, b) => workspaceTitle(workspaces, a).localeCompare(workspaceTitle(workspaces, b))
   );
   return workspaceIds.map((workspaceId) => {
@@ -358,7 +406,7 @@ export const groupedByWorkspaceAndProject = (sourceTasks, workspaces, projects) 
       projectTitle(projects, a).localeCompare(projectTitle(projects, b))
     );
     const source = workspaces.find((workspace) => workspace.id === workspaceId);
-    const projectGroups = projectIds.map((projectId) => ({
+    const projectGroups: WorkspaceProjectGroup[] = projectIds.map((projectId) => ({
       id: projectId,
       title: projectTitle(projects, projectId),
       source: projectById(projects, projectId),

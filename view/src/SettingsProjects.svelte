@@ -1,23 +1,24 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import type { AnyRecord } from './lib/types';
 
-  export let projects = {};
-  export let scanRoots = [];
+  export let projects: AnyRecord = {};
+  export let scanRoots: string[] = [];
   export let scanDirty = false;
-  export let onScanRoots = () => {};
-  export let onRescan = () => {};
+  export let onScanRoots: (roots: string[]) => void = () => {};
+  export let onRescan: () => void = () => {};
 
-  const reachable = (root) => (root.reachable ? 'reachable' : 'missing');
+  const reachable = (root: AnyRecord) => (root.reachable ? 'reachable' : 'missing');
   $: scan = projects.scan || {};
   $: scanning = scan.state === 'scanning';
 
-  function editRoot(index, value) {
+  function editRoot(index: number, value: string) {
     const next = scanRoots.slice();
     next[index] = value;
     onScanRoots(next);
   }
 
-  function removeRoot(index) {
+  function removeRoot(index: number) {
     onScanRoots(scanRoots.filter((_, i) => i !== index));
   }
 

@@ -1,4 +1,9 @@
-export const SETTINGS_SECTIONS = [
+export interface SettingsSection {
+  id: string;
+  label: string;
+}
+
+export const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: 'general', label: 'General' },
   { id: 'agents', label: 'Agents' },
   { id: 'workflow', label: 'Workflow' },
@@ -6,7 +11,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'diagnostics', label: 'Diagnostics' }
 ];
 
-export const settingsSectionLabel = (id) =>
+export const settingsSectionLabel = (id: string): string =>
   SETTINGS_SECTIONS.find((section) => section.id === id)?.label || id;
 
-export const isSettingsNav = (globalNav) => globalNav === 'settings';
+export const isSettingsNav = (globalNav: string): boolean => globalNav === 'settings';

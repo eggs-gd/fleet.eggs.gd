@@ -65,7 +65,7 @@ vet:
 	cd "$(SERVER_DIR)" && go vet ./...
 
 check: vet test
-	cd "$(VIEW_DIR)" && npm run test:ui-state && npm run test:technology-display && npm run format:check
+	cd "$(VIEW_DIR)" && npm run check && npm run test:ui-state && npm run test:technology-display && npm run format:check
 
 serve: build
 	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \

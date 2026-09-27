@@ -33,7 +33,7 @@ import {
   updateAccordionOpen,
   visibleSessionsForGroup,
   workspaceAccordionKey
-} from './dashboardState.js';
+} from './dashboardState.ts';
 
 const firstPoll = {
   workspaces: [{ id: 'core-eggs-gd', title: 'Core' }],

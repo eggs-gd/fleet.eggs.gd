@@ -1,7 +1,8 @@
-<script>
+<script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import type { AnyRecord } from './lib/types';
 
-  export let integrations = {};
+  export let integrations: AnyRecord = {};
 </script>
 
 <section class="settings-block" aria-label="Fleet MCP">

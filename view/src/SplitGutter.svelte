@@ -1,8 +1,8 @@
-<script>
+<script lang="ts">
   import { onDestroy } from 'svelte';
 
   export let axis = 'x';
-  export let onDrag = () => {};
+  export let onDrag: (delta: number) => void = () => {};
 
   let dragging = false;
   let lastX = 0;
@@ -14,7 +14,7 @@
     window.removeEventListener('pointercancel', stop, true);
   }
 
-  function start(event) {
+  function start(event: PointerEvent) {
     if (event.button !== 0 || dragging) return;
     event.preventDefault();
     dragging = true;
@@ -25,7 +25,7 @@
     window.addEventListener('pointercancel', stop, true);
   }
 
-  function move(event) {
+  function move(event: PointerEvent) {
     if (!dragging) return;
     if (event.buttons === 0) {
       stop();
@@ -57,3 +57,33 @@
 >
   <span class="visually-hidden">{axis === 'y' ? 'Resize panels' : 'Resize columns'}</span>
 </div>
+
+<style>
+  .split-gutter {
+    flex: 0 0 auto;
+    background: transparent;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .split-gutter-x {
+    width: 8px;
+    cursor: col-resize;
+  }
+
+  .split-gutter-y {
+    height: 8px;
+    cursor: row-resize;
+  }
+
+  .split-gutter:hover,
+  .split-gutter.is-dragging {
+    background: var(--accent-soft);
+  }
+
+  @media (max-width: 900px) {
+    .split-gutter {
+      display: none;
+    }
+  }
+</style>

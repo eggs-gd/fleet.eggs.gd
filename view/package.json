@@ -7,10 +7,11 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:ui-state": "node --test src/lib/dashboardState.test.mjs src/lib/projectTree.test.mjs src/lib/taskTags.test.mjs src/lib/sessionOutcome.test.mjs src/lib/statusTransitions.test.mjs src/lib/theme.test.mjs src/lib/settingsNav.test.mjs src/lib/settingsDraft.test.mjs src/lib/projectSettings.test.mjs src/lib/operator.test.mjs src/lib/api.test.mjs src/lib/agentCapabilities.test.mjs",
-    "test:technology-display": "node --test src/lib/technologyDisplay.test.mjs",
+    "test:ui-state": "node --test src/lib/dashboardState.test.ts src/lib/projectTree.test.ts src/lib/taskTags.test.ts src/lib/sessionOutcome.test.ts src/lib/statusTransitions.test.ts src/lib/theme.test.ts src/lib/settingsNav.test.ts src/lib/settingsDraft.test.ts src/lib/projectSettings.test.ts src/lib/operator.test.ts src/lib/api.test.ts src/lib/agentCapabilities.test.ts",
+    "test:technology-display": "node --test src/lib/technologyDisplay.test.ts",
     "format": "prettier --write src",
-    "format:check": "prettier --check src"
+    "format:check": "prettier --check src",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
@@ -18,7 +19,10 @@
     "vite": "^7.3.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.3",
     "prettier": "^3.9.9",
-    "prettier-plugin-svelte": "^4.1.1"
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "^6.0.3"
   }
 }

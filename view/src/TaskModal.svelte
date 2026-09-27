@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import { tick } from 'svelte';
   import {
     blockedReason,
@@ -20,14 +20,15 @@
     showExecutionSignal,
     toolUsageWarning,
     workspaceTitle
-  } from './lib/taskDisplay.js';
+  } from './lib/taskDisplay';
   import TaskComments from './TaskComments.svelte';
+  import type { Project, Task, Workspace } from './lib/types';
 
-  export let task;
-  export let workspaces = [];
-  export let projects = [];
-  export let statuses = [];
-  export let assignees = [];
+  export let task: Task;
+  export let workspaces: Workspace[] = [];
+  export let projects: Project[] = [];
+  export let statuses: string[] = [];
+  export let assignees: string[] = [];
   export let draftStatus = '';
   export let draftPriority = 5;
   export let draftAssignee = '';
@@ -37,10 +38,10 @@
   export let draftComment = '';
   export let saving = false;
   export let editError = '';
-  export let onSave = async () => {};
-  export let onClose = () => {};
+  export let onSave: () => Promise<void> = async () => {};
+  export let onClose: () => void = () => {};
 
-  let commentField;
+  let commentField: HTMLTextAreaElement;
 
   $: sortedProjects = [...projects].sort((a, b) =>
     (a.title || a.id).localeCompare(b.title || b.id)
@@ -61,7 +62,7 @@
   // Grow on typing/paste and when an existing longer draft is restored.
   $: (draftComment, tick().then(resizeCommentField));
 
-  function closeFromBackdrop(event) {
+  function closeFromBackdrop(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       onClose();
     }
@@ -189,16 +190,16 @@
             <span>{execution(task).last_event}</span>
           {/if}
           {#if execution(task).last_activity_at}
-            <span>last {new Date(execution(task).last_activity_at).toLocaleString()}</span>
+            <span>last {new Date(execution(task).last_activity_at!).toLocaleString()}</span>
           {/if}
           {#if execution(task).last_event_at}
-            <span>event {new Date(execution(task).last_event_at).toLocaleString()}</span>
+            <span>event {new Date(execution(task).last_event_at!).toLocaleString()}</span>
           {/if}
           {#if execution(task).last_output_at}
-            <span>output {new Date(execution(task).last_output_at).toLocaleString()}</span>
+            <span>output {new Date(execution(task).last_output_at!).toLocaleString()}</span>
           {/if}
           {#if execution(task).last_status_change_at}
-            <span>status {new Date(execution(task).last_status_change_at).toLocaleString()}</span>
+            <span>status {new Date(execution(task).last_status_change_at!).toLocaleString()}</span>
           {/if}
         </div>
         {#if execution(task).provider === 'codex' || execution(task).backend === 'codex-app-server'}
@@ -286,3 +287,116 @@
     </footer>
   </div>
 </section>
+
+<style>
+  .depends-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    align-items: center;
+  }
+
+  .depends-chips code {
+    font-size: var(--text-sm);
+    padding: var(--space-2xs) var(--space-sm);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface-muted);
+  }
+
+  .comment-editor textarea.comment-input {
+    min-height: calc(1.4em * 3 + 20px);
+    height: auto;
+    max-height: min(40vh, 280px);
+    overflow-y: auto;
+    resize: none;
+    line-height: 1.4;
+    field-sizing: content;
+  }
+
+  .launch-detail {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-lg);
+  }
+
+  .launch-detail span,
+  .execution-detail > span {
+    display: block;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+  }
+
+  .launch-detail p {
+    margin: 0;
+  }
+
+  .execution-detail {
+    border: 1px solid var(--border);
+    border-left-width: 3px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-lg);
+  }
+
+  .execution-detail p {
+    margin: var(--space-md) 0 0;
+    color: var(--text);
+    line-height: 1.45;
+  }
+
+  .execution-live {
+    border-left-color: var(--green);
+    background: var(--green-soft);
+  }
+
+  .execution-waiting {
+    border-left-color: var(--amber);
+    background: var(--amber-soft);
+  }
+
+  .execution-orphaned,
+  .execution-failed {
+    border-left-color: var(--red);
+    background: var(--red-soft);
+  }
+
+  .execution-complete {
+    border-left-color: var(--blue);
+    background: var(--blue-soft);
+  }
+
+  .execution-none {
+    border-left-color: var(--border-strong);
+  }
+
+  .blocked-detail {
+    border: 1px solid var(--error-border);
+    border-radius: var(--radius-sm);
+    background: var(--red-soft);
+    margin: 0 0 var(--space-lg);
+    padding: var(--space-lg);
+  }
+
+  .blocked-detail span {
+    display: block;
+    color: var(--red-text);
+    font-size: var(--text-sm);
+    font-weight: 700;
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+  }
+
+  .blocked-detail p {
+    margin: 0;
+    color: var(--red-text);
+    line-height: 1.45;
+  }
+</style>

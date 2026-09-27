@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { draftFromSnapshot, draftsEqual, patchFromDraft } from './settingsDraft.js';
+import { draftFromSnapshot, draftsEqual, patchFromDraft } from './settingsDraft.ts';
 
 test('draft keeps overlay routing only', () => {
   const draft = draftFromSnapshot({
@@ -18,8 +18,8 @@ test('draft keeps overlay routing only', () => {
     }
   });
   assert.deepEqual(draft.scanRoots, ['/tmp/Projects']);
-  assert.equal(draft.agents.codex.executable, '/opt/codex');
-  assert.equal(draft.agents.codex.routingInstructions, '');
+  assert.equal(draft.agents!.codex.executable, '/opt/codex');
+  assert.equal(draft.agents!.codex.routingInstructions, '');
 });
 
 test('patchFromDraft emits only changed overlay keys', () => {

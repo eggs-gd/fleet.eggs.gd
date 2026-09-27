@@ -158,8 +158,7 @@ func profileIsEmpty(profile board.TechnologyProfile) bool {
 	return len(profile.Languages) == 0 &&
 		len(profile.Frameworks) == 0 &&
 		len(profile.Runtimes) == 0 &&
-		len(profile.Tooling) == 0 &&
-		len(profile.Capabilities) == 0
+		len(profile.Tooling) == 0
 }
 
 func technologyProfileTags(profile board.TechnologyProfile) []string {
@@ -168,7 +167,6 @@ func technologyProfileTags(profile board.TechnologyProfile) []string {
 	tags = append(tags, profile.Frameworks...)
 	tags = append(tags, profile.Runtimes...)
 	tags = append(tags, profile.Tooling...)
-	tags = append(tags, profile.Capabilities...)
 	return sortedUniqueStrings(tags)
 }
 

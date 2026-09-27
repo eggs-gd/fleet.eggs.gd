@@ -5,9 +5,9 @@ import {
   projectAccordionKey,
   pruneAccordionOpen,
   workspaceAccordionKey
-} from './dashboardState.js';
-import { archiveListMode, groupedByWorkspaceAndProject } from './taskDisplay.js';
-import { buildSidebarTree, projectInitial, projectOpenCount } from './projectTree.js';
+} from './dashboardState.ts';
+import { archiveListMode, groupedByWorkspaceAndProject } from './taskDisplay.ts';
+import { buildSidebarTree, projectInitial, projectOpenCount } from './projectTree.ts';
 
 test('buildSidebarTree nests projects by id prefix and keeps a standalone workspace as one row', () => {
   const workspaces = [
@@ -28,8 +28,8 @@ test('buildSidebarTree nests projects by id prefix and keeps a standalone worksp
   ];
 
   const tree = buildSidebarTree(workspaces, projects, tasks);
-  const unity = tree.find((node) => node.workspace.id === 'unity');
-  const core = tree.find((node) => node.workspace.id === 'core-eggs-gd');
+  const unity = tree.find((node) => node.workspace.id === 'unity')!;
+  const core = tree.find((node) => node.workspace.id === 'core-eggs-gd')!;
 
   assert.equal(unity.isGroup, true);
   assert.equal(unity.children.length, 1);
@@ -44,9 +44,9 @@ test('buildSidebarTree nests projects by id prefix and keeps a standalone worksp
     unity.rootNode,
     'workspace-root project should still be reachable when the workspace has children'
   );
-  assert.equal(unity.rootNode.project.id, 'unity');
+  assert.equal(unity.rootNode!.project.id, 'unity');
   assert.equal(core.isGroup, false);
-  assert.equal(core.leafProject.id, 'core-eggs-gd');
+  assert.equal(core.leafProject!.id, 'core-eggs-gd');
   assert.equal(projectOpenCount(tasks, 'unity/foo'), 1);
   assert.equal(projectInitial('eGGs.gd', 'eggs'), 'E');
 });
@@ -67,8 +67,8 @@ test('archive grouping marks a standalone project as a leaf and a space as a gro
   ];
 
   const groups = groupedByWorkspaceAndProject(tasks, workspaces, projects);
-  const core = groups.find((group) => group.id === 'core-eggs-gd');
-  const unity = groups.find((group) => group.id === 'unity');
+  const core = groups.find((group) => group.id === 'core-eggs-gd')!;
+  const unity = groups.find((group) => group.id === 'unity')!;
 
   assert.equal(core.isGroup, false);
   assert.equal(core.projects.length, 1);

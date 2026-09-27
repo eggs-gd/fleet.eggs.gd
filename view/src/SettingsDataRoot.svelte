@@ -1,16 +1,17 @@
-<script>
+<script lang="ts">
   import { onMount } from 'svelte';
-  import { apiFetch, readApiError } from './lib/api.js';
+  import { apiFetch, readApiError } from './lib/api';
   import SettingsField from './SettingsField.svelte';
+  import type { AnyRecord } from './lib/types';
 
-  let config = $state(null);
+  let config = $state<AnyRecord | null>(null);
   let input = $state('');
   let loading = $state(false);
   let saving = $state(false);
   let confirming = $state(false);
   let error = $state('');
   let restartRequired = $state(false);
-  let previousBinding = $state(null);
+  let previousBinding = $state<AnyRecord | null>(null);
   let recreateOffer = $state(false);
   let recreating = $state(false);
   let recreateError = $state('');
@@ -21,9 +22,9 @@
       const response = await apiFetch('/api/app-config');
       if (!response.ok) throw new Error(await response.text());
       config = await response.json();
-      input = config.dataRoot || config.effectiveRoot || '';
+      input = config!.dataRoot || config!.effectiveRoot || '';
       error = '';
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       loading = false;
@@ -51,11 +52,11 @@
       });
       if (!response.ok) throw new Error(await response.text());
       config = await response.json();
-      restartRequired = restartRequired || config.restartRequired;
+      restartRequired = restartRequired || config!.restartRequired;
       confirming = false;
       error = '';
       recreateOffer = Boolean(previousBinding?.bound);
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       saving = false;
@@ -79,7 +80,7 @@
       });
       if (!response.ok) throw new Error(await readApiError(response));
       recreateOffer = false;
-    } catch (err) {
+    } catch (err: any) {
       recreateError = err.message || String(err);
     } finally {
       recreating = false;

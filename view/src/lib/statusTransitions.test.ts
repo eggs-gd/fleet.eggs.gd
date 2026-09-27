@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { actionsForStatus, canTransitionStatus, STATUS_TRANSITIONS } from './statusTransitions.js';
+import { actionsForStatus, canTransitionStatus, STATUS_TRANSITIONS } from './statusTransitions.ts';
 
 test('STATUS_TRANSITIONS matches the Go operator map', () => {
   assert.deepEqual(STATUS_TRANSITIONS.needs_review, ['needs_rework', 'todo', 'done', 'archived']);

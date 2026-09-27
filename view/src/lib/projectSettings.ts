@@ -1,5 +1,6 @@
-import { childIdsOf, parentIdOf } from './projectTree.js';
-import { repoWebUrl, techRepositories } from './technologyDisplay.js';
+import { childIdsOf, parentIdOf } from './projectTree.ts';
+import { repoWebUrl, techRepositories } from './technologyDisplay.ts';
+import type { Project, Workspace, Repository } from './types.ts';
 
 export const PROJECT_SETTINGS_VIEW = 'projectSettings';
 
@@ -9,17 +10,23 @@ export const PROJECT_SETTINGS_VIEW = 'projectSettings';
 // shows, instead of a one-level-only approximation. `candidateIds` should
 // include both project and workspace ids, since a project's nearest ancestor
 // may be a workspace with no matching project entry.
-export const parentProjectId = (id, candidateIds = []) => parentIdOf(candidateIds, id) || '';
+export const parentProjectId = (id: string, candidateIds: string[] = []): string =>
+  parentIdOf(candidateIds, id) || '';
 
-export const childProjects = (projects, id) => {
+export const childProjects = (projects: Project[] | null | undefined, id: string): Project[] => {
   const ids = (projects || []).map((project) => project.id);
   const childIds = new Set(childIdsOf(ids, id));
   return (projects || []).filter((project) => childIds.has(project.id));
 };
 
-const indexRepositories = (repositories) => {
-  const byId = new Map();
-  const byPath = new Map();
+interface RepositoryIndex {
+  byId: Map<string, Repository>;
+  byPath: Map<string, Repository>;
+}
+
+const indexRepositories = (repositories: Repository[] | null | undefined): RepositoryIndex => {
+  const byId = new Map<string, Repository>();
+  const byPath = new Map<string, Repository>();
   for (const repo of repositories || []) {
     if (repo?.id) byId.set(repo.id, repo);
     if (repo?.relative_path) byPath.set(repo.relative_path, repo);
@@ -27,20 +34,37 @@ const indexRepositories = (repositories) => {
   return { byId, byPath };
 };
 
-const lookupRepo = (repo, index) => {
-  if (repo?.id && index.byId.has(repo.id)) return index.byId.get(repo.id);
+const lookupRepo = (
+  repo: Repository | null | undefined,
+  index: RepositoryIndex
+): Repository | null => {
+  if (repo?.id && index.byId.has(repo.id)) return index.byId.get(repo.id) || null;
   if (repo?.relative_path && index.byPath.has(repo.relative_path))
-    return index.byPath.get(repo.relative_path);
+    return index.byPath.get(repo.relative_path) || null;
   return null;
 };
 
-const nestedLabels = (ids, index) =>
+const nestedLabels = (ids: string[] | null | undefined, index: RepositoryIndex): string[] =>
   (ids || []).map((nestedId) => {
     const nested = index.byId.get(nestedId);
     return nested?.relative_path || nested?.name || nestedId;
   });
 
-export const repositoryInspectRow = (repo, repositories = []) => {
+export interface RepositoryInspectRow {
+  id: string;
+  name: string;
+  relativePath: string;
+  branch: string;
+  remote: string;
+  webUrl: string;
+  nestedUnder: string;
+  nests: string[];
+}
+
+export const repositoryInspectRow = (
+  repo: Repository | null | undefined,
+  repositories: Repository[] | RepositoryIndex = []
+): RepositoryInspectRow => {
   const index = Array.isArray(repositories) ? indexRepositories(repositories) : repositories;
   const extra = lookupRepo(repo, index) || {};
   const remote = repo?.remote || extra.remote || '';
@@ -59,10 +83,28 @@ export const repositoryInspectRow = (repo, repositories = []) => {
   };
 };
 
+export interface ProjectSettingsInspect {
+  tag: string;
+  kind: string;
+  source: string;
+  status: string;
+  reviewStatus: string;
+  projectMd: string;
+  summary: string;
+  membership: { id: string; title: string } | null;
+  parent: { id: string; title: string } | null;
+  nested: { id: string; title: string }[];
+  repositories: RepositoryInspectRow[];
+}
+
 export const projectSettingsInspect = (
-  item,
-  { workspaces = [], projects = [], repositories = [] } = {}
-) => {
+  item: Project | null | undefined,
+  {
+    workspaces = [],
+    projects = [],
+    repositories = []
+  }: { workspaces?: Workspace[]; projects?: Project[]; repositories?: Repository[] } = {}
+): ProjectSettingsInspect | null => {
   if (!item) return null;
   const index = indexRepositories(repositories);
   const workspace = workspaces.find((entry) => entry.id === (item.workspace_id || item.id)) || null;
@@ -76,8 +118,8 @@ export const projectSettingsInspect = (
     (parentId && workspaces.find((entry) => entry.id === parentId)) ||
     null;
 
-  const seen = new Set();
-  const rows = [];
+  const seen = new Set<string>();
+  const rows: RepositoryInspectRow[] = [];
   for (const repo of techRepositories(item)) {
     const key = repo.relative_path || repo.id;
     if (key) seen.add(key);

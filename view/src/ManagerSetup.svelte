@@ -1,10 +1,11 @@
-<script>
-  import { apiFetch, readApiError } from './lib/api.js';
+<script lang="ts">
+  import { apiFetch, readApiError } from './lib/api';
+  import type { AnyRecord } from './lib/types';
 
   // What the server found on this computer: [{ id, name, available }].
-  export let providers = [];
-  export let onDone = () => {};
-  export let onSkip = () => {};
+  export let providers: AnyRecord[] = [];
+  export let onDone: () => void = () => {};
+  export let onSkip: () => void = () => {};
 
   $: available = providers.filter((provider) => provider.available);
   let agent = '';
@@ -24,7 +25,7 @@
       });
       if (!response.ok) throw new Error(await readApiError(response));
       onDone();
-    } catch (err) {
+    } catch (err: any) {
       error = err.message || String(err);
     } finally {
       creating = false;

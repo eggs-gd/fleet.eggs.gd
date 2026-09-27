@@ -1,49 +1,50 @@
-<script>
+<script lang="ts">
   import {
     isAccordionOpen,
     updateAccordionOpen,
     workspaceAccordionKey
-  } from './lib/dashboardState.js';
-  import { SETTINGS_SECTIONS } from './lib/settingsNav.js';
-  import { favoriteIds } from './lib/favorites.js';
+  } from './lib/dashboardState';
+  import { SETTINGS_SECTIONS } from './lib/settingsNav';
+  import { favoriteIds } from './lib/favorites';
   import {
     buildSidebarTree,
     projectColor,
     projectInitial,
     projectOpenCount
-  } from './lib/projectTree.js';
-  import { isOperatorAssignee } from './lib/operator.js';
-  import { operatorPause } from './lib/taskDisplay.js';
+  } from './lib/projectTree';
+  import { isOperatorAssignee } from './lib/operator';
+  import { operatorPause } from './lib/taskDisplay';
   import Icon from './Icon.svelte';
   import SidebarBranch from './SidebarBranch.svelte';
   import ThemeSwitch from './ThemeSwitch.svelte';
+  import type { Project, Task, Workspace } from './lib/types';
 
-  export let workspaces = [];
-  export let projects = [];
-  export let tasks = [];
+  export let workspaces: Workspace[] = [];
+  export let projects: Project[] = [];
+  export let tasks: Task[] = [];
   export let selectedProjectId = '';
   export let selectedWorkspaceId = '';
   export let quickView = 'all';
-  export let accordionOpen = {};
+  export let accordionOpen: Record<string, boolean> = {};
   export let globalNav = 'work';
   export let settingsSection = 'general';
-  export let onSelectProject = () => {};
-  export let onSelectWorkspace = () => {};
-  export let onSelectAll = () => {};
-  export let onSelectView = () => {};
-  export let onSelectNav = () => {};
-  export let onSelectSettingsSection = () => {};
-  export let onTreeScroll = () => {};
-  export let onScrollEl = () => {};
+  export let onSelectProject: (projectId: string) => void = () => {};
+  export let onSelectWorkspace: (workspaceId: string) => void = () => {};
+  export let onSelectAll: () => void = () => {};
+  export let onSelectView: (viewId: string) => void = () => {};
+  export let onSelectNav: (nav: string) => void = () => {};
+  export let onSelectSettingsSection: (id: string) => void = () => {};
+  export let onTreeScroll: (value: number) => void = () => {};
+  export let onScrollEl: (el: HTMLElement | null) => void = () => {};
   export let themePref = 'system';
-  export let onThemeChange = () => {};
+  export let onThemeChange: (pref: string) => void = () => {};
 
-  let treeEl;
+  let treeEl: HTMLElement;
 
   $: tree = buildSidebarTree(workspaces, projects, tasks);
   $: bookmarks = $favoriteIds
     .map((id) => projects.find((project) => project.id === id))
-    .filter(Boolean);
+    .filter((project): project is Project => Boolean(project));
   $: views = [
     { id: 'all', label: 'All tasks', icon: 'folder', count: tasks.length },
     {
@@ -87,18 +88,18 @@
     }
   ];
 
-  function toggle(key, open) {
+  function toggle(key: string, open: boolean) {
     accordionOpen = updateAccordionOpen(accordionOpen, key, open);
   }
 
-  function activateWorkspace(workspaceId, key, isOpen) {
+  function activateWorkspace(workspaceId: string, key: string, isOpen: boolean) {
     const reclick = selectedWorkspaceId === workspaceId && !selectedProjectId;
     onSelectWorkspace(workspaceId);
     if (reclick) toggle(key, !isOpen);
     else if (!isOpen) toggle(key, true);
   }
 
-  function activateProject(projectId, key, isOpen, hasChildren) {
+  function activateProject(projectId: string, key: string, isOpen: boolean, hasChildren: boolean) {
     const reclick = selectedProjectId === projectId;
     onSelectProject(projectId);
     if (!hasChildren) return;
@@ -241,7 +242,7 @@
               class="sidebar-project sidebar-project--root"
               class:active={selectedProjectId === node.leafProject.id ||
                 selectedWorkspaceId === node.workspace.id}
-              on:click={() => onSelectProject(node.leafProject.id)}
+              on:click={() => onSelectProject(node.leafProject!.id)}
             >
               <span
                 class="project-mark project-mark--project"
@@ -299,3 +300,192 @@
     {/if}
   </p>
 </nav>
+
+<style>
+  .sidebar-left {
+    width: var(--left-w);
+    flex: 0 0 var(--left-w);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar-left {
+      width: 100%;
+      flex: 1 1 auto;
+    }
+  }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-2xs) var(--space-xs) var(--space-xs);
+  }
+
+  .sidebar-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: var(--text-md);
+    font-weight: 800;
+  }
+
+  .sidebar-brand strong {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--text-lg);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-footer {
+    margin: auto 0 0;
+    padding: var(--space-2xs) var(--space-xs) 0;
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+  }
+
+  .sidebar-rail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2xs);
+  }
+
+  .sidebar-rail-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    width: 100%;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding: var(--space-sm) var(--space-md);
+    color: var(--text-muted);
+    font-size: var(--text-md);
+    font-weight: 600;
+    text-align: left;
+    min-height: 0;
+    white-space: nowrap;
+  }
+
+  .sidebar-rail-item.active {
+    background: var(--accent-soft);
+    color: var(--accent-soft-text);
+  }
+
+  .sidebar-section {
+    display: grid;
+    gap: var(--space-sm);
+    flex: 0 0 auto;
+  }
+
+  .sidebar-section--projects {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar-section-title {
+    margin: 0;
+    padding: 0 var(--space-xs);
+    color: var(--text-faint);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .sidebar-all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font-weight: 700;
+    font-size: var(--text-md);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    min-height: 0;
+  }
+
+  .sidebar-all:hover {
+    background: var(--surface-muted);
+  }
+
+  .sidebar-all.active {
+    background: var(--accent-soft);
+    color: var(--accent-soft-text);
+  }
+
+  .sidebar-workspaces {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: grid;
+    align-content: start;
+    gap: var(--space-xs);
+    padding-right: var(--space-2xs);
+  }
+
+  .sidebar-views {
+    display: grid;
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sidebar-view {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: var(--text-md);
+    color: var(--text-muted);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-sm);
+    min-height: 0;
+  }
+
+  .sidebar-view:hover {
+    background: var(--surface-muted);
+    color: var(--text);
+  }
+
+  .sidebar-view.active {
+    background: var(--accent-soft);
+    color: var(--accent-soft-text);
+    font-weight: 600;
+  }
+
+  .sidebar-view-title {
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-view-count {
+    flex: 0 0 auto;
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+  }
+</style>

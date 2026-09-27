@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isOperatorAssignee, operatorAssignee } from './operator.js';
+import { isOperatorAssignee, operatorAssignee } from './operator.ts';
 
 test('a person is anyone who is neither unassigned nor an AI agent', () => {
   assert.equal(isOperatorAssignee(operatorAssignee), true);

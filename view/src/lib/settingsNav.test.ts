@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { SETTINGS_SECTIONS, isSettingsNav, settingsSectionLabel } from './settingsNav.js';
+import { SETTINGS_SECTIONS, isSettingsNav, settingsSectionLabel } from './settingsNav.ts';
 
 test('settings sections include one Agents tab', () => {
   assert.deepEqual(

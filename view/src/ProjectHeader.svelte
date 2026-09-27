@@ -1,21 +1,22 @@
-<script>
-  import { favoriteIds, toggleFavorite } from './lib/favorites.js';
-  import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings.js';
+<script lang="ts">
+  import { favoriteIds, toggleFavorite } from './lib/favorites';
+  import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings';
   import {
     hasTechnology,
     itemTechnologyView,
     repoWebUrl,
     techRepositories
-  } from './lib/technologyDisplay.js';
+  } from './lib/technologyDisplay';
   import TechnologyTags from './TechnologyTags.svelte';
   import Icon from './Icon.svelte';
+  import type { Project } from './lib/types';
 
-  export let project = null;
+  export let project: Project | null = null;
   export let activeView = 'board';
-  export let onChangeView = () => {};
-  export let onBack = () => {};
-  export let onCreateTask = () => {};
-  export let onRefresh = () => {};
+  export let onChangeView: (viewId: string) => void = () => {};
+  export let onBack: () => void = () => {};
+  export let onCreateTask: () => void = () => {};
+  export let onRefresh: () => void = () => {};
   export let refreshing = false;
 
   $: views = project
@@ -36,7 +37,7 @@
     : '';
   $: primaryRemoteUrl = repoWebUrl(primaryRemote);
 
-  $: isFavorite = Boolean(project) && $favoriteIds.includes(project.id);
+  $: isFavorite = Boolean(project && $favoriteIds.includes(project.id));
 </script>
 
 <header class="project-header">
@@ -117,3 +118,145 @@
     </button>
   {/each}
 </nav>
+
+<style>
+  .technology-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+    max-height: 92px;
+    overflow: auto;
+  }
+
+  .technology-strip.single-row {
+    flex-wrap: nowrap;
+    align-items: center;
+    max-height: 28px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  /* .tech-more is TechnologyTags.svelte's own overflow chip, rendered as a
+     child of this strip. */
+  .technology-strip.single-row :global(.tech-more) {
+    flex: 0 0 auto;
+  }
+
+  .project-header {
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: var(--space-lg) var(--space-lg);
+  }
+
+  .project-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-lg);
+  }
+
+  .project-header-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+    min-width: 0;
+  }
+
+  .project-header-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    min-height: 30px;
+    border-color: var(--border);
+    color: var(--text-muted);
+    padding: 0;
+  }
+
+  .project-header-favorite {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    min-height: 28px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--text-faint);
+    padding: 0;
+  }
+
+  .project-header-favorite:hover {
+    background: var(--surface-muted);
+    color: var(--text-muted);
+  }
+
+  .project-header-favorite.is-favorite {
+    color: var(--amber);
+  }
+
+  .project-header-title h2 {
+    margin: 0;
+    font-size: var(--text-2xl);
+    white-space: nowrap;
+  }
+
+  .project-header-path {
+    overflow: hidden;
+    color: var(--text-faint);
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .project-header-icon-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--text-muted);
+  }
+
+  .project-header-icon-link:hover {
+    color: var(--text);
+  }
+
+  .project-header-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--space-md);
+  }
+
+  .project-tabs {
+    display: flex;
+    gap: var(--space-xl);
+    flex: 0 0 auto;
+    border-bottom: 1px solid var(--border);
+    padding: 0 var(--space-2xs);
+  }
+
+  .project-tabs button {
+    min-height: 0;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: var(--text-md);
+    font-weight: 600;
+    padding: var(--space-md) var(--space-2xs);
+    margin-bottom: -1px;
+  }
+
+  .project-tabs button:hover {
+    color: var(--text);
+    background: transparent;
+  }
+
+  .project-tabs button.active {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+  }
+</style>

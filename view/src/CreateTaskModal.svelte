@@ -1,15 +1,17 @@
-<script>
+<script lang="ts">
+  import type { AnyRecord, Project, Workspace } from './lib/types';
+
   const taskTypes = ['feature', 'bug', 'research', 'review', 'maintenance', 'decision'];
 
-  export let projects = [];
-  export let workspaces = [];
-  export let statuses = [];
-  export let assignees = [];
+  export let projects: Project[] = [];
+  export let workspaces: Workspace[] = [];
+  export let statuses: string[] = [];
+  export let assignees: string[] = [];
   export let preferredProject = '';
   export let saving = false;
   export let createError = '';
-  export let onCreate = async () => {};
-  export let onClose = () => {};
+  export let onCreate: (payload: AnyRecord) => Promise<void> = async () => {};
+  export let onClose: () => void = () => {};
 
   let draftTitle = '';
   let draftRequest = '';
@@ -37,11 +39,11 @@
     ? statuses
     : ['backlog', 'todo', 'needs_rework', 'doing', 'blocked', 'needs_review', 'done', 'archived'];
   $: if (!draftProject && sortedProjects.length) {
-    const preferred =
-      preferredProject &&
-      sortedProjects.find(
-        (project) => project.id === preferredProject || project.workspace_id === preferredProject
-      );
+    const preferred = preferredProject
+      ? sortedProjects.find(
+          (project) => project.id === preferredProject || project.workspace_id === preferredProject
+        )
+      : undefined;
     draftProject = preferred?.id || sortedProjects[0].id;
   }
   $: if (draftProject && repositoryOptions.length && !repositoryOptions.includes(draftRepository)) {
@@ -51,15 +53,15 @@
     draftRepository = '';
   }
 
-  function closeFromBackdrop(event) {
+  function closeFromBackdrop(event: MouseEvent) {
     if (event.target === event.currentTarget) {
       onClose();
     }
   }
 
-  function parseDependsOn(text) {
-    const seen = new Set();
-    const out = [];
+  function parseDependsOn(text: string) {
+    const seen = new Set<string>();
+    const out: string[] = [];
     for (const part of String(text || '').split(/[\n,]+/)) {
       const ref = part.trim();
       if (!ref) continue;
@@ -192,3 +194,12 @@
     {/if}
   </div>
 </section>
+
+<style>
+  .create-hint {
+    margin: 0 0 var(--space-lg);
+    color: var(--text-muted);
+    font-size: var(--text-md);
+    line-height: 1.45;
+  }
+</style>

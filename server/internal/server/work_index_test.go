@@ -146,7 +146,7 @@ repositories:
       "id": "jivemax",
       "name": "jivemax",
       "relative_path": "Audiophile/jivemax",
-      "effective": {"languages": [], "frameworks": [], "runtimes": [], "tooling": [], "capabilities": []},
+      "effective": {"languages": [], "frameworks": [], "runtimes": [], "tooling": []},
       "detected": {
         "languages": ["csharp", "lua"],
         "runtimes": ["dotnet"],
@@ -167,7 +167,7 @@ repositories:
       "id": "jivemax",
       "name": "jivemax",
       "relative_path": "Audiophile/jivemax",
-      "effective": {"languages": ["lua"], "frameworks": [], "runtimes": [], "tooling": [], "capabilities": ["desktop"]}
+      "effective": {"languages": ["lua"], "frameworks": [], "runtimes": [], "tooling": []}
     }
   ]
 }`)
@@ -189,7 +189,7 @@ repositories:
 	if project == nil {
 		t.Fatalf("missing jivemax project in %#v", state.Projects)
 	}
-	assertStringSet(t, project.Technology.EffectiveTags, []string{"desktop", "lua"})
+	assertStringSet(t, project.Technology.EffectiveTags, []string{"lua"})
 	assertStringSet(t, project.Technology.DetectedTags, []string{"csharp", "dotnet", "lua"})
 	if len(project.Technology.Repositories) != 1 {
 		t.Fatalf("project technology repositories = %#v, want one", project.Technology.Repositories)
@@ -202,7 +202,7 @@ repositories:
 	if workspace == nil {
 		t.Fatalf("missing audiophile workspace in %#v", state.Workspaces)
 	}
-	assertStringSet(t, workspace.Technology.EffectiveTags, []string{"desktop", "lua", "svelte", "typescript"})
+	assertStringSet(t, workspace.Technology.EffectiveTags, []string{"lua", "svelte", "typescript"})
 	assertStringSet(t, workspace.Technology.DetectedTags, []string{"csharp", "dotnet", "lua", "svelte", "typescript"})
 }
 

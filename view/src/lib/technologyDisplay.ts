@@ -1,3 +1,5 @@
+import type { AnyRecord, Repository } from './types.ts';
+
 export const primaryTechnologyKinds = ['languages', 'frameworks', 'runtimes'];
 
 export const auditToolingTags = new Set([
@@ -8,23 +10,6 @@ export const auditToolingTags = new Set([
   'pnpm',
   'vite',
   'yarn'
-]);
-
-export const broadCapabilityTags = new Set([
-  'api',
-  'backend',
-  'cli',
-  'containers',
-  'desktop',
-  'frontend',
-  'fullstack',
-  'game-engine',
-  'infra',
-  'library',
-  'mobile',
-  'protected-layout',
-  'service',
-  'web'
 ]);
 
 const knownFlatPrimaryTags = new Set([
@@ -49,10 +34,15 @@ const knownFlatPrimaryTags = new Set([
   'vue'
 ]);
 
-const svgIcon = (title, svg) => ({ title, svg });
+interface IconEntry {
+  title: string;
+  svg: string;
+}
+
+const svgIcon = (title: string, svg: string): IconEntry => ({ title, svg });
 
 // Local SVG marks only — no icon package. Known tags never render shortened text labels.
-export const technologyIconMap = {
+export const technologyIconMap: Record<string, IconEntry> = {
   angular: svgIcon(
     'Angular',
     '<path fill="#DD0031" d="M12 2L2.5 5.5l1.5 13L12 22l8-3.5 1.5-13L12 2zm0 3.2l5.4 12.2h-2.1L14 14H10l-1.3 3.4H6.6L12 5.2zm0 3.3L10.7 12h2.6L12 8.5z"/>'
@@ -159,7 +149,7 @@ export const technologyIconMap = {
   )
 };
 
-export const normalizeTechnologyTag = (tag) => {
+export const normalizeTechnologyTag = (tag: unknown): string => {
   let value = String(tag || '')
     .trim()
     .toLowerCase();
@@ -175,7 +165,7 @@ export const normalizeTechnologyTag = (tag) => {
   return value;
 };
 
-const fallbackTechnologyLabel = (tag) => {
+const fallbackTechnologyLabel = (tag: string): string => {
   const words = tag.split(/[^a-z0-9+#.]+/).filter(Boolean);
   if (words.length > 1) {
     return words
@@ -187,14 +177,23 @@ const fallbackTechnologyLabel = (tag) => {
   return tag.slice(0, 4) || '?';
 };
 
-const technologyTitle = (tag) =>
+const technologyTitle = (tag: string): string =>
   tag
     .split(/[-_\s]+/)
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ') || 'Unknown technology';
 
-export const technologyTagDisplay = (tag) => {
+export interface TechnologyTagDisplay {
+  name: string;
+  glyph: string;
+  label: string;
+  title: string;
+  known: boolean;
+  svg: string;
+}
+
+export const technologyTagDisplay = (tag: unknown): TechnologyTagDisplay => {
   const name = normalizeTechnologyTag(tag);
   const mapped = technologyIconMap[name];
   if (mapped?.svg) {
@@ -217,15 +216,20 @@ export const technologyTagDisplay = (tag) => {
   };
 };
 
-export const displayTechnologyTags = (tags, limit = 8) => ({
+export const displayTechnologyTags = (tags: string[], limit = 8) => ({
   visible: tags.slice(0, limit).map(technologyTagDisplay),
   hidden: Math.max(tags.length - limit, 0)
 });
 
+export interface TechnologyGroup {
+  variant?: string;
+  tags?: string[];
+}
+
 /** Flatten variant groups into one overflow-aware icon row. */
-export const displayTechnologyGroups = (groups = [], limit = 8) => {
-  const flattened = [];
-  const seen = new Set();
+export const displayTechnologyGroups = (groups: TechnologyGroup[] = [], limit = 8) => {
+  const flattened: { tag: TechnologyTagDisplay; variant: string }[] = [];
+  const seen = new Set<string>();
   for (const group of groups) {
     const variant = group?.variant || 'primary';
     for (const raw of group?.tags || []) {
@@ -241,9 +245,9 @@ export const displayTechnologyGroups = (groups = [], limit = 8) => {
   };
 };
 
-export const uniqueTechnologyTags = (tags) => {
-  const seen = new Set();
-  const result = [];
+export const uniqueTechnologyTags = (tags: unknown[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
   for (const tag of tags) {
     const value = normalizeTechnologyTag(tag);
     if (!value || seen.has(value)) continue;
@@ -253,41 +257,54 @@ export const uniqueTechnologyTags = (tags) => {
   return result;
 };
 
-const withoutTags = (tags, blocked) => tags.filter((tag) => !blocked.has(tag));
-const profileTags = (profile, kinds) =>
+const withoutTags = (tags: string[], blocked: Set<string>): string[] =>
+  tags.filter((tag) => !blocked.has(tag));
+const profileTags = (profile: AnyRecord | null | undefined, kinds: string[]): string[] =>
   uniqueTechnologyTags(kinds.flatMap((kind) => profile?.[kind] || []));
-const repositoryProfileTags = (repo, source, kinds) => profileTags(repo?.[source], kinds);
-const technology = (item) => item?.technology || {};
-export const techRepositories = (item) => technology(item).repositories || [];
-const itemProfileTags = (item, source, kinds) =>
+const repositoryProfileTags = (
+  repo: AnyRecord | null | undefined,
+  source: string,
+  kinds: string[]
+): string[] => profileTags(repo?.[source], kinds);
+const technology = (item: AnyRecord | null | undefined): AnyRecord => item?.technology || {};
+export const techRepositories = (item: AnyRecord | null | undefined): Repository[] =>
+  technology(item).repositories || [];
+const itemProfileTags = (
+  item: AnyRecord | null | undefined,
+  source: string,
+  kinds: string[]
+): string[] =>
   uniqueTechnologyTags(
     techRepositories(item).flatMap((repo) => repositoryProfileTags(repo, source, kinds))
   );
-const flatTechnologyTags = (item, source) =>
+const flatTechnologyTags = (item: AnyRecord | null | undefined, source: string): string[] =>
   uniqueTechnologyTags(technology(item)?.[`${source}_tags`] || []);
-const mergeTechnologyTags = (...lists) => uniqueTechnologyTags(lists.flat());
-const fallbackPrimaryTags = (item, source) =>
+const mergeTechnologyTags = (...lists: unknown[][]): string[] => uniqueTechnologyTags(lists.flat());
+const fallbackPrimaryTags = (item: AnyRecord | null | undefined, source: string): string[] =>
   flatTechnologyTags(item, source).filter(
     (tag) => knownFlatPrimaryTags.has(tag) && !auditToolingTags.has(tag)
   );
-const categoryFallbackTags = (item, source, category) =>
-  flatTechnologyTags(item, source).filter((tag) => category.has(tag));
-const primaryProfileTags = (item, source) =>
-  withoutTags(
-    withoutTags(itemProfileTags(item, source, primaryTechnologyKinds), auditToolingTags),
-    broadCapabilityTags
-  );
-const toolingProfileTags = (item, source) =>
+const categoryFallbackTags = (
+  item: AnyRecord | null | undefined,
+  source: string,
+  category: Set<string>
+): string[] => flatTechnologyTags(item, source).filter((tag) => category.has(tag));
+const primaryProfileTags = (item: AnyRecord | null | undefined, source: string): string[] =>
+  withoutTags(itemProfileTags(item, source, primaryTechnologyKinds), auditToolingTags);
+const toolingProfileTags = (item: AnyRecord | null | undefined, source: string): string[] =>
   mergeTechnologyTags(
     itemProfileTags(item, source, ['tooling']),
     itemProfileTags(item, source, primaryTechnologyKinds).filter((tag) => auditToolingTags.has(tag))
   );
-const repositoryPrimaryProfileTags = (repo, source) =>
-  withoutTags(
-    withoutTags(repositoryProfileTags(repo, source, primaryTechnologyKinds), auditToolingTags),
-    broadCapabilityTags
-  );
-const repositoryToolingProfileTags = (repo, source) =>
+const repositoryPrimaryProfileTags = (
+  repo: AnyRecord | null | undefined,
+  source: string
+): string[] =>
+  withoutTags(repositoryProfileTags(repo, source, primaryTechnologyKinds), auditToolingTags);
+const repositoryToolingProfileTags = (
+  repo: AnyRecord | null | undefined,
+  source: string
+): string[] =>
   mergeTechnologyTags(
     repositoryProfileTags(repo, source, ['tooling']),
     repositoryProfileTags(repo, source, primaryTechnologyKinds).filter((tag) =>
@@ -295,7 +312,13 @@ const repositoryToolingProfileTags = (repo, source) =>
     )
   );
 
-export const itemTechnologyView = (item) => {
+export interface TechnologyView {
+  primary: string[];
+  tooling: string[];
+  hasAny: boolean;
+}
+
+export const itemTechnologyView = (item: AnyRecord | null | undefined): TechnologyView => {
   const effectivePrimary = primaryProfileTags(item, 'effective');
   const detectedPrimary = primaryProfileTags(item, 'detected');
   const primary = mergeTechnologyTags(
@@ -308,25 +331,14 @@ export const itemTechnologyView = (item) => {
     categoryFallbackTags(item, 'effective', auditToolingTags),
     categoryFallbackTags(item, 'detected', auditToolingTags)
   );
-  const capabilities = mergeTechnologyTags(
-    itemProfileTags(item, 'effective', ['capabilities']),
-    itemProfileTags(item, 'detected', ['capabilities']),
-    categoryFallbackTags(item, 'effective', broadCapabilityTags),
-    categoryFallbackTags(item, 'detected', broadCapabilityTags)
-  );
   return {
     primary,
     tooling,
-    capabilities,
-    hasAny:
-      primary.length > 0 ||
-      tooling.length > 0 ||
-      capabilities.length > 0 ||
-      techRepositories(item).length > 0
+    hasAny: primary.length > 0 || tooling.length > 0 || techRepositories(item).length > 0
   };
 };
 
-export const repositoryTechnologyView = (repo) => ({
+export const repositoryTechnologyView = (repo: Repository | AnyRecord | null | undefined) => ({
   primary: mergeTechnologyTags(
     repositoryPrimaryProfileTags(repo, 'effective'),
     repositoryPrimaryProfileTags(repo, 'detected'),
@@ -343,32 +355,21 @@ export const repositoryTechnologyView = (repo) => ({
     uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter(
       (tag) => auditToolingTags.has(tag)
     )
-  ),
-  capabilities: mergeTechnologyTags(
-    repositoryProfileTags(repo, 'effective', ['capabilities']),
-    repositoryProfileTags(repo, 'detected', ['capabilities']),
-    uniqueTechnologyTags([...(repo?.effective_tags || []), ...(repo?.detected_tags || [])]).filter(
-      (tag) => broadCapabilityTags.has(tag)
-    )
   )
 });
 
-export const hasTechnology = (item) => itemTechnologyView(item).hasAny;
+export const hasTechnology = (item: AnyRecord | null | undefined): boolean =>
+  itemTechnologyView(item).hasAny;
 
-export const repoHasTechnology = (repo) => {
+export const repoHasTechnology = (repo: AnyRecord | null | undefined): boolean => {
   const view = repositoryTechnologyView(repo);
-  return (
-    view.primary.length > 0 ||
-    view.tooling.length > 0 ||
-    view.capabilities.length > 0 ||
-    (repo?.evidence?.length || 0) > 0
-  );
+  return view.primary.length > 0 || view.tooling.length > 0 || (repo?.evidence?.length || 0) > 0;
 };
 
 // Registry remotes are stored however git reports them (often SSH, e.g.
 // git@github.com:org/repo.git) — browsers can't open that as a link, so it
 // silently falls through to the current page. Normalize to https before use.
-export const repoWebUrl = (remote) => {
+export const repoWebUrl = (remote: unknown): string => {
   const value = String(remote || '').trim();
   if (!value) return '';
   const withoutSuffix = value.replace(/\.git$/, '');

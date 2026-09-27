@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {
     codexRemoteInstruction,
     copyText,
@@ -18,15 +18,24 @@
     toolUsageRequired,
     toolUsageUsed,
     toolUsageWarning
-  } from './lib/taskDisplay.js';
-  import { sessionAllowsOperatorRelease } from './lib/dashboardState.js';
-  import { sessionStatus } from './lib/sessionOutcome.js';
+  } from './lib/taskDisplay';
+  import { sessionAllowsOperatorRelease } from './lib/dashboardState';
+  import { sessionStatus } from './lib/sessionOutcome';
+  import type { Session } from './lib/types';
 
-  export let session;
+  export let session: Session;
   export let kind = 'closed';
-  export let onControlSession = async () => {};
-  export let onReleaseSession = async () => {};
-  export let onResolveOrphan = async () => {};
+  export let onControlSession: (
+    session: Session,
+    action: string,
+    input?: string
+  ) => Promise<void> = async () => {};
+  export let onReleaseSession: (
+    session: Session,
+    action: string,
+    targetStatus: string
+  ) => Promise<void> = async () => {};
+  export let onResolveOrphan: (session: Session, status: string) => Promise<void> = async () => {};
 
   $: live = kind === 'live';
   $: orphan = kind === 'orphan';
@@ -253,3 +262,142 @@
     <p class="session-message">{session.blocking_reason}</p>
   {/if}
 {/if}
+
+<style>
+  .session-result-chip {
+    display: inline-block;
+    margin-top: var(--space-md);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    padding: var(--space-2xs) var(--space-sm);
+  }
+
+  .session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+  }
+
+  .session-meta span,
+  .session-meta code,
+  .session-meta a {
+    max-width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    padding: var(--space-2xs) var(--space-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .session-meta a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .session-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+  }
+
+  .session-actions button {
+    min-height: 26px;
+    border-color: var(--border-strong);
+    background: var(--surface-muted);
+    color: var(--text);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    padding: var(--space-xs) var(--space-md);
+  }
+
+  .session-message {
+    display: block;
+    overflow: hidden;
+    margin-top: var(--space-sm);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .provider-error {
+    border: 1px solid var(--error-border);
+    border-left: 3px solid var(--red);
+    border-radius: var(--radius-sm);
+    background: var(--red-soft);
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .provider-error strong {
+    display: block;
+    color: var(--red-text);
+    font-size: var(--text-xs);
+    line-height: 1.2;
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+  }
+
+  .provider-error p {
+    margin: 0;
+    color: var(--red-text);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  .provider-error p + p {
+    margin-top: var(--space-xs);
+  }
+
+  .tool-evidence {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    border-radius: var(--radius-sm);
+    background: var(--surface-muted);
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .tool-evidence strong {
+    display: block;
+    color: var(--blue-text);
+    font-size: var(--text-xs);
+    line-height: 1.2;
+    margin-bottom: var(--space-xs);
+    text-transform: uppercase;
+  }
+
+  .tool-missing {
+    border-color: var(--warn-border) !important;
+    background: var(--amber-soft);
+    color: var(--amber-text) !important;
+    font-weight: 700;
+  }
+
+  .tool-warning-text {
+    color: var(--amber-text);
+    white-space: normal;
+  }
+
+  .session-role {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .session-role.role-unresumable {
+    border-color: var(--warn-border);
+    background: var(--amber-soft);
+    color: var(--amber-text);
+    text-transform: none;
+    font-weight: 500;
+  }
+</style>

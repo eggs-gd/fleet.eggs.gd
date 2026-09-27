@@ -248,7 +248,6 @@ func technologyProfileTags(profile board.TechnologyProfile) []string {
 	out = append(out, profile.Frameworks...)
 	out = append(out, profile.Runtimes...)
 	out = append(out, profile.Tooling...)
-	out = append(out, profile.Capabilities...)
 	return out
 }
 

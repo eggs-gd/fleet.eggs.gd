@@ -37,6 +37,7 @@ jobs:
           cache-dependency-path: view/package-lock.json
       - run: npm ci
       - run: npm run format:check
+      - run: npm run check
       - run: npm run test:ui-state
       - run: npm run test:technology-display
       - run: npm run build

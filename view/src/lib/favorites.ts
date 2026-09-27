@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 
 const FAVORITES_KEY = 'core.favoriteProjects';
 
-const readFavoriteIds = () => {
+const readFavoriteIds = (): string[] => {
   try {
     const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
     return Array.isArray(parsed) ? parsed.filter((id) => typeof id === 'string' && id) : [];
@@ -11,7 +11,7 @@ const readFavoriteIds = () => {
   }
 };
 
-const writeFavoriteIds = (ids) => {
+const writeFavoriteIds = (ids: string[]): void => {
   try {
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
   } catch {
@@ -19,9 +19,9 @@ const writeFavoriteIds = (ids) => {
   }
 };
 
-export const favoriteIds = writable(readFavoriteIds());
+export const favoriteIds = writable<string[]>(readFavoriteIds());
 
-export const toggleFavorite = (id) => {
+export const toggleFavorite = (id: string): void => {
   if (!id) return;
   favoriteIds.update((ids) => {
     const next = ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id];

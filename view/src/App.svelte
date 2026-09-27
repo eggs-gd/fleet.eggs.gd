@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
   import { onMount, tick } from 'svelte';
+  import type { AnyRecord, Project, Session, SessionGroup, Task, Workspace } from './lib/types';
   import {
     applyTaskUpdate,
     dedupeTasksByIdentity,
@@ -11,8 +12,8 @@
     refreshStatusPresentation,
     sameTaskRecord,
     sessionIsActive
-  } from './lib/dashboardState.js';
-  import { canTransitionStatus } from './lib/statusTransitions.js';
+  } from './lib/dashboardState';
+  import { canTransitionStatus } from './lib/statusTransitions';
   import {
     assigneeLabel,
     dependsOnDraft,
@@ -23,7 +24,7 @@
     taskPickupCompare,
     taskProjectId,
     taskUpdatedCompare
-  } from './lib/taskDisplay.js';
+  } from './lib/taskDisplay';
   import {
     LEFT_WIDTH,
     RIGHT_WIDTH,
@@ -41,9 +42,9 @@
     saveSidebarScroll,
     saveThemePref,
     saveAutoRefreshMs
-  } from './lib/layoutPrefs.js';
-  import { apiFetch } from './lib/api.js';
-  import { applyTheme, watchSystemTheme } from './lib/theme.js';
+  } from './lib/layoutPrefs';
+  import { apiFetch } from './lib/api';
+  import { applyTheme, watchSystemTheme } from './lib/theme';
   import ArchiveView from './ArchiveView.svelte';
   import CreateTaskModal from './CreateTaskModal.svelte';
   import FiltersBar from './FiltersBar.svelte';
@@ -51,24 +52,24 @@
   import NeedsAttention from './NeedsAttention.svelte';
   import ProjectHeader from './ProjectHeader.svelte';
   import ProjectSettings from './ProjectSettings.svelte';
-  import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings.js';
+  import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings';
   import RecentCompleted from './RecentCompleted.svelte';
   import RuntimeSessions from './RuntimeSessions.svelte';
   import Sidebar from './Sidebar.svelte';
   import SplitGutter from './SplitGutter.svelte';
   import SettingsView from './SettingsView.svelte';
   import TaskList from './TaskList.svelte';
-  import { AGENT_ASSIGNEES, isOperatorAssignee, operatorAssignee } from './lib/operator.js';
-  import { isSettingsNav } from './lib/settingsNav.js';
+  import { AGENT_ASSIGNEES, isOperatorAssignee, operatorAssignee } from './lib/operator';
+  import { isSettingsNav } from './lib/settingsNav';
   import TaskModal from './TaskModal.svelte';
 
-  let data = null;
+  let data: AnyRecord | null = null;
   let error = '';
   let refreshError = '';
   let actionError = '';
   let refreshing = false;
   let refreshBusy = false;
-  let refreshBusyTimer = null;
+  let refreshBusyTimer: number | null = null;
   let lastRefreshAt = '';
   let selectedProjectId = '';
   let selectedWorkspaceId = '';
@@ -78,7 +79,7 @@
   let quickFilter = 'all';
   let taskSort = 'updated';
   let query = '';
-  let selectedTask = null;
+  let selectedTask: Task | null = null;
   let creatingTask = false;
   let draftStatus = '';
   let draftPriority = 5;
@@ -96,17 +97,17 @@
   let rightWidth = loadRightWidth();
   let rightPanels = loadRightPanels();
   let sidebarScrollTop = loadSidebarScroll();
-  let sidebarScrollEl = null;
+  let sidebarScrollEl: HTMLElement | null = null;
   let themePref = loadThemePref();
   let refreshMs = loadAutoRefreshMs();
-  let refreshTimer = null;
+  let refreshTimer: number | null = null;
   $: refreshStatus = refreshStatusPresentation({
     refreshing: refreshBusy,
     refreshError,
     lastRefreshAt
   });
 
-  const reconcileSelectedTask = (state) => {
+  const reconcileSelectedTask = (state: AnyRecord) => {
     if (!selectedTask) return;
     const latestTask = reconcileSelectedTaskFromState(selectedTask, state);
     if (latestTask) {
@@ -154,7 +155,7 @@
       lastRefreshAt = new Date().toISOString();
       await tick();
       if (sidebarScrollEl) sidebarScrollEl.scrollTop = sidebarScrollTop;
-    } catch (err) {
+    } catch (err: any) {
       if (data) {
         refreshError = err.message;
       } else {
@@ -171,9 +172,9 @@
     return loadData({ manual: true });
   }
 
-  function updateTaskInState(updatedTask, fallbackPath = '') {
+  function updateTaskInState(updatedTask: Task, fallbackPath = '') {
     if (!data) return;
-    const sameOrphan = (orphan) =>
+    const sameOrphan = (orphan: AnyRecord) =>
       (fallbackPath &&
         (orphan.task_path === fallbackPath || orphan.task_path === updatedTask.relative_path)) ||
       (updatedTask.relative_path && orphan.task_path === updatedTask.relative_path) ||
@@ -184,7 +185,7 @@
       tasks: applyTaskUpdate(data.tasks ?? [], updatedTask, fallbackPath),
       orphaned_tasks:
         updatedTask.status && updatedTask.status !== 'doing'
-          ? (data.orphaned_tasks ?? []).filter((orphan) => !sameOrphan(orphan))
+          ? ((data.orphaned_tasks ?? []) as AnyRecord[]).filter((orphan) => !sameOrphan(orphan))
           : (data.orphaned_tasks ?? [])
     };
     if (selectedTask && sameTaskRecord(selectedTask, updatedTask, fallbackPath)) {
@@ -199,7 +200,7 @@
     }
   }
 
-  async function patchTask(path, patch) {
+  async function patchTask(path: string, patch: AnyRecord) {
     const response = await apiFetch('/api/tasks', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -223,7 +224,7 @@
     return localTask;
   }
 
-  async function createTask(payload) {
+  async function createTask(payload: AnyRecord) {
     const response = await apiFetch('/api/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -237,8 +238,8 @@
     return createdTask;
   }
 
-  async function controlSession(session, action, input = '', targetStatus = '') {
-    const payload = { claim_id: session.claim_id, action, input };
+  async function controlSession(session: Session, action: string, input = '', targetStatus = '') {
+    const payload: AnyRecord = { claim_id: session.claim_id, action, input };
     if (targetStatus) {
       payload.target_status = targetStatus;
     }
@@ -253,16 +254,20 @@
     await loadData();
   }
 
-  async function releaseSession(session, action = 'release', targetStatus = 'needs_review') {
+  async function releaseSession(
+    session: Session,
+    action = 'release',
+    targetStatus = 'needs_review'
+  ) {
     try {
       error = '';
       await controlSession(session, action, '', targetStatus);
-    } catch (err) {
+    } catch (err: any) {
       error = err.message;
     }
   }
 
-  async function resolveOrphan(orphan, status) {
+  async function resolveOrphan(orphan: AnyRecord, status: string) {
     const path = orphan.task_path;
     if (!path) return;
     try {
@@ -275,12 +280,12 @@
         comment_author: operatorAssignee
       });
       await loadData();
-    } catch (err) {
+    } catch (err: any) {
       error = err.message;
     }
   }
 
-  function openTask(task) {
+  function openTask(task: Task) {
     selectedTask = task;
     creatingTask = false;
     draftStatus = task.status || '';
@@ -299,14 +304,14 @@
     createError = '';
   }
 
-  function selectProject(projectId) {
+  function selectProject(projectId: string) {
     selectedProjectId = projectId;
     selectedWorkspaceId = '';
     if (globalNav !== 'work') globalNav = 'work';
     activeView = 'board';
   }
 
-  function selectWorkspace(workspaceId) {
+  function selectWorkspace(workspaceId: string) {
     selectedWorkspaceId = workspaceId;
     selectedProjectId = '';
     if (globalNav !== 'work') globalNav = 'work';
@@ -322,11 +327,11 @@
     if (activeView === PROJECT_SETTINGS_VIEW) activeView = 'board';
   }
 
-  function changeView(view) {
+  function changeView(view: string) {
     activeView = view;
   }
 
-  function selectQuickView(viewId) {
+  function selectQuickView(viewId: string) {
     selectedProjectId = '';
     selectedWorkspaceId = '';
     globalNav = 'work';
@@ -339,12 +344,12 @@
     }
   }
 
-  function changeChip(chipId) {
+  function changeChip(chipId: string) {
     quickFilter = chipId;
     if (activeView !== 'board') activeView = 'board';
   }
 
-  function selectNav(nav) {
+  function selectNav(nav: string) {
     if (nav === 'agents') {
       settingsSection = 'agents';
       globalNav = 'settings';
@@ -365,17 +370,17 @@
     }
   }
 
-  function selectSettingsSection(id) {
+  function selectSettingsSection(id: string) {
     settingsSection = id;
     globalNav = 'settings';
   }
 
-  function dragLeft(dx) {
+  function dragLeft(dx: number) {
     leftWidth = Math.min(LEFT_WIDTH.max, Math.max(LEFT_WIDTH.min, leftWidth + dx));
     saveLeftWidth(leftWidth);
   }
 
-  function dragRight(dx) {
+  function dragRight(dx: number) {
     rightWidth = Math.min(RIGHT_WIDTH.max, Math.max(RIGHT_WIDTH.min, rightWidth - dx));
     saveRightWidth(rightWidth);
   }
@@ -390,7 +395,7 @@
     saveRightPanels(rightPanels);
   }
 
-  function persistSidebarScroll(value) {
+  function persistSidebarScroll(value: number) {
     sidebarScrollTop = value;
     saveSidebarScroll(value);
   }
@@ -421,7 +426,7 @@
     try {
       const currentProject = selectedTask.project_id || selectedTask.project || '';
       const nextProject = draftProject.trim();
-      const patch = {
+      const patch: AnyRecord = {
         status: draftStatus,
         priority: Number(draftPriority),
         assignee: draftAssignee.trim(),
@@ -439,16 +444,16 @@
         patch.project = nextProject;
         patch.repository = repositoryOptions[0] || '';
       }
-      await patchTask(selectedTask.path, patch);
+      await patchTask(selectedTask.path || '', patch);
       closeTask();
-    } catch (err) {
+    } catch (err: any) {
       editError = err.message;
     } finally {
       saving = false;
     }
   }
 
-  async function saveCreatedTask(payload) {
+  async function saveCreatedTask(payload: AnyRecord) {
     if (creating) return;
     creating = true;
     createError = '';
@@ -456,18 +461,18 @@
       const created = await createTask(payload);
       closeCreateTask();
       openTask(created);
-    } catch (err) {
+    } catch (err: any) {
       createError = err.message;
     } finally {
       creating = false;
     }
   }
 
-  async function transitionTask(task, status) {
+  async function transitionTask(task: Task, status: string) {
     if (
       !task?.path ||
       !status ||
-      !canTransitionStatus(task.status, status, data?.status_transitions)
+      !canTransitionStatus(task.status || '', status, data?.status_transitions)
     )
       return;
     const previous = task;
@@ -475,18 +480,18 @@
       actionError = '';
       updateTaskInState({ ...task, status }, task.path);
       await patchTask(task.path, { status });
-    } catch (err) {
+    } catch (err: any) {
       actionError = err.message;
-      updateTaskInState(previous, previous.path);
+      updateTaskInState(previous, previous.path || '');
     }
   }
 
-  function setThemePref(pref) {
+  function setThemePref(pref: string) {
     themePref = saveThemePref(pref);
     applyTheme(themePref);
   }
 
-  function setRefreshMs(ms) {
+  function setRefreshMs(ms: number) {
     refreshMs = saveAutoRefreshMs(ms);
     restartRefresh();
   }
@@ -497,7 +502,7 @@
   }
 
   let managerSetupNeeded = false;
-  let managerProviders = [];
+  let managerProviders: AnyRecord[] = [];
   const SETUP_SKIPPED_KEY = 'fleet.managerSetupSkipped';
 
   function setupSkipped() {
@@ -544,12 +549,12 @@
     };
   });
 
-  $: workspaces = data?.workspaces ?? [];
-  $: projects = data?.projects ?? [];
-  $: tasks = data?.tasks ?? [];
-  $: sessionGroups = data?.session_groups ?? [];
-  $: runtimeSessions = (data?.runtime_sessions ?? []).filter(sessionIsActive);
-  $: orphanedTasks = data?.orphaned_tasks ?? [];
+  $: workspaces = (data?.workspaces ?? []) as Workspace[];
+  $: projects = (data?.projects ?? []) as Project[];
+  $: tasks = (data?.tasks ?? []) as Task[];
+  $: sessionGroups = (data?.session_groups ?? []) as SessionGroup[];
+  $: runtimeSessions = ((data?.runtime_sessions ?? []) as Session[]).filter(sessionIsActive);
+  $: orphanedTasks = (data?.orphaned_tasks ?? []) as Session[];
   $: closedSessions = flattenClosedSessions(sessionGroups, tasks);
   $: blockedTasks = tasks.filter((task) => task.status === 'blocked');
   $: reviewTasks = tasks.filter((task) => task.status === 'needs_review');
@@ -559,7 +564,7 @@
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
     null;
-  $: people = data?.people ?? [];
+  $: people = (data?.people ?? []) as string[];
   // Who a task can be given to: nobody, the registered people, or an AI agent.
   $: assigneeChoices = ['unassigned', ...people, ...AGENT_ASSIGNEES];
   $: assignees = [
@@ -851,3 +856,129 @@
     onClose={closeTask}
   />
 {/if}
+
+<style>
+  .shell {
+    width: 100%;
+    height: 100vh;
+    padding: var(--space-lg) var(--space-xl);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .app-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    min-width: 0;
+    --left-w: 240px;
+    --right-w: 300px;
+  }
+
+  .working-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .main-column {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .sidebar-right {
+    width: var(--right-w);
+    flex: 0 0 var(--right-w);
+    min-width: 0;
+    max-width: var(--right-w);
+    align-self: stretch;
+  }
+
+  .main-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding-right: var(--space-2xs);
+  }
+
+  .loading,
+  .error {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-xl);
+  }
+
+  .error {
+    border-color: var(--error-border);
+    background: var(--red-soft);
+    color: var(--red-text);
+  }
+
+  .error span {
+    display: block;
+    margin-top: var(--space-sm);
+  }
+
+  .action-error {
+    padding: var(--space-lg) var(--space-lg);
+    flex: 0 0 auto;
+  }
+
+  .generated {
+    flex: 0 0 auto;
+    padding: var(--space-xs) 0 var(--space-2xs);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+  }
+
+  @media (max-width: 1080px) {
+    .app-shell {
+      --left-w: 220px;
+      --right-w: 260px;
+    }
+  }
+
+  @media (max-width: 900px) {
+    :global(html),
+    :global(body) {
+      overflow: auto;
+    }
+
+    .shell {
+      height: auto;
+      padding: var(--space-lg);
+    }
+
+    .app-shell,
+    .working-area {
+      display: flex;
+      flex-direction: column;
+      height: auto;
+    }
+
+    .sidebar-right,
+    .working-area,
+    .main-column {
+      width: 100%;
+      flex: 1 1 auto;
+    }
+
+    .main-scroll {
+      overflow-y: visible;
+    }
+  }
+</style>

@@ -1,20 +1,29 @@
-<script>
+<script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { elapsedClock, orphanRecoveryLabel, toolUsageHasMissing } from './lib/taskDisplay.js';
+  import { elapsedClock, orphanRecoveryLabel, toolUsageHasMissing } from './lib/taskDisplay';
   import {
     elapsedClockPrecise,
     sessionOutcomeLabel,
     sessionOutcomeTone
-  } from './lib/sessionOutcome.js';
+  } from './lib/sessionOutcome';
   import SessionDetail from './SessionDetail.svelte';
+  import type { Session } from './lib/types';
 
-  export let session;
+  export let session: Session;
   export let kind = 'closed';
   export let now = Date.now();
-  export let onClose = () => {};
-  export let onControlSession = async () => {};
-  export let onReleaseSession = async () => {};
-  export let onResolveOrphan = async () => {};
+  export let onClose: () => void = () => {};
+  export let onControlSession: (
+    session: Session,
+    action: string,
+    input?: string
+  ) => Promise<void> = async () => {};
+  export let onReleaseSession: (
+    session: Session,
+    action: string,
+    targetStatus: string
+  ) => Promise<void> = async () => {};
+  export let onResolveOrphan: (session: Session, status: string) => Promise<void> = async () => {};
 
   $: live = kind === 'live';
   $: orphan = kind === 'orphan';
@@ -25,11 +34,11 @@
       ? `Running ${elapsedClockPrecise(session.started_at, now) || elapsedClock(session.started_at, now) || 'now'}`
       : sessionOutcomeLabel(session, kind);
 
-  function closeFromBackdrop(event) {
+  function closeFromBackdrop(event: MouseEvent) {
     if (event.target === event.currentTarget) onClose();
   }
 
-  function onKey(event) {
+  function onKey(event: KeyboardEvent) {
     if (event.key === 'Escape') onClose();
   }
 
@@ -74,3 +83,38 @@
     <SessionDetail {session} {kind} {onControlSession} {onReleaseSession} {onResolveOrphan} />
   </div>
 </section>
+
+<style>
+  .session-modal {
+    width: min(640px, 100%);
+  }
+
+  .session-modal-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin: var(--space-md) 0 0;
+    font-size: var(--text-md);
+    font-weight: 700;
+  }
+
+  .session-modal-status .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+
+  /* .session-message/.session-meta are SessionDetail's own classes, rendered
+     as this modal's child. */
+  .session-modal :global(.session-message) {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .session-modal :global(.session-meta code),
+  .session-modal :global(.session-meta span),
+  .session-modal :global(.session-meta a) {
+    white-space: normal;
+  }
+</style>
