@@ -5,6 +5,7 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Works out which parts of the repository a change touches. The jobs below run
+  # only for their own part. They are skipped, not left out, so a required check
+  # would still be reported (a workflow-level `paths:` filter leaves checks
+  # pending forever). The landing page is deployed by pages.yml, not here.
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      view: ${{ steps.filter.outputs.view }}
+      site: ${{ steps.filter.outputs.site }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          files=""
+          all=true
+          if [ -n "$BASE" ] && ! echo "$BASE" | grep -qE '^0+$' && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            files=$(git diff --name-only "$BASE" HEAD)
+            all=false
+          fi
+          match() {
+            if [ "$all" = true ] || echo "$files" | grep -qE "$1"; then echo true; else echo false; fi
+          }
+          echo "go=$(match '^(server/|Makefile$|\.github/workflows/ci\.yml$)')" >> "$GITHUB_OUTPUT"
+          echo "view=$(match '^(view/|Makefile$|\.github/workflows/ci\.yml$)')" >> "$GITHUB_OUTPUT"
+          echo "site=$(match '^(site/|\.github/workflows/ci\.yml$)')" >> "$GITHUB_OUTPUT"
+          echo "changed files:"; echo "$files"
+
   go-macos:
     runs-on: macos-latest
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     defaults:
       run:
         working-directory: server
@@ -34,6 +69,8 @@ jobs:
   # Linux is not a supported platform yet. This job reports, it does not gate.
   go-linux:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     continue-on-error: true
     defaults:
       run:
@@ -48,6 +85,8 @@ jobs:
 
   go-race:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     defaults:
       run:
         working-directory: server
@@ -61,6 +100,8 @@ jobs:
 
   go-vuln:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     defaults:
       run:
         working-directory: server
@@ -74,6 +115,8 @@ jobs:
 
   go-staticcheck:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     defaults:
       run:
         working-directory: server
@@ -87,6 +130,8 @@ jobs:
 
   go-windows-build:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     defaults:
       run:
         working-directory: server
@@ -102,6 +147,8 @@ jobs:
 
   dashboard:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.view == 'true'
     defaults:
       run:
         working-directory: view
@@ -121,6 +168,8 @@ jobs:
 
   site:
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
     defaults:
       run:
         working-directory: site
