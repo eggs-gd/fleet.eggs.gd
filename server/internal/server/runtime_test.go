@@ -2876,6 +2876,12 @@ exit 1
 
 	restorePoll := execution.SetBackgroundRemotePollIntervalForTest(5 * time.Millisecond)
 	defer restorePoll()
+	t.Cleanup(func() {
+		if t.Failed() {
+			text, _ := audit.EventLogText(root)
+			t.Logf("event log:\n%s", text)
+		}
+	})
 
 	ctx, cancel := context.WithCancel(t.Context())
 	app := Compose(ComposeConfig{CoreRoot: root, DryRun: false, SessionTimeout: time.Second})
