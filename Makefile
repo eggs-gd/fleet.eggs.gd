@@ -1,9 +1,12 @@
 SHELL := /bin/sh
 
+APP_ROOT := $(CURDIR)
+
 # Machine-local overrides (not committed): DATA_ROOT, ADDR, LIVE, PROJECTS_ROOTS.
+# Included after APP_ROOT so a DATA_ROOT that references it (e.g.
+# $(abspath $(APP_ROOT)/../Data)) resolves against this checkout, not "".
 -include Makefile.local
 
-APP_ROOT := $(CURDIR)
 DATA_ROOT ?=
 VIEW_DIR := view
 SITE_DIR := site
