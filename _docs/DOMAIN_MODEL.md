@@ -135,9 +135,11 @@ milestones:
   `manager_milestone_activate`, `manager_task_milestone`. A write refreshes the
   live board; hand edits and scanner-created cards are picked up on the
   scanner's next pass.
-- Deleting a milestone first clears it from every task that points at it (they
-  become unscheduled), then removes it from the card. If clearing a task fails
-  the milestone stays and the delete can be retried.
+- Deleting a milestone removes it from the card first, then clears it from every
+  task of the workspace that points at it (they become unscheduled). Assigning a
+  milestone validates and writes under the same card lock, so an assignment
+  either lands before the removal and is swept, or is rejected. If the sweep
+  fails midway, deleting again finishes it.
 
 ## Status machine
 

@@ -209,6 +209,9 @@ func PatchMilestone(root, project, milestoneID string, state, title, version *st
 	})
 }
 
+// ErrNoMilestone means a project card has no milestone with that id.
+var ErrNoMilestone = errors.New("no such milestone")
+
 // DeleteMilestone removes one milestone from a project card. Tasks that still
 // point at it are the caller's to clear first (see Dashboard.DeleteMilestone).
 func DeleteMilestone(root, project, milestoneID string) error {
@@ -237,7 +240,7 @@ func DeleteMilestone(root, project, milestoneID string) error {
 		}
 	}
 	if len(kept) == len(records) {
-		return fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+		return fmt.Errorf("project %s has no milestone %q: %w", project, milestoneID, ErrNoMilestone)
 	}
 	if len(kept) == 0 {
 		doc.Remove("milestones")

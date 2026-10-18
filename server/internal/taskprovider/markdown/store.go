@@ -288,6 +288,11 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 		if milestone == "" {
 			doc.Remove("milestone")
 		} else {
+			// Hold the card lock from validation through the task write, so a
+			// milestone cannot be deleted between the two (see
+			// Dashboard.DeleteMilestone).
+			mdfile.EditMu.Lock()
+			defer mdfile.EditMu.Unlock()
 			if err := validateMilestone(taskPath, milestone); err != nil {
 				return tasklifecycle.Task{}, err
 			}

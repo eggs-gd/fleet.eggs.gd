@@ -556,7 +556,11 @@
   async function removeMilestone(group: MilestoneTaskGroup) {
     const cardId = cardIdOf(projects.find((project) => project.id === group.projectId));
     if (!cardId || !group.milestoneId) return;
-    const count = group.tasks.length;
+    // Count from the whole board, not the rendered group: the delete clears
+    // every task of the workspace (archived, filtered out, sibling projects).
+    const count = tasks.filter(
+      (task) => task.workspace_id === cardId && task.milestone === group.milestoneId
+    ).length;
     const name = group.milestoneTitle;
     const detail = count ? ` ${count} task${count === 1 ? '' : 's'} will move to Unscheduled.` : '';
     if (!window.confirm(`Delete milestone "${name}"?${detail}`)) return;

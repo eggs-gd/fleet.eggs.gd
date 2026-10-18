@@ -220,24 +220,21 @@ func (d *Dashboard) PatchMilestone(project, milestoneID string, state, title, ve
 	return milestone, nil
 }
 
-// DeleteMilestone clears the milestone from every task that points at it, then
-// removes it from the card. Tasks go first: if one fails the milestone is still
-// there and the delete can be retried, instead of leaving tasks that name a
-// milestone that no longer exists.
+// DeleteMilestone removes a milestone from its card first, then clears it from
+// the tasks that still point at it. Removing first closes the race with a
+// concurrent assignment: the markdown provider validates and writes an
+// assignment under mdfile.EditMu, the same lock the card removal takes, so an
+// assignment either finished before the removal (and the sweep below finds it)
+// or is rejected because the milestone is gone. If the sweep fails midway the
+// milestone is already gone and some tasks still name it; calling delete again
+// finishes the sweep instead of reporting "not found".
 func (d *Dashboard) DeleteMilestone(project, milestoneID string) (int, error) {
 	if !workfiles.ValidProjectID(project) {
 		return 0, errors.New("project id is required")
 	}
-	existing, err := workfiles.Milestones(d.root, project)
-	if err != nil {
-		return 0, err
-	}
-	found := false
-	for _, milestone := range existing {
-		found = found || milestone.ID == milestoneID
-	}
-	if !found {
-		return 0, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+	removeErr := workfiles.DeleteMilestone(d.root, project, milestoneID)
+	if removeErr != nil && !errors.Is(removeErr, workfiles.ErrNoMilestone) {
+		return 0, removeErr
 	}
 	cleared := 0
 	none := ""
@@ -250,8 +247,8 @@ func (d *Dashboard) DeleteMilestone(project, milestoneID string) (int, error) {
 		}
 		cleared++
 	}
-	if err := workfiles.DeleteMilestone(d.root, project, milestoneID); err != nil {
-		return cleared, err
+	if removeErr != nil && cleared == 0 {
+		return 0, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
 	}
 	d.ReloadProjectCard(project)
 	return cleared, nil
