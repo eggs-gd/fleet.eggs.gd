@@ -152,19 +152,15 @@ func CreateMilestone(root, project, title, version string) (board.Milestone, err
 	if err != nil {
 		return board.Milestone{}, err
 	}
-	text := string(body)
-	records, err := mdfile.ListRecords(text, "milestones")
+	doc, err := mdfile.ParseDoc(string(body))
 	if err != nil {
 		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
 	}
+	records := doc.Records("milestones")
 	id := uniqueMilestoneID(records, title)
 	milestone := board.Milestone{ID: id, Title: title, Version: strings.TrimSpace(version), State: "parked"}
-	records = append(records, milestoneToRecord(milestone))
-	next, err := mdfile.SetRecords(text, "milestones", board.MilestoneFields, records)
-	if err != nil {
-		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
-	}
-	if err := writeAtomic(path, []byte(next)); err != nil {
+	doc.SetRecords("milestones", board.MilestoneFields, append(records, milestoneToRecord(milestone)))
+	if err := writeAtomic(path, []byte(doc.String())); err != nil {
 		return board.Milestone{}, err
 	}
 	return milestone, nil
@@ -227,12 +223,11 @@ func updateMilestone(root, project, milestoneID string, apply func(*board.Milest
 	if err != nil {
 		return board.Milestone{}, err
 	}
-	text := string(body)
-	records, err := mdfile.ListRecords(text, "milestones")
+	doc, err := mdfile.ParseDoc(string(body))
 	if err != nil {
 		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
 	}
-	milestones := recordsToMilestones(records)
+	milestones := recordsToMilestones(doc.Records("milestones"))
 	index := -1
 	for i, m := range milestones {
 		if m.ID == milestoneID {
@@ -244,11 +239,8 @@ func updateMilestone(root, project, milestoneID string, apply func(*board.Milest
 		return board.Milestone{}, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
 	}
 	apply(&milestones[index])
-	next, err := mdfile.SetRecords(text, "milestones", board.MilestoneFields, milestonesToRecords(milestones))
-	if err != nil {
-		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
-	}
-	if err := writeAtomic(path, []byte(next)); err != nil {
+	doc.SetRecords("milestones", board.MilestoneFields, milestonesToRecords(milestones))
+	if err := writeAtomic(path, []byte(doc.String())); err != nil {
 		return board.Milestone{}, err
 	}
 	return milestones[index], nil

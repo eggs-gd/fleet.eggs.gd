@@ -148,6 +148,10 @@ func newSettingsRuntime(cfg Config, app *App) *settingsRuntime {
 		rt.scanner = settings.NewScanner(settings.DefaultSniff(cfg.CoreRoot), func() error {
 			return taskprovider.ReloadRegistry(app.Store, cfg.CoreRoot)
 		})
+		rt.scanner.SyncCards = func() error {
+			_, err := taskprovider.SyncCards(app.Store, cfg.CoreRoot)
+			return err
+		}
 	} else {
 		rt.scanner = settings.NewScanner(nil, nil)
 	}

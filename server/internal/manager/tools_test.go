@@ -640,3 +640,49 @@ func TestProjectFactsAndDescribe(t *testing.T) {
 		t.Fatalf("summary_source not confirmed:\n%s", raw)
 	}
 }
+
+func TestManagerSeesMilestonesOnTasksBoardAndVocabulary(t *testing.T) {
+	mem := &memTasks{tasks: []taskflow.Task{
+		{Ref: "CORE-1", ID: "CORE-1", Locator: "CORE-1", Title: "In launch", Status: "todo", Project: "acme", Milestone: "v1-launch"},
+		{Ref: "CORE-2", ID: "CORE-2", Locator: "CORE-2", Title: "Loose", Status: "todo", Project: "acme"},
+	}}
+	view := BoardView{
+		Workspaces: []board.Workspace{{ID: "acme", Title: "Acme", Milestones: []board.Milestone{{ID: "v1-launch", Title: "v1 launch", State: "parked"}}}},
+		Projects:   []board.Project{{ID: "acme/web", WorkspaceID: "acme", Title: "Web", Kind: "repository_project"}},
+	}
+	svc := NewService(mem, view)
+
+	refs := func(q BoardQuery) string {
+		resp := svc.ShowBoard(context.Background(), q)
+		if !resp.OK {
+			t.Fatalf("board %+v = %+v", q, resp)
+		}
+		var out []string
+		for _, card := range resp.Result.Detail.(map[string]any)["tasks"].([]map[string]any) {
+			out = append(out, card["ref"].(string))
+		}
+		return strings.Join(out, ",")
+	}
+	if got := refs(BoardQuery{Milestone: "v1-launch"}); got != "CORE-1" {
+		t.Fatalf("milestone filter = %q", got)
+	}
+	if got := refs(BoardQuery{Milestone: "none"}); got != "CORE-2" {
+		t.Fatalf("none filter = %q", got)
+	}
+
+	task := svc.Task(context.Background(), "CORE-1").Result.Detail.(map[string]any)["task"].(map[string]any)
+	if task["milestone"] != "v1-launch" {
+		t.Fatalf("task card = %#v", task)
+	}
+
+	vocab := svc.Vocabulary()
+	if len(vocab.Workspaces) != 1 || len(vocab.Workspaces[0].Milestones) != 1 || vocab.Workspaces[0].Milestones[0].ID != "v1-launch" {
+		t.Fatalf("workspace milestones = %#v", vocab.Workspaces)
+	}
+	if vocab.Projects[0].WorkspaceID != "acme" {
+		t.Fatalf("project entity lost its workspace: %#v", vocab.Projects[0])
+	}
+	if !strings.Contains(vocab.Prompt, "Milestones: v1 launch (parked)") {
+		t.Fatalf("prompt lacks milestones:\n%s", vocab.Prompt)
+	}
+}

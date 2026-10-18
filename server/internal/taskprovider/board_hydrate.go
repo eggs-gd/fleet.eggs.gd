@@ -22,6 +22,7 @@ func Hydrate(boardProj *Board, root string, tasks Provider) (listed []Task, work
 	}
 	for _, workspace := range workspaces {
 		boardProj.UpsertWorkspace(workspace)
+		boardProj.recordCardFile(workspace.Path)
 	}
 
 	listed, err = tasks.List()
@@ -63,6 +64,40 @@ func ReloadWorkspace(boardProj *Board, root, project string) error {
 	if err != nil {
 		return fmt.Errorf("reload workspace %s: %w", project, err)
 	}
-	boardProj.UpsertWorkspace(workspace)
+	boardProj.ReplaceWorkspace(workspace)
+	boardProj.recordCardFile(workspace.Path)
 	return nil
+}
+
+// SyncCards re-reads every project card whose file changed (or appeared) since
+// it was last loaded, so edits made by hand or by the scanner reach the live
+// board without a restart. It returns the ids of the workspaces it refreshed.
+func SyncCards(boardProj *Board, root string) ([]string, error) {
+	if boardProj == nil {
+		return nil, fmt.Errorf("sync cards: board is nil")
+	}
+	matches, err := filepath.Glob(filepath.Join(root, "Work", "*", "PROJECT.md"))
+	if err != nil {
+		return nil, err
+	}
+	var refreshed []string
+	for _, path := range matches {
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			continue
+		}
+		stamp, changed := boardProj.cardChanged(abs)
+		if !changed {
+			continue
+		}
+		workspace, err := board.LoadWorkspaceFile(root, abs)
+		if err != nil {
+			// Not recorded, so the next pass retries this card.
+			return refreshed, fmt.Errorf("sync card %s: %w", path, err)
+		}
+		boardProj.ReplaceWorkspace(workspace)
+		boardProj.recordCard(abs, stamp)
+		refreshed = append(refreshed, workspace.ID)
+	}
+	return refreshed, nil
 }

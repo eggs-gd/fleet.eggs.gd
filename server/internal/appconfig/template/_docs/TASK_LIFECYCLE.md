@@ -84,6 +84,7 @@ repositories:
   - <relative/repository/path>
 depends_on:
   - <TAG>-<number>   # optional; hard launch gate (see below)
+milestone: <milestone-id>   # optional; one of the milestones on the project card
 assignee: <person> | codex | claude | cursor | gemini | unassigned
 assignment_reason: <short reason>
 source: voice | text | url | file | chat | manager

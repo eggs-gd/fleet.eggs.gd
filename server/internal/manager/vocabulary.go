@@ -66,6 +66,11 @@ type VocabularyEntity struct {
 	// boilerplate) or "confirmed" (a person or the Manager approved it via
 	// manager_describe). Empty for kinds that carry no card, such as agents.
 	SummarySource string `json:"summary_source,omitempty"`
+	// Milestones are the workspace card's milestones (flat, with a state).
+	// They live on the workspace, so a repository project of a group uses its
+	// parent's (WorkspaceID).
+	Milestones  []board.Milestone `json:"milestones,omitempty"`
+	WorkspaceID string            `json:"workspace_id,omitempty"`
 }
 
 // Vocabulary is the dynamic STT / manager-context payload.
@@ -111,6 +116,7 @@ func BuildVocabulary(view BoardView) Vocabulary {
 			Aliases:       uniqueFold(collectAliases(append([]string{ws.ID, ws.Title}, ws.Repositories...)...)),
 			Kind:          "workspace",
 			SummarySource: firstNonEmpty(ws.SummarySource, "generated"),
+			Milestones:    ws.Milestones,
 		}
 		if entity.ID == "" && entity.Title == "" {
 			continue
@@ -132,6 +138,7 @@ func BuildVocabulary(view BoardView) Vocabulary {
 			Aliases:       uniqueFold(collectAliases(append([]string{project.ID, project.Title}, project.Repositories...)...)),
 			Kind:          "project",
 			SummarySource: firstNonEmpty(project.SummarySource, "generated"),
+			WorkspaceID:   project.WorkspaceID,
 		}
 		if entity.ID == "" && entity.Title == "" {
 			continue
@@ -324,6 +331,16 @@ func writeEntityLine(b *strings.Builder, entity VocabularyEntity) {
 	if len(aliases) > 0 {
 		b.WriteString(" Aliases: ")
 		b.WriteString(strings.Join(aliases, ", "))
+		b.WriteByte('.')
+	}
+	if len(entity.Milestones) > 0 {
+		b.WriteString(" Milestones: ")
+		for i, milestone := range entity.Milestones {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			fmt.Fprintf(b, "%s (%s)", firstNonEmpty(milestone.Title, milestone.ID), milestone.State)
+		}
 		b.WriteByte('.')
 	}
 	b.WriteByte('\n')

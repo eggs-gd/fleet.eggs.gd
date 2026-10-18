@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projecttag"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
@@ -118,7 +119,7 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 
 	repoLines := "repositories: []"
 	if req.Repository != "" {
-		repoLines = "repositories:\n  - " + quoteFrontmatter(req.Repository)
+		repoLines = "repositories:\n  - " + mdfile.Quote(strings.TrimSpace(req.Repository))
 	}
 
 	requestBody := req.Request
@@ -127,7 +128,7 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	body.WriteString("schema_version: 1\n")
 	body.WriteString("id: work-" + fileBase + "\n")
 	body.WriteString("ref: " + ref + "\n")
-	body.WriteString("title: " + quoteFrontmatter(req.Title) + "\n")
+	body.WriteString("title: " + mdfile.Quote(strings.TrimSpace(req.Title)) + "\n")
 	body.WriteString("type: " + req.Type + "\n")
 	body.WriteString("status: " + req.Status + "\n")
 	body.WriteString(fmt.Sprintf("priority: %d\n", priority))
@@ -136,15 +137,15 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	if len(req.DependsOn) > 0 {
 		body.WriteString("depends_on:\n")
 		for _, dep := range req.DependsOn {
-			body.WriteString("  - " + quoteFrontmatter(dep) + "\n")
+			body.WriteString("  - " + mdfile.Quote(strings.TrimSpace(dep)) + "\n")
 		}
 	} else {
 		body.WriteString("depends_on: []\n")
 	}
 	body.WriteString("assignee: " + req.Assignee + "\n")
-	body.WriteString("assignment_reason: " + quoteFrontmatter(req.AssignmentReason) + "\n")
+	body.WriteString("assignment_reason: " + mdfile.Quote(strings.TrimSpace(req.AssignmentReason)) + "\n")
 	body.WriteString("source: text\n")
-	body.WriteString(strings.TrimRight("source_inbox: "+quoteFrontmatter(req.SourceInbox), " ") + "\n")
+	body.WriteString(strings.TrimRight("source_inbox: "+mdfile.Quote(strings.TrimSpace(req.SourceInbox)), " ") + "\n")
 	body.WriteString("created_at: " + stamp + "\n")
 	body.WriteString("updated_at: " + stamp + "\n")
 	body.WriteString("launch:\n")

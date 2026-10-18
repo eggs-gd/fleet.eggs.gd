@@ -41,6 +41,9 @@ type Scanner struct {
 	// change, or it drops out of the registry. In-process only: it is not
 	// replayed, so a project missing when serve starts is not reported.
 	Publish func(eventbus.Event) error
+	// SyncCards, when set, runs after each card-maintenance pass so the live
+	// board picks up cards the scanner created or someone edited by hand.
+	SyncCards func() error
 
 	mu     sync.Mutex
 	status ScanStatus

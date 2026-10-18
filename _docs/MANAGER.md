@@ -36,6 +36,7 @@ worked but needs the person's attention carries `warnings`.
 | Read | `manager_board`, `manager_task`, `manager_workers`, `manager_events`, `manager_project_facts` (read-only, writes nothing) |
 | Decide | `manager_resolve_project`, `manager_similar`, `manager_route`, `manager_validate` (dry run, writes nothing) |
 | Write | `manager_inbox`, `manager_alias`, `manager_describe`, `manager_answer`, `manager_review`, `manager_update` |
+| Milestones | `manager_milestone_create`, `manager_milestone_activate`, `manager_task_milestone` |
 
 `manager_command` covers creating a task (`description`, `acceptance_criteria`, `context`), changing status, assignee or
 priority, adding a comment, cancelling (requires `confirm: true`), and looking
@@ -53,6 +54,17 @@ another task, since one capture can decompose into several. `list` gives a
 status and preview per item, `show` gives one item's full text and every task
 it produced. `manager_task` shows a task's own `source_inbox`, so the path from
 a captured sentence to the task it became is visible both ways.
+
+## Milestones
+
+Milestones are listed by `manager_vocabulary` under each workspace (with ids and
+state) and shown on every task by `manager_board` and `manager_task`.
+`manager_board` also filters by `milestone` (an id, or `none`). The Manager
+creates a milestone (`manager_milestone_create`, starts parked), marks one
+active (`manager_milestone_activate`), and sets or clears a task's milestone
+(`manager_task_milestone`, empty id clears). State is a planning label and never
+gates launch. The model is in [DOMAIN_MODEL](DOMAIN_MODEL.md#milestones); the
+judgment lives in the `intake` skill.
 
 ## Describing a project
 

@@ -24,9 +24,12 @@ type BoardQuery struct {
 	View    string `json:"view,omitempty"`
 	Project string `json:"project,omitempty"`
 	Status  string `json:"status,omitempty"`
-	Detail  string `json:"detail,omitempty"`
-	Limit   int    `json:"limit,omitempty"`
-	Offset  int    `json:"offset,omitempty"`
+	// Milestone keeps only tasks in that milestone id; "none" keeps the tasks
+	// that belong to no milestone.
+	Milestone string `json:"milestone,omitempty"`
+	Detail    string `json:"detail,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
+	Offset    int    `json:"offset,omitempty"`
 }
 
 // ShowBoard returns the live board slice named by q.View, filtered and paged.
@@ -70,6 +73,14 @@ func (s *Service) ShowBoard(ctx context.Context, q BoardQuery) Response {
 	}
 	if status := strings.TrimSpace(q.Status); status != "" {
 		shown = filterTasks(shown, func(task taskflow.Task) bool { return strings.EqualFold(string(task.Status), status) })
+	}
+	if milestone := strings.TrimSpace(q.Milestone); milestone != "" {
+		shown = filterTasks(shown, func(task taskflow.Task) bool {
+			if strings.EqualFold(milestone, "none") {
+				return task.Milestone == ""
+			}
+			return strings.EqualFold(task.Milestone, milestone)
+		})
 	}
 	total := len(shown)
 	limit := q.Limit
@@ -269,7 +280,7 @@ func cardsOf(tasks []taskflow.Task) []map[string]any {
 }
 
 func cardOf(task taskflow.Task) map[string]any {
-	return map[string]any{
+	card := map[string]any{
 		"ref":        task.Ref,
 		"title":      task.Title,
 		"status":     task.Status,
@@ -277,6 +288,10 @@ func cardOf(task taskflow.Task) map[string]any {
 		"project":    firstNonEmpty(task.ProjectID, task.Project, task.WorkspaceID),
 		"depends_on": task.DependsOn,
 	}
+	if task.Milestone != "" {
+		card["milestone"] = task.Milestone
+	}
+	return card
 }
 
 func filterTasks(tasks []taskflow.Task, keep func(taskflow.Task) bool) []taskflow.Task {

@@ -18,3 +18,6 @@ Call `manager_validate` before writing. Fix every item it returns. Call `manager
 Example: "make the web UI show invoice status" is not ready if nobody has said which states exist. Research asks that question. Implementation depends on the research ref and stays in `backlog`.
 
 Fixing existing tasks. When the plan changes and old tasks no longer fit, page through `manager_board` with `detail=summary` (use `next_offset` to continue) and open a task with `manager_task` only when the summary is not enough. Correct it with `manager_update` (project, repository, `depends_on`, description), reprioritize or reassign with `manager_command`, and drop it with `kind=cancel` and `confirm=true`. Change only what the person asked for, and list every change you made at the end.
+
+Milestone. Set one only when the person names it, then follow the Milestones
+section of the `intake` skill. Do not guess a milestone to tidy the board.
