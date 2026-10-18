@@ -188,6 +188,119 @@ func TestDefaultAssignee(t *testing.T) {
 	}
 }
 
+func TestMilestones(t *testing.T) {
+	root := t.TempDir()
+	if _, err := CreateMilestone(root, "acme", "v1 launch", ""); err == nil {
+		t.Fatal("created a milestone for a project without a card")
+	}
+	dir := filepath.Join(root, "Work", "acme")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(dir, "PROJECT.md")
+	if err := os.WriteFile(card, []byte("---\nid: acme\nstatus: active\n---\n\n# Acme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	m1, err := CreateMilestone(root, "acme", "v1 launch", "v1.0.0")
+	if err != nil || m1.ID != "v1-launch" || m1.State != "parked" || m1.Version != "v1.0.0" {
+		t.Fatalf("CreateMilestone = %+v, %v", m1, err)
+	}
+	// A title that slugifies to the same id gets a numeric suffix instead of
+	// clobbering the first milestone.
+	m2, err := CreateMilestone(root, "acme", "V1 Launch", "")
+	if err != nil || m2.ID != "v1-launch-2" {
+		t.Fatalf("CreateMilestone dedup = %+v, %v", m2, err)
+	}
+
+	got, err := Milestones(root, "acme")
+	if err != nil || len(got) != 2 {
+		t.Fatalf("Milestones = %+v, %v", got, err)
+	}
+
+	activated, err := SetMilestoneState(root, "acme", "v1-launch", "active")
+	if err != nil || activated.State != "active" {
+		t.Fatalf("SetMilestoneState = %+v, %v", activated, err)
+	}
+	if _, err := SetMilestoneState(root, "acme", "v1-launch", "shipped"); err == nil {
+		t.Fatal("accepted an unknown milestone state")
+	}
+
+	title, version := "Smart setup", "v0.2.0"
+	renamed, err := PatchMilestone(root, "acme", "v1-launch-2", nil, &title, &version)
+	if err != nil || renamed.Title != "Smart setup" || renamed.Version != "v0.2.0" {
+		t.Fatalf("PatchMilestone = %+v, %v", renamed, err)
+	}
+	// All fields land in one write; nil leaves a field alone, "" clears a version.
+	parked, empty := "done", ""
+	both, err := PatchMilestone(root, "acme", "v1-launch-2", &parked, nil, &empty)
+	if err != nil || both.State != "done" || both.Version != "" || both.Title != "Smart setup" {
+		t.Fatalf("PatchMilestone state+clear version = %+v, %v", both, err)
+	}
+	if _, err := PatchMilestone(root, "acme", "v1-launch-2", nil, &empty, nil); err == nil {
+		t.Fatal("emptied a title")
+	}
+	bad := "shipped"
+	if _, err := PatchMilestone(root, "acme", "v1-launch-2", &bad, &title, nil); err == nil {
+		t.Fatal("accepted an unknown state")
+	}
+	if got, _ := Milestones(root, "acme"); got[1].State != "done" {
+		t.Fatalf("a rejected patch changed the card: %+v", got)
+	}
+
+	if _, err := SetMilestoneState(root, "acme", "nope", "active"); err == nil {
+		t.Fatal("updated a milestone that does not exist")
+	}
+
+	raw, _ := os.ReadFile(card)
+	if !strings.Contains(string(raw), "milestones:\n  - id: v1-launch\n    title: v1 launch\n    version: v1.0.0\n    state: active\n  - id: v1-launch-2\n    title: Smart setup\n    state: done\n") {
+		t.Fatalf("milestones not in frontmatter:\n%s", raw)
+	}
+}
+
+func TestMilestonesRejectBadProjectsAndCannotCorruptTheCard(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Work", "acme")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(root, "PROJECT.md")
+	if err := os.WriteFile(outside, []byte("---\nid: outside\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(dir, "PROJECT.md")
+	if err := os.WriteFile(card, []byte("---\nid: acme\n---\n\n# Acme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, project := range []string{"..", "../acme", "a/b", `a\b`, ""} {
+		if _, err := CreateMilestone(root, project, "x", ""); err == nil {
+			t.Errorf("CreateMilestone accepted project %q", project)
+		}
+		if _, err := SetMilestoneState(root, project, "x", "active"); err == nil {
+			t.Errorf("SetMilestoneState accepted project %q", project)
+		}
+	}
+	if raw, _ := os.ReadFile(outside); string(raw) != "---\nid: outside\n---\n" {
+		t.Fatalf("a file outside Work/ was rewritten:\n%s", raw)
+	}
+
+	if _, err := CreateMilestone(root, "acme", "a\n---\nfoo", ""); err == nil {
+		t.Fatal("accepted a multi-line title")
+	}
+	if _, err := CreateMilestone(root, "acme", "ok", "v1\n2"); err == nil {
+		t.Fatal("accepted a multi-line version")
+	}
+	m, err := CreateMilestone(root, "acme", `Fix: "login" # now`, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Milestones(root, "acme")
+	if err != nil || len(got) != 1 || got[0].Title != m.Title || got[0].Title != `Fix: "login" # now` {
+		t.Fatalf("Milestones = %+v, %v", got, err)
+	}
+}
+
 func TestSetProjectSummary(t *testing.T) {
 	root := t.TempDir()
 	if _, err := SetProjectSummary(root, "acme", "A tool for the thing."); err == nil {

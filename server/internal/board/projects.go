@@ -20,6 +20,7 @@ func ProjectsFromWorkspace(workspace Workspace) []Project {
 			SummarySource: workspace.SummarySource,
 			Path:          workspace.Path,
 			RelativePath:  workspace.RelativePath,
+			Milestones:    workspace.Milestones,
 		},
 	}
 
@@ -42,6 +43,9 @@ func ProjectsFromWorkspace(workspace Workspace) []Project {
 			Source:       "workspace.repositories",
 			Repositories: []string{repository},
 			RelativePath: workspace.RelativePath,
+			// Milestones live on the workspace card, and tasks of a
+			// repository project are validated against that card.
+			Milestones: workspace.Milestones,
 		})
 	}
 	return projects

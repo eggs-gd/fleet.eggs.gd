@@ -387,6 +387,94 @@ updated_at: 2026-09-08T10:00:00+03:00
 	}
 }
 
+func TestPatchTaskFileSetsClearsAndLeavesMilestoneAlone(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\nmilestones:\n  - id: v1-launch\n    title: v1 launch\n    state: parked\n---\n")
+	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-09-08-milestone-edit.md")
+	writeTestFile(t, taskPath, `---
+id: work-milestone-edit
+ref: CORE-150
+title: "Milestone edit"
+type: feature
+status: todo
+project: core-eggs-gd
+repositories:
+  - core.eggs.gd
+assignee: cursor
+created_at: 2026-09-08T10:00:00+03:00
+updated_at: 2026-09-08T10:00:00+03:00
+---
+
+# Milestone edit
+`)
+
+	milestone := "v1-launch"
+	task, err := PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Milestone: &milestone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Milestone != "v1-launch" {
+		t.Fatalf("milestone = %q, want v1-launch", task.Milestone)
+	}
+
+	// A patch that omits Milestone (nil) leaves it unchanged.
+	priority := 2
+	task, err = PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Priority: &priority})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Milestone != "v1-launch" {
+		t.Fatalf("milestone after unrelated patch = %q, want unchanged v1-launch", task.Milestone)
+	}
+
+	missing := "nope"
+	if _, err := PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Milestone: &missing}); err == nil {
+		t.Fatal("accepted a milestone the project does not have")
+	}
+
+	cleared := ""
+	task, err = PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Milestone: &cleared})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Milestone != "" {
+		t.Fatalf("milestone after clear = %q, want empty", task.Milestone)
+	}
+	raw, _ := os.ReadFile(taskPath)
+	if strings.Contains(string(raw), "\nmilestone:") {
+		t.Fatalf("clearing left a milestone line behind:\n%s", raw)
+	}
+	// Patching a task that never had a milestone must not add an empty one.
+	if _, err := PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Milestone: &cleared}); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := os.ReadFile(taskPath); strings.Contains(string(raw), "\nmilestone:") {
+		t.Fatalf("no-op clear added a milestone line:\n%s", raw)
+	}
+}
+
+func TestPatchTaskFileProjectMoveDropsTheMilestone(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\nmilestones:\n  - id: v1-launch\n    title: v1\n    state: parked\n---\n")
+	writeTestFile(t, filepath.Join(root, "Work", "_life", "PROJECT.md"), "---\nid: _life\n---\n")
+	taskPath := filepath.Join(root, "Work", "core-eggs-gd", "tasks", "2026-08-05-move-me.md")
+	writeTestFile(t, taskPath, testTaskMarkdown("CORE-137", "Move me", "todo"))
+	milestone := "v1-launch"
+	if _, err := PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Milestone: &milestone}); err != nil {
+		t.Fatal(err)
+	}
+
+	// The dashboard path re-sends the current milestone on every update, so a
+	// move must not fail on it — it drops it instead.
+	task, err := PatchTaskFile(root, tasklifecycle.TaskPatch{Path: taskPath, Project: "_life", Milestone: &milestone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Milestone != "" {
+		t.Fatalf("milestone after project move = %q, want empty", task.Milestone)
+	}
+}
+
 func TestSetFrontmatterRejectsNestedKeys(t *testing.T) {
 	_, err := setFrontmatterValue("launch:\n  agent: claude\n", "launch.agent", "codex")
 	if err == nil {

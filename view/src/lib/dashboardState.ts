@@ -36,6 +36,11 @@ export const archiveWorkspaceAccordionKey = (workspace?: Identified): string =>
 export const archiveProjectAccordionKey = (project?: Identified): string =>
   `archive-project:${project?.id || ''}`;
 
+export const milestoneAccordionKey = (
+  projectId?: string | null,
+  milestoneId?: string | null
+): string => `milestone:${projectId || ''}:${milestoneId || ''}`;
+
 export const EXECUTION_HISTORY_LIMITS = {
   maxTaskGroups: 12,
   maxSessionsPerTask: 5,
@@ -172,6 +177,10 @@ export const accordionKeysForState = (state?: {
     keys.add(archiveProjectAccordionKey(project));
     for (const repo of techRepositories(project)) {
       keys.add(repositoryAccordionKey(project, repo));
+    }
+    keys.add(milestoneAccordionKey(project.id, ''));
+    for (const milestone of project.milestones ?? []) {
+      keys.add(milestoneAccordionKey(project.id, milestone.id));
     }
   }
   for (const group of state?.session_groups ?? []) {

@@ -2,6 +2,7 @@
 package board
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
@@ -25,6 +26,7 @@ type Workspace struct {
 	Path          string            `json:"path"`
 	RelativePath  string            `json:"relative_path"`
 	Technology    TechnologySummary `json:"technology"`
+	Milestones    []Milestone       `json:"milestones,omitempty"`
 }
 
 type Project struct {
@@ -39,6 +41,44 @@ type Project struct {
 	Path          string            `json:"path"`
 	RelativePath  string            `json:"relative_path"`
 	Technology    TechnologySummary `json:"technology"`
+	Milestones    []Milestone       `json:"milestones,omitempty"`
+}
+
+// Milestone is a flat, optionally-versioned grouping a project's own tasks
+// can opt into (at most one each). It intentionally has no epic/release/
+// sprint layers above or below it.
+type Milestone struct {
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Version string `json:"version,omitempty"`
+	State   string `json:"state"` // parked | active | done
+}
+
+// MilestoneFields is the canonical PROJECT.md frontmatter field order for a
+// milestone record — mdfile.ListRecords/SetRecords need it explicit since Go
+// maps don't preserve order.
+var MilestoneFields = []string{"id", "title", "version", "state"}
+
+func IsKnownMilestoneState(state string) bool {
+	switch state {
+	case "parked", "active", "done":
+		return true
+	default:
+		return false
+	}
+}
+
+func milestonesFromRecords(records []map[string]string) []Milestone {
+	milestones := make([]Milestone, 0, len(records))
+	for _, record := range records {
+		milestones = append(milestones, Milestone{
+			ID:      record["id"],
+			Title:   record["title"],
+			Version: record["version"],
+			State:   record["state"],
+		})
+	}
+	return milestones
 }
 
 type TechnologySummary struct {
@@ -93,10 +133,17 @@ func LoadWorkspaceFile(root, workspaceFile string) (Workspace, error) {
 	if err != nil {
 		return Workspace{}, err
 	}
-	fm, body, err := mdfile.ReadMarkdown(workspaceFile)
+	data, err := os.ReadFile(workspaceFile)
 	if err != nil {
 		return Workspace{}, err
 	}
+	text := string(data)
+	fm, body := mdfile.ParseFrontmatter(text)
+	// ListRecords only errors on a missing/malformed frontmatter block, which
+	// ParseFrontmatter above already tolerates (it just returns an empty
+	// Frontmatter); keep that same tolerance here instead of failing the
+	// whole workspace load over an absent milestones: block.
+	records, _ := mdfile.ListRecords(text, "milestones")
 	id := mdfile.Scalar(fm, "id", filepath.Base(filepath.Dir(workspaceFile)))
 	rel, _ := filepath.Rel(root, workspaceFile)
 	return Workspace{
@@ -112,5 +159,6 @@ func LoadWorkspaceFile(root, workspaceFile string) (Workspace, error) {
 		SummarySource: mdfile.Scalar(fm, "summary_source", "generated"),
 		Path:          workspaceFile,
 		RelativePath:  filepath.ToSlash(rel),
+		Milestones:    milestonesFromRecords(records),
 	}, nil
 }

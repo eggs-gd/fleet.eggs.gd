@@ -76,5 +76,6 @@ func (s *Service) Describe(project, summary string) Response {
 	if err != nil {
 		return failureFromErr(err)
 	}
+	s.projectCardChanged(project)
 	return Response{OK: true, Result: &Result{Action: "describe", Path: path}}
 }

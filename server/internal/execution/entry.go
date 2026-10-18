@@ -109,6 +109,7 @@ func TaskFromFlow(task taskflow.Task) Task {
 		ProjectID:        task.ProjectID,
 		WorkspaceID:      task.WorkspaceID,
 		Repositories:     append([]string{}, task.Repositories...),
+		Milestone:        task.Milestone,
 		DependsOn:        append([]string{}, task.DependsOn...),
 		Assignee:         task.Assignee,
 		AssignmentReason: task.AssignmentReason,

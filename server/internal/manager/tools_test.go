@@ -91,6 +91,9 @@ func (m *memTasks) Patch(_ context.Context, id string, patch taskflow.PatchInput
 		if patch.DependsOn != nil {
 			task.DependsOn = append([]string{}, *patch.DependsOn...)
 		}
+		if patch.Milestone != nil {
+			task.Milestone = *patch.Milestone
+		}
 		if patch.Body != nil {
 			task.Body = *patch.Body
 		}
@@ -272,6 +275,34 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 	if strings.Count(string(card), "  - billing") != 1 || strings.Contains(string(card), "## Activity Log") || strings.Contains(string(card), "aliases: []") {
 		t.Fatalf("project card = %s", card)
 	}
+	created := svc.MilestoneCreate("acme-web", "v1 launch", "v1.0.0")
+	if !created.OK {
+		t.Fatalf("milestone create = %+v", created)
+	}
+	milestone := created.Result.Detail.(board.Milestone)
+	if milestone.ID != "v1-launch" || milestone.State != "parked" || milestone.Version != "v1.0.0" {
+		t.Fatalf("milestone create detail = %+v", milestone)
+	}
+	activated := svc.MilestoneActivate("acme-web", milestone.ID)
+	if !activated.OK || activated.Result.Status != "active" {
+		t.Fatalf("milestone activate = %+v", activated)
+	}
+	assigned := svc.AssignTaskMilestone(context.Background(), "CORE-1", milestone.ID)
+	if !assigned.OK || mem.tasks[0].Milestone != "v1-launch" {
+		t.Fatalf("assign task milestone = %+v, task = %+v", assigned, mem.tasks[0])
+	}
+	cleared := svc.AssignTaskMilestone(context.Background(), "CORE-1", "")
+	if !cleared.OK || mem.tasks[0].Milestone != "" {
+		t.Fatalf("clear task milestone = %+v, task = %+v", cleared, mem.tasks[0])
+	}
+	cardAfterMilestone, err := os.ReadFile(cardPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(cardAfterMilestone), "milestones:\n  - id: v1-launch\n    title: v1 launch\n    version: v1.0.0\n    state: active\n") {
+		t.Fatalf("project card missing milestone block:\n%s", cardAfterMilestone)
+	}
+
 	resolve := NewService(mem, BoardView{Workspaces: []board.Workspace{{ID: "acme-web", Title: "Acme Web"}}})
 	resolve.DataRoot = root
 	if got := resolve.ResolveProject("Billing").Result.Detail.(map[string]any); got["verdict"] != "confident" || got["project"] != "acme-web" {

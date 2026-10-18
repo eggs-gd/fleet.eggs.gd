@@ -120,6 +120,18 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in manager.UpdateInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Update(ctx, in), nil
 		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_create", Description: "Add a new, parked milestone to a project — a flat grouping (with an optional version) tasks can opt into. Use this to file work away under a milestone that will be launched later. A milestone's state is a planning label only: it never stops a todo task from being launched."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in milestoneCreateMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.MilestoneCreate(in.Project, in.Title, in.Version), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_activate", Description: "Flip a parked milestone to active, marking it as the work in progress. Other milestones on the project are left as they are. This is a planning label; it does not start or stop any task."},
+		func(_ context.Context, _ *mcp.CallToolRequest, in milestoneActivateMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.MilestoneActivate(in.Project, in.MilestoneID), nil
+		})
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_task_milestone", Description: "Set (or clear, with an empty milestone_id) which milestone a task belongs to. A task has at most one."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in taskMilestoneMCPInput) (*mcp.CallToolResult, manager.Response, error) {
+			return nil, service.AssignTaskMilestone(ctx, in.Ref, in.MilestoneID), nil
+		})
 
 	for _, name := range managerskills.Names {
 		desc, err := managerskills.Description(name)
@@ -201,6 +213,22 @@ type answerMCPInput struct {
 	Ref    string `json:"ref"`
 	Text   string `json:"text"`
 	Status string `json:"status,omitempty"`
+}
+
+type milestoneCreateMCPInput struct {
+	Project string `json:"project"`
+	Title   string `json:"title"`
+	Version string `json:"version,omitempty"`
+}
+
+type milestoneActivateMCPInput struct {
+	Project     string `json:"project"`
+	MilestoneID string `json:"milestone_id"`
+}
+
+type taskMilestoneMCPInput struct {
+	Ref         string `json:"ref"`
+	MilestoneID string `json:"milestone_id,omitempty"`
 }
 
 type reviewMCPInput struct {

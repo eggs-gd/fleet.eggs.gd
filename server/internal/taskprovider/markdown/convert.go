@@ -99,6 +99,8 @@ func (p *Provider) flowUpdate(ctx context.Context, task taskflow.Task) error {
 	}
 	dependsOn := append([]string{}, task.DependsOn...)
 	patch.DependsOn = &dependsOn
+	milestone := task.Milestone
+	patch.Milestone = &milestone
 	if strings.TrimSpace(task.Body) != "" {
 		body := task.Body
 		patch.Body = &body
@@ -157,6 +159,7 @@ func toFlowTask(task tasklifecycle.Task) taskflow.Task {
 		ProjectID:        task.ProjectID,
 		WorkspaceID:      task.WorkspaceID,
 		Repositories:     append([]string{}, task.Repositories...),
+		Milestone:        task.Milestone,
 		DependsOn:        append([]string{}, task.DependsOn...),
 		Assignee:         task.Assignee,
 		AssignmentReason: task.AssignmentReason,

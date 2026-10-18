@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/board"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
@@ -96,6 +98,216 @@ func ProjectAliases(root, project string) ([]string, error) {
 		return nil, nil
 	}
 	return aliases, err
+}
+
+// Milestones returns the milestones on a project card. A project without a
+// card has none.
+func Milestones(root, project string) ([]board.Milestone, error) {
+	if !ValidProjectID(project) {
+		return nil, nil
+	}
+	path := projectCard(root, project)
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	records, err := mdfile.ListRecords(string(raw), "milestones")
+	if errors.Is(err, mdfile.ErrNoFrontmatter) {
+		// A malformed card has no milestones yet. The scanner repairs it.
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return recordsToMilestones(records), nil
+}
+
+// CreateMilestone appends a new, parked milestone to a project card and
+// returns it. The id is slugified from title and de-duplicated against
+// existing milestone ids on the same card.
+func CreateMilestone(root, project, title, version string) (board.Milestone, error) {
+	if !ValidProjectID(project) {
+		return board.Milestone{}, errors.New("project id is required")
+	}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return board.Milestone{}, errors.New("title is required")
+	}
+	if err := singleLine("title", title); err != nil {
+		return board.Milestone{}, err
+	}
+	if err := singleLine("version", version); err != nil {
+		return board.Milestone{}, err
+	}
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
+	path := projectCard(root, project)
+	body, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return board.Milestone{}, fmt.Errorf("project %s has no card yet (%s); the scanner creates cards on its next pass", project, path)
+	}
+	if err != nil {
+		return board.Milestone{}, err
+	}
+	text := string(body)
+	records, err := mdfile.ListRecords(text, "milestones")
+	if err != nil {
+		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	id := uniqueMilestoneID(records, title)
+	milestone := board.Milestone{ID: id, Title: title, Version: strings.TrimSpace(version), State: "parked"}
+	records = append(records, milestoneToRecord(milestone))
+	next, err := mdfile.SetRecords(text, "milestones", board.MilestoneFields, records)
+	if err != nil {
+		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	if err := writeAtomic(path, []byte(next)); err != nil {
+		return board.Milestone{}, err
+	}
+	return milestone, nil
+}
+
+// SetMilestoneState updates one milestone's state (parked/active/done) on a
+// project card.
+func SetMilestoneState(root, project, milestoneID, state string) (board.Milestone, error) {
+	return PatchMilestone(root, project, milestoneID, &state, nil, nil)
+}
+
+// PatchMilestone applies whichever of state/title/version is non-nil to one
+// milestone in a single read-modify-write of the card. A non-nil empty version
+// clears it; a title cannot be emptied.
+func PatchMilestone(root, project, milestoneID string, state, title, version *string) (board.Milestone, error) {
+	if state != nil && !board.IsKnownMilestoneState(*state) {
+		return board.Milestone{}, fmt.Errorf("unknown milestone state %q", *state)
+	}
+	if title != nil {
+		trimmed := strings.TrimSpace(*title)
+		if trimmed == "" {
+			return board.Milestone{}, errors.New("title cannot be empty")
+		}
+		if err := singleLine("title", trimmed); err != nil {
+			return board.Milestone{}, err
+		}
+		title = &trimmed
+	}
+	if version != nil {
+		trimmed := strings.TrimSpace(*version)
+		if err := singleLine("version", trimmed); err != nil {
+			return board.Milestone{}, err
+		}
+		version = &trimmed
+	}
+	return updateMilestone(root, project, milestoneID, func(m *board.Milestone) {
+		if state != nil {
+			m.State = *state
+		}
+		if title != nil {
+			m.Title = *title
+		}
+		if version != nil {
+			m.Version = *version
+		}
+	})
+}
+
+func updateMilestone(root, project, milestoneID string, apply func(*board.Milestone)) (board.Milestone, error) {
+	if !ValidProjectID(project) {
+		return board.Milestone{}, errors.New("project id is required")
+	}
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
+	path := projectCard(root, project)
+	body, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return board.Milestone{}, fmt.Errorf("project %s has no card yet (%s); the scanner creates cards on its next pass", project, path)
+	}
+	if err != nil {
+		return board.Milestone{}, err
+	}
+	text := string(body)
+	records, err := mdfile.ListRecords(text, "milestones")
+	if err != nil {
+		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	milestones := recordsToMilestones(records)
+	index := -1
+	for i, m := range milestones {
+		if m.ID == milestoneID {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return board.Milestone{}, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+	}
+	apply(&milestones[index])
+	next, err := mdfile.SetRecords(text, "milestones", board.MilestoneFields, milestonesToRecords(milestones))
+	if err != nil {
+		return board.Milestone{}, fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	if err := writeAtomic(path, []byte(next)); err != nil {
+		return board.Milestone{}, err
+	}
+	return milestones[index], nil
+}
+
+func singleLine(field, value string) error {
+	if strings.ContainsFunc(value, unicode.IsControl) {
+		return fmt.Errorf("%s must be a single line", field)
+	}
+	return nil
+}
+
+func uniqueMilestoneID(records []map[string]string, title string) string {
+	base := tasklifecycle.SlugifyTitle(title)
+	if base == "" {
+		base = "milestone"
+	}
+	taken := map[string]bool{}
+	for _, record := range records {
+		taken[record["id"]] = true
+	}
+	if !taken[base] {
+		return base
+	}
+	for n := 2; ; n++ {
+		candidate := fmt.Sprintf("%s-%d", base, n)
+		if !taken[candidate] {
+			return candidate
+		}
+	}
+}
+
+func milestoneToRecord(m board.Milestone) map[string]string {
+	record := map[string]string{"id": m.ID, "title": m.Title, "state": m.State}
+	if m.Version != "" {
+		record["version"] = m.Version
+	}
+	return record
+}
+
+func recordsToMilestones(records []map[string]string) []board.Milestone {
+	milestones := make([]board.Milestone, 0, len(records))
+	for _, record := range records {
+		milestones = append(milestones, board.Milestone{
+			ID:      record["id"],
+			Title:   record["title"],
+			Version: record["version"],
+			State:   record["state"],
+		})
+	}
+	return milestones
+}
+
+func milestonesToRecords(milestones []board.Milestone) []map[string]string {
+	records := make([]map[string]string, 0, len(milestones))
+	for _, m := range milestones {
+		records = append(records, milestoneToRecord(m))
+	}
+	return records
 }
 
 // HumanWorker reports whether name is a person in the Fleet roster.

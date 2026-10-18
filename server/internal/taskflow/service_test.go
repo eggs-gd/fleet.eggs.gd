@@ -388,3 +388,80 @@ func TestServicePatchCombinesFieldWrites(t *testing.T) {
 		t.Fatalf("depends_on after clear = %#v, want empty", clearedTask.DependsOn)
 	}
 }
+
+func TestServicePatchSetsClearsAndLeavesMilestoneAlone(t *testing.T) {
+	provider := newMemoryProvider()
+	svc := NewService(provider)
+	defer svc.Close()
+
+	task, err := svc.Create(context.Background(), CreateTask{
+		Title:    "milestone me",
+		Status:   StatusBacklog,
+		Assignee: "unassigned",
+		Priority: 5,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	milestone := "v1-launch"
+	updated, err := svc.Patch(context.Background(), task.Locator, PatchInput{Milestone: &milestone})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Milestone != "v1-launch" {
+		t.Fatalf("milestone = %q, want v1-launch", updated.Milestone)
+	}
+
+	priority := 3
+	unchanged, err := svc.Patch(context.Background(), task.Locator, PatchInput{Priority: &priority})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unchanged.Milestone != "v1-launch" {
+		t.Fatalf("milestone after unrelated patch = %q, want unchanged v1-launch", unchanged.Milestone)
+	}
+
+	empty := ""
+	clearedTask, err := svc.Patch(context.Background(), task.Locator, PatchInput{Milestone: &empty})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clearedTask.Milestone != "" {
+		t.Fatalf("milestone after clear = %q, want empty", clearedTask.Milestone)
+	}
+}
+
+// milestonelessProvider stands in for a provider (Plane) whose task model has
+// no milestone field: Update accepts the write but Get never returns one.
+type milestonelessProvider struct{ *memoryProvider }
+
+func (m milestonelessProvider) Update(ctx context.Context, task Task) error {
+	task.Milestone = ""
+	return m.memoryProvider.Update(ctx, task)
+}
+
+func TestServicePatchRejectsMilestoneTheProviderCannotStore(t *testing.T) {
+	provider := milestonelessProvider{newMemoryProvider()}
+	svc := NewService(provider)
+	defer svc.Close()
+
+	task, err := svc.Create(context.Background(), CreateTask{Title: "no milestones here", Status: StatusBacklog, Assignee: "unassigned", Priority: 5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	milestone := "v1-launch"
+	if _, err := svc.Patch(context.Background(), task.Locator, PatchInput{Milestone: &milestone}); !errors.Is(err, ErrMilestoneNotPersisted) {
+		t.Fatalf("err = %v, want ErrMilestoneNotPersisted", err)
+	}
+	// Clearing is trivially "persisted" (nothing to store) and an unrelated
+	// patch never trips the check.
+	empty := ""
+	if _, err := svc.Patch(context.Background(), task.Locator, PatchInput{Milestone: &empty}); err != nil {
+		t.Fatal(err)
+	}
+	priority := 2
+	if _, err := svc.Patch(context.Background(), task.Locator, PatchInput{Priority: &priority}); err != nil {
+		t.Fatal(err)
+	}
+}

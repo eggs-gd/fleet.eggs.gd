@@ -13,6 +13,11 @@ type TaskPatch struct {
 	Assignee   string `json:"assignee"`
 	Project    string `json:"project"`
 	Repository string `json:"repository"`
+	// Milestone is a pointer so callers can distinguish omit from clear: nil
+	// leaves it unchanged, &"" clears it, &id sets it. A plain empty string
+	// can't express "clear" the way it does for Assignee/Project, which are
+	// never legitimately empty on a real task.
+	Milestone *string `json:"milestone"`
 	// DependsOn is a pointer so callers can distinguish omit from clear
 	// (empty list). Dashboard/UI use this for hard launch blockers (CORE-148).
 	DependsOn           *[]string `json:"depends_on"`
@@ -51,6 +56,9 @@ func TaskPatchChangeSummary(before Task, after Task, patch TaskPatch) []string {
 	}
 	if before.RelativePath != "" && after.RelativePath != "" && before.RelativePath != after.RelativePath {
 		changes = append(changes, "path="+before.RelativePath+"->"+after.RelativePath)
+	}
+	if patch.Milestone != nil && before.Milestone != after.Milestone {
+		changes = append(changes, "milestone="+before.Milestone+"->"+after.Milestone)
 	}
 	if patch.DependsOn != nil {
 		beforeDeps := strings.Join(NormalizeDependsOn(before.DependsOn), ",")

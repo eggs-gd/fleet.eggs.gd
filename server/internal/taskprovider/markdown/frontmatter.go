@@ -34,6 +34,21 @@ func setFrontmatterValue(frontmatter string, key string, value string) (string, 
 	return strings.Join(append(lines, key+": "+quoteFrontmatter(value)), "\n") + "\n", nil
 }
 
+// removeFrontmatterKey drops a top-level scalar key, so clearing an optional
+// field does not leave an empty "key:" line on every card that was patched.
+func removeFrontmatterKey(frontmatter string, key string) string {
+	lines := strings.Split(strings.TrimRight(frontmatter, "\n"), "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		currentKey, _, ok := strings.Cut(line, ":")
+		if ok && strings.TrimSpace(currentKey) == key && !strings.HasPrefix(line, "  ") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n") + "\n"
+}
+
 func setFrontmatterRepositories(frontmatter string, repositories []string) (string, error) {
 	return setFrontmatterStringList(frontmatter, "repositories", repositories)
 }

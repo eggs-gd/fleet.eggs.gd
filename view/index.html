@@ -17,6 +17,10 @@
         var theme = dark ? 'dark' : 'light';
         document.documentElement.dataset.theme = theme;
         document.documentElement.style.colorScheme = theme;
+        var meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = dark ? '#111318' : '#f4f5f7';
+        document.head.appendChild(meta);
       })();
     </script>
   </head>

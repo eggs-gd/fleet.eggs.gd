@@ -44,24 +44,20 @@
     saveAutoRefreshMs
   } from './lib/layoutPrefs';
   import { apiFetch } from './lib/api';
+  import { createMilestone } from './lib/milestones';
   import { applyTheme, watchSystemTheme } from './lib/theme';
-  import ArchiveView from './ArchiveView.svelte';
-  import CreateTaskModal from './CreateTaskModal.svelte';
-  import FiltersBar from './FiltersBar.svelte';
-  import ManagerSetup from './ManagerSetup.svelte';
-  import NeedsAttention from './NeedsAttention.svelte';
-  import ProjectHeader from './ProjectHeader.svelte';
-  import ProjectSettings from './ProjectSettings.svelte';
+  import { readBoardLocation, reconcileBoardLocation, writeBoardLocation } from './lib/urlState';
+  import CreateMilestoneModal from './components/milestones/CreateMilestoneModal.svelte';
+  import CreateTaskModal from './components/tasks/CreateTaskModal.svelte';
+  import ManagerSetup from './components/shell/ManagerSetup.svelte';
   import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings';
-  import RecentCompleted from './RecentCompleted.svelte';
-  import RuntimeSessions from './RuntimeSessions.svelte';
-  import Sidebar from './Sidebar.svelte';
-  import SplitGutter from './SplitGutter.svelte';
-  import SettingsView from './SettingsView.svelte';
-  import TaskList from './TaskList.svelte';
+  import Sidebar from './components/shell/Sidebar.svelte';
+  import SplitGutter from './components/shell/SplitGutter.svelte';
+  import SettingsRoute from './routes/SettingsRoute.svelte';
+  import WorkRoute from './routes/WorkRoute.svelte';
   import { AGENT_ASSIGNEES, isOperatorAssignee, operatorAssignee } from './lib/operator';
   import { isSettingsNav } from './lib/settingsNav';
-  import TaskModal from './TaskModal.svelte';
+  import TaskModal from './components/tasks/TaskModal.svelte';
 
   let data: AnyRecord | null = null;
   let error = '';
@@ -76,6 +72,8 @@
   let activeView = 'board';
   let globalNav = 'work';
   let settingsSection = 'general';
+  let sessionsTab = 'active';
+  let urlReady = false;
   let quickFilter = 'all';
   let taskSort = 'updated';
   let query = '';
@@ -85,6 +83,7 @@
   let draftPriority = 5;
   let draftAssignee = '';
   let draftProject = '';
+  let draftMilestone = '';
   let draftDependsOn = '';
   let draftBody = '';
   let draftComment = '';
@@ -92,6 +91,9 @@
   let creating = false;
   let editError = '';
   let createError = '';
+  let creatingMilestone = false;
+  let savingMilestone = false;
+  let milestoneError = '';
   let accordionOpen = loadAccordionOpen();
   let leftWidth = loadLeftWidth();
   let rightWidth = loadRightWidth();
@@ -194,6 +196,7 @@
       draftPriority = priorityValue(selectedTask);
       draftAssignee = selectedTask.assignee || '';
       draftProject = selectedTask.project_id || selectedTask.project || '';
+      draftMilestone = selectedTask.milestone || '';
       draftDependsOn = dependsOnDraft(selectedTask);
       draftBody = selectedTask.body || '';
       draftComment = '';
@@ -222,6 +225,18 @@
     };
     updateTaskInState(localTask, path);
     return localTask;
+  }
+
+  async function dropTaskOnMilestone(taskPath: string, milestoneId: string) {
+    const task = tasks.find(
+      (candidate) => (candidate.path || candidate.relative_path) === taskPath
+    );
+    if (task && (task.milestone || '') === milestoneId) return;
+    try {
+      await patchTask(taskPath, { milestone: milestoneId });
+    } catch (err: any) {
+      actionError = err.message;
+    }
   }
 
   async function createTask(payload: AnyRecord) {
@@ -292,6 +307,7 @@
     draftPriority = priorityValue(task);
     draftAssignee = task.assignee || '';
     draftProject = task.project_id || task.project || '';
+    draftMilestone = task.milestone || '';
     draftDependsOn = dependsOnDraft(task);
     draftBody = task.body || '';
     draftComment = '';
@@ -443,6 +459,10 @@
               ?.repositories || [];
         patch.project = nextProject;
         patch.repository = repositoryOptions[0] || '';
+      } else if (draftMilestone !== (selectedTask.milestone || '')) {
+        // A project move drops the milestone server-side, so only send it
+        // when the project is unchanged.
+        patch.milestone = draftMilestone;
       }
       await patchTask(selectedTask.path || '', patch);
       closeTask();
@@ -465,6 +485,31 @@
       createError = err.message;
     } finally {
       creating = false;
+    }
+  }
+
+  function openCreateMilestone() {
+    creatingMilestone = true;
+    milestoneError = '';
+  }
+
+  function closeCreateMilestone() {
+    creatingMilestone = false;
+    milestoneError = '';
+  }
+
+  async function saveCreatedMilestone(title: string, version: string) {
+    if (savingMilestone || !milestoneCardId) return;
+    savingMilestone = true;
+    milestoneError = '';
+    try {
+      await createMilestone(milestoneCardId, title, version);
+      closeCreateMilestone();
+      await requestManualRefresh();
+    } catch (err: any) {
+      milestoneError = err.message;
+    } finally {
+      savingMilestone = false;
     }
   }
 
@@ -534,7 +579,37 @@
     }
   }
 
+  function applyBoardLocation(search: string) {
+    const location = readBoardLocation(search);
+    globalNav = location.nav === 'settings' ? 'settings' : 'work';
+    selectedProjectId = location.project;
+    selectedWorkspaceId = location.workspace;
+    activeView = location.view;
+    quickFilter = location.filter;
+    taskSort = location.sort;
+    query = location.q;
+    settingsSection = location.section;
+    sessionsTab = location.sessions === 'closed' ? 'closed' : 'active';
+  }
+
+  function reconcileSelection(known: Project[], knownWorkspaces: Workspace[]) {
+    const next = reconcileBoardLocation(
+      { project: selectedProjectId, workspace: selectedWorkspaceId, view: activeView },
+      {
+        projectIds: new Set(known.map((project) => project.id)),
+        workspaceIds: new Set(knownWorkspaces.map((workspace) => workspace.id)),
+        views: ['board', 'archive', PROJECT_SETTINGS_VIEW],
+        viewNeedingProject: PROJECT_SETTINGS_VIEW
+      }
+    );
+    if (next.project !== selectedProjectId) selectedProjectId = next.project;
+    if (next.workspace !== selectedWorkspaceId) selectedWorkspaceId = next.workspace;
+    if (next.view !== activeView) activeView = next.view;
+  }
+
   onMount(() => {
+    applyBoardLocation(window.location.search);
+    urlReady = true;
     applyTheme(themePref);
     loadData();
     loadManagerSetup();
@@ -549,8 +624,23 @@
     };
   });
 
+  $: if (urlReady) {
+    writeBoardLocation({
+      nav: isSettingsNav(globalNav) ? 'settings' : 'work',
+      project: selectedProjectId,
+      workspace: selectedWorkspaceId,
+      view: activeView,
+      filter: quickFilter,
+      sort: taskSort,
+      q: query,
+      section: settingsSection,
+      sessions: sessionsTab
+    });
+  }
+
   $: workspaces = (data?.workspaces ?? []) as Workspace[];
   $: projects = (data?.projects ?? []) as Project[];
+  $: if (data) reconcileSelection(projects, workspaces);
   $: tasks = (data?.tasks ?? []) as Task[];
   $: sessionGroups = (data?.session_groups ?? []) as SessionGroup[];
   $: runtimeSessions = ((data?.runtime_sessions ?? []) as Session[]).filter(sessionIsActive);
@@ -564,6 +654,16 @@
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
     null;
+  // Milestones live on the workspace card, so a repository project adds them
+  // to its parent; nested task projects have no card of their own.
+  $: milestoneCardId =
+    selectedProjectId && selectedProject
+      ? selectedProject.kind === 'workspace'
+        ? selectedProject.id
+        : selectedProject.kind === 'repository_project'
+          ? (selectedProject as Project).workspace_id || ''
+          : ''
+      : '';
   $: people = (data?.people ?? []) as string[];
   // Who a task can be given to: nobody, the registered people, or an AI agent.
   $: assigneeChoices = ['unassigned', ...people, ...AGENT_ASSIGNEES];
@@ -675,7 +775,8 @@
   />
 {/if}
 
-<main class="shell">
+<a class="skip-link" href="#main">Skip to content</a>
+<main id="main" class="shell">
   {#if error}
     <section class="error">
       <strong>Backoffice data is not available.</strong>
@@ -709,7 +810,7 @@
       <SplitGutter axis="x" onDrag={dragLeft} />
 
       {#if isSettingsNav(globalNav)}
-        <SettingsView
+        <SettingsRoute
           section={settingsSection}
           {themePref}
           onThemeChange={setThemePref}
@@ -717,106 +818,56 @@
           onRefreshChange={setRefreshMs}
         />
       {:else}
-        <div class="working-area">
-          <RuntimeSessions
-            {runtimeSessions}
-            {closedSessions}
-            {orphanedTasks}
-            {refreshStatus}
-            onControlSession={controlSession}
-            onReleaseSession={releaseSession}
-            onResolveOrphan={resolveOrphan}
-          />
-
-          {#if actionError}
-            <section class="error action-error" aria-live="assertive">
-              <strong>Task update failed.</strong>
-              <span>{actionError}</span>
-            </section>
-          {/if}
-
-          <div class="main-column">
-            <ProjectHeader
-              project={selectedProject}
-              {activeView}
-              onChangeView={changeView}
-              onBack={selectAllProjects}
-              onCreateTask={openCreateTask}
-              onRefresh={requestManualRefresh}
-              refreshing={refreshBusy}
-            />
-
-            {#if activeView === 'board'}
-              <FiltersBar
-                {chips}
-                activeChip={quickFilter}
-                bind:query
-                sort={taskSort}
-                onChipChange={changeChip}
-                onSortChange={(value) => (taskSort = value)}
-              />
-            {/if}
-
-            <div class="main-scroll">
-              {#if activeView === 'archive'}
-                <ArchiveView
-                  tasks={archivedTasks}
-                  {workspaces}
-                  {projects}
-                  {selectedProjectId}
-                  {selectedWorkspaceId}
-                  bind:accordionOpen
-                  transitions={data.status_transitions}
-                  onOpenTask={openTask}
-                  onTransitionTask={transitionTask}
-                />
-              {:else if activeView === PROJECT_SETTINGS_VIEW && selectedProject}
-                <ProjectSettings
-                  project={selectedProject}
-                  {workspaces}
-                  {projects}
-                  repositories={data.registry?.repositories || []}
-                />
-              {:else}
-                <TaskList
-                  tasks={filteredActiveTasks}
-                  {selectedTask}
-                  transitions={data.status_transitions}
-                  onOpenTask={openTask}
-                  onTransitionTask={transitionTask}
-                />
-              {/if}
-
-              <footer class="generated">
-                Generated {new Date(data.generated_at).toLocaleString()} from {data.registry
-                  .repositories_count} repositories.
-              </footer>
-            </div>
-          </div>
-        </div>
-
-        <SplitGutter axis="x" onDrag={dragRight} />
-
-        <aside class="sidebar sidebar-right">
-          <NeedsAttention
-            tasks={attentionTasks}
-            open={rightPanels.attentionOpen}
-            transitions={data.status_transitions}
-            onToggle={toggleAttention}
-            onOpenTask={openTask}
-            onShowAll={() => selectQuickView('attention')}
-            onTransitionTask={transitionTask}
-          />
-          <RecentCompleted
-            {tasks}
-            open={rightPanels.recentOpen}
-            transitions={data.status_transitions}
-            onToggle={toggleRecent}
-            onOpenTask={openTask}
-            onShowAll={() => selectQuickView('done')}
-            onTransitionTask={transitionTask}
-          />
-        </aside>
+        <WorkRoute
+          {runtimeSessions}
+          {closedSessions}
+          {orphanedTasks}
+          {refreshStatus}
+          {sessionsTab}
+          onSessionsTab={(tab) => (sessionsTab = tab)}
+          {actionError}
+          {selectedProject}
+          {activeView}
+          onChangeView={changeView}
+          onBack={selectAllProjects}
+          onCreateTask={openCreateTask}
+          onRefresh={requestManualRefresh}
+          refreshing={refreshBusy}
+          {chips}
+          {quickFilter}
+          bind:query
+          {taskSort}
+          onChipChange={changeChip}
+          onSortChange={(value) => (taskSort = value)}
+          onAddMilestone={milestoneCardId ? openCreateMilestone : null}
+          {selectedProjectId}
+          {selectedWorkspaceId}
+          bind:accordionOpen
+          {archivedTasks}
+          {workspaces}
+          {projects}
+          transitions={data.status_transitions}
+          repositories={data.registry?.repositories || []}
+          {filteredActiveTasks}
+          {selectedTask}
+          onOpenTask={openTask}
+          onTransitionTask={transitionTask}
+          onDropTaskOnMilestone={dropTaskOnMilestone}
+          generatedAt={data.generated_at || ''}
+          repositoryCount={data.registry?.repositories_count || 0}
+          {attentionTasks}
+          {tasks}
+          attentionOpen={rightPanels.attentionOpen}
+          recentOpen={rightPanels.recentOpen}
+          onControlSession={controlSession}
+          onReleaseSession={releaseSession}
+          onResolveOrphan={resolveOrphan}
+          onDragRight={dragRight}
+          onToggleAttention={toggleAttention}
+          onToggleRecent={toggleRecent}
+          onShowAttention={() => selectQuickView('attention')}
+          onShowDone={() => selectQuickView('done')}
+        />
       {/if}
     </div>
   {/if}
@@ -836,6 +887,16 @@
   />
 {/if}
 
+{#if creatingMilestone && milestoneCardId}
+  <CreateMilestoneModal
+    projectTitle={selectedProject?.title || selectedProjectId}
+    saving={savingMilestone}
+    createError={milestoneError}
+    onCreate={saveCreatedMilestone}
+    onClose={closeCreateMilestone}
+  />
+{/if}
+
 {#if selectedTask && data}
   <TaskModal
     task={selectedTask}
@@ -847,6 +908,7 @@
     bind:draftPriority
     bind:draftAssignee
     bind:draftProject
+    bind:draftMilestone
     bind:draftDependsOn
     bind:draftBody
     bind:draftComment
@@ -858,10 +920,28 @@
 {/if}
 
 <style>
+  .skip-link {
+    position: absolute;
+    left: var(--space-md);
+    top: var(--space-md);
+    z-index: 40;
+    transform: translateY(-200%);
+    background: var(--surface);
+    color: var(--text);
+    padding: var(--space-sm) var(--space-lg);
+  }
+
+  .skip-link:focus {
+    transform: none;
+  }
+
   .shell {
     width: 100%;
-    height: 100vh;
-    padding: var(--space-lg) var(--space-xl);
+    height: 100dvh;
+    padding: calc(var(--space-lg) + env(safe-area-inset-top))
+      calc(var(--space-xl) + env(safe-area-inset-right))
+      calc(var(--space-lg) + env(safe-area-inset-bottom))
+      calc(var(--space-xl) + env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -875,43 +955,6 @@
     min-width: 0;
     --left-w: 240px;
     --right-w: 300px;
-  }
-
-  .working-area {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-  }
-
-  .main-column {
-    flex: 1 1 auto;
-    min-width: 0;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-  }
-
-  .sidebar-right {
-    width: var(--right-w);
-    flex: 0 0 var(--right-w);
-    min-width: 0;
-    max-width: var(--right-w);
-    align-self: stretch;
-  }
-
-  .main-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg);
-    padding-right: var(--space-2xs);
   }
 
   .loading,
@@ -933,18 +976,6 @@
     margin-top: var(--space-sm);
   }
 
-  .action-error {
-    padding: var(--space-lg) var(--space-lg);
-    flex: 0 0 auto;
-  }
-
-  .generated {
-    flex: 0 0 auto;
-    padding: var(--space-xs) 0 var(--space-2xs);
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
   @media (max-width: 1080px) {
     .app-shell {
       --left-w: 220px;
@@ -963,22 +994,10 @@
       padding: var(--space-lg);
     }
 
-    .app-shell,
-    .working-area {
+    .app-shell {
       display: flex;
       flex-direction: column;
       height: auto;
-    }
-
-    .sidebar-right,
-    .working-area,
-    .main-column {
-      width: 100%;
-      flex: 1 1 auto;
-    }
-
-    .main-scroll {
-      overflow-y: visible;
     }
   }
 </style>

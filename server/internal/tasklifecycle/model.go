@@ -56,6 +56,9 @@ type Task struct {
 	ProjectID     string   `json:"project_id"`
 	WorkspaceID   string   `json:"workspace_id"`
 	Repositories  []string `json:"repositories"`
+	// Milestone is the id of at most one milestone (a project.md-scoped
+	// grouping) this task opted into, or "" for none.
+	Milestone string `json:"milestone"`
 	// DependsOn lists prerequisite task refs (e.g. CORE-144), ids, or
 	// locators that must reach DependencySatisfiedStatus before launch.
 	DependsOn        []string `json:"depends_on,omitempty"`

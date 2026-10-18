@@ -49,6 +49,9 @@ type Service struct {
 	DataRoot    string
 	RuntimeRoot string
 	Health      *health.Monitor
+	// OnProjectCardChanged, when set, is called after a tool writes a project
+	// card so the live board picks the change up without a restart.
+	OnProjectCardChanged func(project string)
 }
 
 func NewService(tasks TaskManagement, board BoardReader) *Service {
@@ -57,6 +60,12 @@ func NewService(tasks TaskManagement, board BoardReader) *Service {
 		Board:      board,
 		STT:        UnconfiguredTranscriber{},
 		Classifier: UnconfiguredClassifier{},
+	}
+}
+
+func (s *Service) projectCardChanged(project string) {
+	if s.OnProjectCardChanged != nil {
+		s.OnProjectCardChanged(project)
 	}
 }
 

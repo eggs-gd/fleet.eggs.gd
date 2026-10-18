@@ -57,6 +57,7 @@ func LoadTaskFile(root string, taskFile string) (tasklifecycle.Task, error) {
 		ProjectID:        projectID,
 		WorkspaceID:      workspaceID,
 		Repositories:     repositories,
+		Milestone:        mdfile.Scalar(fm, "milestone", ""),
 		DependsOn:        dependsOn,
 		Assignee:         mdfile.Scalar(fm, "assignee", "unassigned"),
 		AssignmentReason: mdfile.Scalar(fm, "assignment_reason", ""),

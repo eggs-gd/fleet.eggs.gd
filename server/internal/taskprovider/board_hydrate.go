@@ -52,3 +52,17 @@ func ReloadRegistry(boardProj *Board, root string) error {
 	boardProj.SetRegistry(registry)
 	return nil
 }
+
+// ReloadWorkspace re-reads one project card into the live board, so edits made
+// after Hydrate (milestones, aliases, summary) show without restarting serve.
+func ReloadWorkspace(boardProj *Board, root, project string) error {
+	if boardProj == nil {
+		return fmt.Errorf("reload workspace: board is nil")
+	}
+	workspace, err := board.LoadWorkspaceFile(root, filepath.Join(root, "Work", project, "PROJECT.md"))
+	if err != nil {
+		return fmt.Errorf("reload workspace %s: %w", project, err)
+	}
+	boardProj.UpsertWorkspace(workspace)
+	return nil
+}

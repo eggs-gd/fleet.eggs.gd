@@ -152,10 +152,15 @@ body {
   overflow: hidden;
 }
 
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   background: var(--bg);
+  touch-action: manipulation;
 }
 
 button,
@@ -182,6 +187,11 @@ button:hover {
   background: var(--surface-muted);
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -192,6 +202,12 @@ h2,
 h3,
 p {
   margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: pretty;
 }
 
 code {
@@ -234,6 +250,12 @@ code {
   animation: refresh-spin 0.8s linear infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .icon-button.is-busy svg {
+    animation: none;
+  }
+}
+
 /* ---------- App shell (fixed viewport, no page scroll) ---------- */
 
 .eyebrow {
@@ -272,7 +294,7 @@ code {
   border-bottom: 1px solid var(--border);
 }
 
-.settings-head h2 {
+.settings-head h1 {
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 650;
@@ -1141,12 +1163,14 @@ textarea {
   background: var(--overlay);
   padding: var(--space-xl);
   z-index: 20;
+  overscroll-behavior: contain;
 }
 
 .task-modal {
   width: min(900px, 100%);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
