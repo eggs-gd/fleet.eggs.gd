@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/board"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
@@ -15,13 +16,23 @@ import (
 // recordingDashboard is a DashboardSurface stand-in that records which
 // boundary methods the HTTP handlers call (CORE-114).
 type recordingDashboard struct {
-	stateCalls   int
-	patchCalls   int
-	createCalls  int
-	controlCalls int
-	lastPatch    tasklifecycle.TaskPatch
-	lastCreate   tasklifecycle.TaskCreateRequest
-	lastControl  execution.SessionControlPatch
+	stateCalls          int
+	patchCalls          int
+	createCalls         int
+	controlCalls        int
+	milestonesCalls     int
+	createMilestoneCall int
+	patchMilestoneCall  int
+	lastPatch           tasklifecycle.TaskPatch
+	lastCreate          tasklifecycle.TaskCreateRequest
+	lastControl         execution.SessionControlPatch
+	lastMilestoneProj   string
+	lastMilestoneTitle  string
+	lastMilestoneVer    string
+	lastMilestonePatch  struct {
+		id                    string
+		state, title, version *string
+	}
 }
 
 func (r *recordingDashboard) State() State {
@@ -45,6 +56,30 @@ func (r *recordingDashboard) PatchTask(patch tasklifecycle.TaskPatch) (tasklifec
 	r.patchCalls++
 	r.lastPatch = patch
 	return tasklifecycle.Task{Ref: "CORE-TEST", Status: patch.Status, Path: patch.Path}, nil
+}
+
+func (r *recordingDashboard) Milestones(project string) ([]board.Milestone, error) {
+	r.milestonesCalls++
+	r.lastMilestoneProj = project
+	return []board.Milestone{{ID: "v1-launch", Title: "v1 launch", State: "active"}}, nil
+}
+
+func (r *recordingDashboard) CreateMilestone(project, title, version string) (board.Milestone, error) {
+	r.createMilestoneCall++
+	r.lastMilestoneProj = project
+	r.lastMilestoneTitle = title
+	r.lastMilestoneVer = version
+	return board.Milestone{ID: "test-milestone", Title: title, Version: version, State: "parked"}, nil
+}
+
+func (r *recordingDashboard) PatchMilestone(project, milestoneID string, state, title, version *string) (board.Milestone, error) {
+	r.patchMilestoneCall++
+	r.lastMilestoneProj = project
+	r.lastMilestonePatch.id = milestoneID
+	r.lastMilestonePatch.state = state
+	r.lastMilestonePatch.title = title
+	r.lastMilestonePatch.version = version
+	return board.Milestone{ID: milestoneID}, nil
 }
 
 func TestDashboardRoutesUseTaskServiceAndRuntimeService(t *testing.T) {

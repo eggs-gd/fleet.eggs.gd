@@ -20,6 +20,7 @@ func ProjectsFromWorkspace(workspace Workspace) []Project {
 			SummarySource: workspace.SummarySource,
 			Path:          workspace.Path,
 			RelativePath:  workspace.RelativePath,
+			Milestones:    workspace.Milestones,
 		},
 	}
 

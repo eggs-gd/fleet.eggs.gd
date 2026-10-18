@@ -1,6 +1,6 @@
 /** Pure display helpers shared by backoffice dashboard components. */
 
-import type { AnyRecord, Project, Session, Task, ToolCall, Workspace } from './types.ts';
+import type { AnyRecord, Milestone, Project, Session, Task, ToolCall, Workspace } from './types.ts';
 
 export const assigneeLabel = (value: unknown): string => (value as string) || 'unassigned';
 
@@ -425,4 +425,130 @@ export const groupedByWorkspaceAndProject = (
       projects: projectGroups
     };
   });
+};
+
+export interface MilestoneTaskGroup {
+  key: string;
+  projectId: string;
+  milestoneId: string;
+  title: string;
+  state?: string;
+  version?: string;
+  tasks: Task[];
+}
+
+/** Whether the board should group by milestone at all: either some task in
+ * scope already opted in, or the selected project has at least one milestone
+ * defined (so a just-created, still-empty milestone is visible right away —
+ * without this, "grouped" would stay false until a task was dragged onto it,
+ * making a newly created milestone look like it silently failed). */
+export const shouldGroupByMilestone = (
+  sourceTasks: Task[],
+  projects: Project[],
+  selectedProjectId?: string | null
+): boolean =>
+  sourceTasks.some((task) => Boolean(task.milestone)) ||
+  Boolean(selectedProjectId && projectById(projects, selectedProjectId).milestones?.length);
+
+const UNSCHEDULED_MILESTONE_ID = '';
+
+const milestoneGroupTitle = (
+  mode: 'flat' | 'projects' | 'workspaces',
+  workspaces: Workspace[],
+  projects: Project[],
+  projectId: string,
+  workspaceId: string,
+  milestoneId: string,
+  milestoneTitle?: string
+): string => {
+  const parts: string[] = [];
+  if (mode === 'workspaces') parts.push(workspaceTitle(workspaces, workspaceId));
+  if (mode !== 'flat') parts.push(projectTitle(projects, projectId));
+  parts.push(milestoneId ? milestoneTitle || milestoneId : 'Unscheduled');
+  return parts.join(' / ');
+};
+
+/** Groups tasks by (project, milestone), with an "Unscheduled" group per
+ * project for tasks with no milestone. Group titles are a breadcrumb
+ * trimmed to whatever the current project/workspace selection does not
+ * already pin down, mirroring archiveListMode's same trimming rule. When a
+ * single project is selected, every milestone it defines — and Unscheduled —
+ * gets a group even with zero tasks, so a freshly created milestone is
+ * visible immediately and tasks can always be dropped back off a milestone. */
+export const groupedByMilestone = (
+  sourceTasks: Task[],
+  projects: Project[],
+  workspaces: Workspace[],
+  selectedProjectId?: string | null,
+  selectedWorkspaceId?: string | null
+): MilestoneTaskGroup[] => {
+  const mode = archiveListMode(selectedProjectId, selectedWorkspaceId);
+  const groups = new Map<string, MilestoneTaskGroup>();
+  const groupFor = (
+    projectId: string,
+    workspaceId: string,
+    milestoneId: string
+  ): MilestoneTaskGroup => {
+    const key = `${projectId}::${milestoneId}`;
+    let group = groups.get(key);
+    if (!group) {
+      const project = projectById(projects, projectId);
+      const milestone = milestoneId
+        ? (project.milestones || []).find((m: Milestone) => m.id === milestoneId)
+        : undefined;
+      group = {
+        key,
+        projectId,
+        milestoneId,
+        title: milestoneGroupTitle(
+          mode,
+          workspaces,
+          projects,
+          projectId,
+          workspaceId,
+          milestoneId,
+          milestone?.title
+        ),
+        state: milestone?.state,
+        version: milestone?.version,
+        tasks: []
+      };
+      groups.set(key, group);
+    }
+    return group;
+  };
+
+  for (const task of sourceTasks) {
+    const projectId = taskProjectId(task);
+    const milestoneId = task.milestone || UNSCHEDULED_MILESTONE_ID;
+    groupFor(projectId, task.workspace_id || '', milestoneId).tasks.push(task);
+  }
+
+  if (selectedProjectId) {
+    const project = projectById(projects, selectedProjectId);
+    for (const milestone of project.milestones || []) {
+      groupFor(selectedProjectId, selectedWorkspaceId || '', milestone.id);
+    }
+    // Always offer Unscheduled as a drop target, so a task can be taken off
+    // a milestone even when every task in the project is scheduled.
+    groupFor(selectedProjectId, selectedWorkspaceId || '', UNSCHEDULED_MILESTONE_ID);
+  }
+
+  return Array.from(groups.values()).sort((a, b) => {
+    if (!a.milestoneId && b.milestoneId) return 1;
+    if (a.milestoneId && !b.milestoneId) return -1;
+    return a.title.localeCompare(b.title);
+  });
+};
+
+/** Status-count summary for a milestone accordion header, e.g. "3 doing, 2 review". */
+export const milestoneGroupStatusCounts = (tasks: Task[]): { status: string; count: number }[] => {
+  const counts = new Map<string, number>();
+  for (const task of tasks) {
+    const status = task.status || 'unknown';
+    counts.set(status, (counts.get(status) || 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([status, count]) => ({ status, count }))
+    .sort((a, b) => b.count - a.count);
 };

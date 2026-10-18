@@ -322,6 +322,10 @@ func patchLocked(ctx context.Context, p TaskProvider, id string, patch PatchInpu
 		}
 		needsUpdate = true
 	}
+	if patch.Milestone != nil {
+		task.Milestone = strings.TrimSpace(*patch.Milestone)
+		needsUpdate = true
+	}
 	if patch.DependsOn != nil {
 		task.DependsOn = NormalizeDependsOn(*patch.DependsOn)
 		needsUpdate = true

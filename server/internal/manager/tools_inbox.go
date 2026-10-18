@@ -124,6 +124,7 @@ func (s *Service) Alias(project, alias string) Response {
 	if err != nil {
 		return failureFromErr(err)
 	}
+	s.projectCardChanged(project)
 	return Response{OK: true, Result: &Result{Action: "alias", Path: path, Detail: map[string]any{"wrote": wrote}}}
 }
 

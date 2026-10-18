@@ -65,6 +65,15 @@ export interface Task {
   blocked_reason?: string;
   depends_on?: string[];
   repositories?: string[];
+  milestone?: string;
+}
+
+/** A flat, optionally-versioned grouping a project's own tasks can opt into (at most one each). */
+export interface Milestone {
+  id: string;
+  title?: string;
+  version?: string;
+  state?: 'parked' | 'active' | 'done';
 }
 
 export interface ToolUsage {
@@ -189,6 +198,7 @@ export interface Project {
   tag?: string;
   repositories?: string[];
   technology?: AnyRecord;
+  milestones?: Milestone[];
 }
 
 export interface Workspace {

@@ -32,6 +32,9 @@ type DashboardSurface interface {
 	ControlSession(patch execution.SessionControlPatch) error
 	CreateTask(req tasklifecycle.TaskCreateRequest) (tasklifecycle.Task, error)
 	PatchTask(patch tasklifecycle.TaskPatch) (tasklifecycle.Task, error)
+	Milestones(project string) ([]board.Milestone, error)
+	CreateMilestone(project, title, version string) (board.Milestone, error)
+	PatchMilestone(project, milestoneID string, state, title, version *string) (board.Milestone, error)
 }
 
 func boardHooks(runtimeRoot string, store *taskprovider.Board) execution.BoardHooks {

@@ -77,6 +77,32 @@ func TestMaintainCardsCreatesAndKeepsHumanFields(t *testing.T) {
 	}
 }
 
+func TestMaintainCardsPreservesMilestonesOnRepair(t *testing.T) {
+	root := t.TempDir()
+	registry, work := writeRegistry(t, root, "Space/api", "Space/web")
+	if _, err := MaintainCards(registry, work); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(work, "space", "PROJECT.md")
+	raw, _ := os.ReadFile(card)
+	withMilestones := strings.Replace(string(raw), "repositories:",
+		"milestones:\n  - id: v1-launch\n    title: v1 launch\n    state: active\nrepositories:", 1)
+	if err := os.WriteFile(card, []byte(withMilestones), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// A rescan that also repairs the card (new repository added) must not
+	// touch the hand/Manager-authored milestones block.
+	registry, work = writeRegistry(t, root, "Space/api", "Space/web", "Space/docs")
+	if _, err := MaintainCards(registry, work); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(card)
+	if !strings.Contains(string(got), "milestones:\n  - id: v1-launch\n    title: v1 launch\n    state: active\n") {
+		t.Fatalf("milestones block was not preserved by the repair pass:\n%s", got)
+	}
+}
+
 func TestMaintainCardsRestoresMissingFrontmatterAndSkipsUnknownCards(t *testing.T) {
 	root := t.TempDir()
 	registry, work := writeRegistry(t, root, "Space/api")

@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
@@ -256,6 +257,7 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	}
 
 	writePath := taskPath
+	projectMoved := false
 	var destinationUnlock func()
 	if projectPatch := strings.TrimSpace(patch.Project); projectPatch != "" {
 		if strings.Contains(projectPatch, "..") || strings.ContainsAny(projectPatch, `\:`) {
@@ -280,6 +282,10 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 
 		currentWorkProjectID := filepath.Base(filepath.Dir(filepath.Dir(taskPath)))
 		if workProjectID != currentWorkProjectID {
+			// A milestone belongs to one project's card, so it does not follow
+			// the task to another project.
+			projectMoved = true
+			frontmatter = removeFrontmatterKey(frontmatter, "milestone")
 			destPath, destErr := uniqueTaskDestinationPath(p.root, workProjectID, filepath.Base(taskPath))
 			if destErr != nil {
 				return tasklifecycle.Task{}, destErr
@@ -293,6 +299,20 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	}
 	if destinationUnlock != nil {
 		defer destinationUnlock()
+	}
+	if patch.Milestone != nil && !projectMoved {
+		milestone := strings.TrimSpace(*patch.Milestone)
+		if milestone == "" {
+			frontmatter = removeFrontmatterKey(frontmatter, "milestone")
+		} else {
+			if err := validateMilestone(taskPath, milestone); err != nil {
+				return tasklifecycle.Task{}, err
+			}
+			frontmatter, err = setFrontmatterValue(frontmatter, "milestone", milestone)
+			if err != nil {
+				return tasklifecycle.Task{}, err
+			}
+		}
 	}
 
 	frontmatter, err = setFrontmatterValue(frontmatter, "updated_at", time.Now().Format(time.RFC3339))
@@ -445,4 +465,25 @@ func safeTaskPath(root string, path string) (string, error) {
 		return "", errors.New("path is not a Core task markdown file")
 	}
 	return taskPath, nil
+}
+
+// validateMilestone checks id against the milestones on the task's own project
+// card (Work/<project>/PROJECT.md), so a task cannot point at a milestone its
+// project does not have.
+func validateMilestone(taskPath string, id string) error {
+	card := filepath.Join(filepath.Dir(filepath.Dir(taskPath)), "PROJECT.md")
+	raw, err := os.ReadFile(card)
+	if err != nil {
+		return fmt.Errorf("milestone %q: read project card: %w", id, err)
+	}
+	records, err := mdfile.ListRecords(string(raw), "milestones")
+	if err != nil {
+		return fmt.Errorf("milestone %q: project card %s is malformed: %w", id, card, err)
+	}
+	for _, record := range records {
+		if record["id"] == id {
+			return nil
+		}
+	}
+	return fmt.Errorf("project %s has no milestone %q", filepath.Base(filepath.Dir(card)), id)
 }

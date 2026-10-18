@@ -87,6 +87,7 @@ func Serve(cfg Config) error {
 	// contours and must not subscribe to Go channels (CORE-114).
 	managerService := manager.NewService(coreRuntime.TaskService(), boardReader{app: coreRuntime})
 	managerService.DataRoot = cfg.CoreRoot
+	managerService.OnProjectCardChanged = coreRuntime.ReloadProjectCard
 	managerService.RuntimeRoot = cfg.RuntimeRoot
 	managerService.Health = cfg.Health
 	dashboard := coreRuntime.Surface()
@@ -102,6 +103,7 @@ func Serve(cfg Config) error {
 		})
 	})
 	registerDashboardRoutes(mux, dashboard)
+	registerMilestoneRoutes(mux, dashboard)
 	settingsRT := newSettingsRuntime(cfg, coreRuntime)
 	registerSettingsRoutes(mux, settingsRT)
 	registerManagerRoutes(mux, managerService, cfg)

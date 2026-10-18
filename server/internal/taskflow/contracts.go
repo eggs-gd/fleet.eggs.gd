@@ -45,6 +45,9 @@ type Task struct {
 	ProjectID     string
 	WorkspaceID   string
 	Repositories  []string
+	// Milestone is the id of at most one milestone this task opted into, or
+	// "" for none.
+	Milestone string
 	// DependsOn lists prerequisite refs/ids/locators that must be done before
 	// daemon launch (CORE-148). Empty means no hard dependency gate.
 	DependsOn        []string
@@ -117,6 +120,9 @@ type PatchInput struct {
 	Assignee   string
 	Project    string
 	Repository string
+	// Milestone is a pointer so callers can distinguish omit from clear: nil
+	// leaves it unchanged, a pointer to "" clears it.
+	Milestone *string
 	// DependsOn replaces the hard launch dependency list when non-nil
 	// (CORE-148). An empty slice clears depends_on.
 	DependsOn     *[]string

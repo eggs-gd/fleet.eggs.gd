@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/audit"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/board"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/workfiles"
 	l "github.com/eggs-gd/fleet.eggs.gd/lib/logger"
 )
 
@@ -170,6 +172,7 @@ func (d *Dashboard) PatchTask(patch tasklifecycle.TaskPatch) (tasklifecycle.Task
 		Assignee:      patch.Assignee,
 		Project:       patch.Project,
 		Repository:    patch.Repository,
+		Milestone:     patch.Milestone,
 		DependsOn:     patch.DependsOn,
 		Body:          patch.Body,
 		Comment:       patch.Comment,
@@ -190,6 +193,42 @@ func (d *Dashboard) PatchTask(patch tasklifecycle.TaskPatch) (tasklifecycle.Task
 		d.exec.ReleaseActiveSessionForTask(before, "doing task left active-session status")
 	}
 	return task, nil
+}
+
+func (d *Dashboard) Milestones(project string) ([]board.Milestone, error) {
+	return workfiles.Milestones(d.root, project)
+}
+
+func (d *Dashboard) CreateMilestone(project, title, version string) (board.Milestone, error) {
+	milestone, err := workfiles.CreateMilestone(d.root, project, title, version)
+	if err != nil {
+		return board.Milestone{}, err
+	}
+	d.ReloadProjectCard(project)
+	return milestone, nil
+}
+
+// PatchMilestone applies whichever of state/title/version is non-nil to one
+// milestone on a project card.
+func (d *Dashboard) PatchMilestone(project, milestoneID string, state, title, version *string) (board.Milestone, error) {
+	milestone, err := workfiles.PatchMilestone(d.root, project, milestoneID, state, title, version)
+	if err != nil {
+		return board.Milestone{}, err
+	}
+	d.ReloadProjectCard(project)
+	return milestone, nil
+}
+
+// ReloadProjectCard refreshes the live board from one project's PROJECT.md
+// after a write made outside the scanner (milestones, aliases, summary). The
+// board is otherwise only hydrated at Bootstrap.
+func (d *Dashboard) ReloadProjectCard(project string) {
+	if d == nil || d.store == nil || !workfiles.ValidProjectID(project) {
+		return
+	}
+	if err := taskprovider.ReloadWorkspace(d.store, d.root, project); err != nil && d.logger != nil {
+		d.logger.Warn("reload project card", l.String("project", project), l.String("error", err.Error()))
+	}
 }
 
 func (d *Dashboard) CreateTask(req tasklifecycle.TaskCreateRequest) (tasklifecycle.Task, error) {

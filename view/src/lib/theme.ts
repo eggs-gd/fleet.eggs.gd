@@ -24,6 +24,14 @@ export const applyTheme = (pref: unknown): ResolvedTheme => {
   const root = document.documentElement;
   root.dataset.theme = resolved;
   root.style.colorScheme = resolved;
+  const color = resolved === 'dark' ? '#111318' : '#f4f5f7';
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', color);
   return resolved;
 };
 
