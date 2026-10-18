@@ -9,192 +9,170 @@
   import ProjectHeader from '../components/shell/ProjectHeader.svelte';
   import SplitGutter from '../components/shell/SplitGutter.svelte';
   import { PROJECT_SETTINGS_VIEW } from '../lib/projectSettings';
-  import type { MilestoneTaskGroup } from '../lib/taskDisplay';
-  import type { Project, Repository, Session, Task, Workspace } from '../lib/types';
-
-  interface Chip {
-    id: string;
-    label: string;
-    count: number;
-  }
-
-  interface RefreshStatus {
-    label: string;
-    warning: boolean;
-    busy: boolean;
-    busyLabel: string;
-    updatedAt: string;
-    updatedText: string;
-  }
-
-  export let runtimeSessions: Session[] = [];
-  export let closedSessions: Session[] = [];
-  export let orphanedTasks: Session[] = [];
-  export let refreshStatus: RefreshStatus | null = null;
-  export let sessionsTab = 'active';
-  export let actionError = '';
-  export let selectedProject: Project | null = null;
-  export let activeView = 'board';
-  export let chips: Chip[] = [];
-  export let quickFilter = 'all';
-  export let query = '';
-  export let taskSort = 'updated';
-  export let refreshing = false;
-  export let selectedProjectId = '';
-  export let selectedWorkspaceId = '';
-  export let accordionOpen: Record<string, boolean> = {};
-  export let archivedTasks: Task[] = [];
-  export let workspaces: Workspace[] = [];
-  export let projects: Project[] = [];
-  export let transitions: Record<string, string[]> | null = null;
-  export let repositories: Repository[] = [];
-  export let filteredActiveTasks: Task[] = [];
-  export let selectedTask: Task | null = null;
-  export let generatedAt = '';
-  export let repositoryCount = 0;
-  export let attentionTasks: Task[] = [];
-  export let tasks: Task[] = [];
-  export let attentionOpen = true;
-  export let recentOpen = true;
-
-  export let onControlSession: (
-    session: Session,
-    action: string,
-    input?: string,
-    targetStatus?: string
-  ) => Promise<void> = async () => {};
-  export let onReleaseSession: (
-    session: Session,
-    action: string,
-    targetStatus: string
-  ) => Promise<void> = async () => {};
-  export let onResolveOrphan: (session: Session, status: string) => Promise<void> = async () => {};
-  export let onSessionsTab: (tab: string) => void = () => {};
-  export let onChangeView: (view: string) => void = () => {};
-  export let onBack: () => void = () => {};
-  export let onCreateTask: () => void = () => {};
-  export let onRefresh: () => void = () => {};
-  export let onChipChange: (chipId: string) => void = () => {};
-  export let onSortChange: (value: string) => void = () => {};
-  export let onAddMilestone: (() => void) | null = null;
-  export let onEditMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
-  export let onDeleteMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
-  export let onOpenTask: (task: Task) => void = () => {};
-  export let onTransitionTask: (task: Task, status: string) => Promise<void> = async () => {};
-  export let onDropTaskOnMilestone: (
-    taskPath: string,
-    milestoneId: string
-  ) => Promise<void> = async () => {};
-  export let onDragRight: (dx: number) => void = () => {};
-  export let onToggleAttention: () => void = () => {};
-  export let onToggleRecent: () => void = () => {};
-  export let onShowAttention: () => void = () => {};
-  export let onShowDone: () => void = () => {};
+  import type { Project } from '../lib/types';
+  import {
+    actionError,
+    attentionTasks,
+    closedSessions,
+    data,
+    orphanedTasks,
+    projects,
+    refreshBusy,
+    refreshStatus,
+    requestManualRefresh,
+    runtimeSessions,
+    tasks,
+    workspaces
+  } from '../stores/board';
+  import {
+    accordionOpen,
+    dragRight,
+    rightPanels,
+    toggleAttention,
+    toggleRecent
+  } from '../stores/layout';
+  import {
+    activeView,
+    changeFilter,
+    changeView,
+    query,
+    quickFilter,
+    selectAllProjects,
+    selectedProjectId,
+    selectedWorkspaceId,
+    selectQuickView,
+    sessionsTab,
+    setSessionsTab,
+    setSort,
+    taskSort
+  } from '../stores/location';
+  import {
+    milestoneCardId,
+    openCreateMilestone,
+    removeMilestone,
+    startEditMilestone
+  } from '../stores/milestones';
+  import { releaseSession, resolveOrphan, controlSession } from '../stores/sessions';
+  import {
+    dropTaskOnMilestone,
+    openCreateTask,
+    openTask,
+    selectedTask,
+    transitionTask,
+    transitions
+  } from '../stores/tasks';
+  import { archivedTasks, chips, filteredActiveTasks, selectedProject } from '../stores/views';
 </script>
 
 <div class="working-area">
   <RuntimeSessions
-    {runtimeSessions}
-    {closedSessions}
-    {orphanedTasks}
-    {refreshStatus}
-    tab={sessionsTab}
-    onTabChange={onSessionsTab}
-    {onControlSession}
-    {onReleaseSession}
-    {onResolveOrphan}
+    runtimeSessions={$runtimeSessions}
+    closedSessions={$closedSessions}
+    orphanedTasks={$orphanedTasks}
+    refreshStatus={$refreshStatus}
+    tab={$sessionsTab}
+    onTabChange={setSessionsTab}
+    onControlSession={controlSession}
+    onReleaseSession={releaseSession}
+    onResolveOrphan={resolveOrphan}
   />
 
-  {#if actionError}
+  {#if $actionError}
     <section class="error action-error" aria-live="assertive">
       <strong>Task update failed.</strong>
-      <span>{actionError}</span>
+      <span>{$actionError}</span>
     </section>
   {/if}
 
   <div class="main-column">
     <ProjectHeader
-      project={selectedProject}
-      {activeView}
-      {onChangeView}
-      {onBack}
-      {onCreateTask}
-      {onRefresh}
-      {refreshing}
+      project={$selectedProject as Project | null}
+      activeView={$activeView}
+      onChangeView={changeView}
+      onBack={selectAllProjects}
+      onCreateTask={openCreateTask}
+      onRefresh={requestManualRefresh}
+      refreshing={$refreshBusy}
     />
 
-    {#if activeView === 'board'}
+    {#if $activeView === 'board'}
       <FiltersBar
-        {chips}
-        activeChip={quickFilter}
-        bind:query
-        sort={taskSort}
-        {onChipChange}
-        {onSortChange}
-        {onAddMilestone}
+        chips={$chips}
+        activeChip={$quickFilter}
+        bind:query={$query}
+        sort={$taskSort}
+        onChipChange={changeFilter}
+        onSortChange={setSort}
+        onAddMilestone={$milestoneCardId ? openCreateMilestone : null}
       />
     {/if}
 
     <div class="main-scroll">
-      {#if activeView === 'archive'}
+      {#if $activeView === 'archive'}
         <ArchiveView
-          tasks={archivedTasks}
-          {workspaces}
-          {projects}
-          {selectedProjectId}
-          {selectedWorkspaceId}
-          bind:accordionOpen
-          {transitions}
-          {onOpenTask}
-          {onTransitionTask}
+          tasks={$archivedTasks}
+          workspaces={$workspaces}
+          projects={$projects}
+          selectedProjectId={$selectedProjectId}
+          selectedWorkspaceId={$selectedWorkspaceId}
+          bind:accordionOpen={$accordionOpen}
+          transitions={$transitions}
+          onOpenTask={openTask}
+          onTransitionTask={transitionTask}
         />
-      {:else if activeView === PROJECT_SETTINGS_VIEW && selectedProject}
-        <ProjectSettings project={selectedProject} {workspaces} {projects} {repositories} />
+      {:else if $activeView === PROJECT_SETTINGS_VIEW && $selectedProject}
+        <ProjectSettings
+          project={$selectedProject as Project}
+          workspaces={$workspaces}
+          projects={$projects}
+          repositories={$data?.registry?.repositories || []}
+        />
       {:else}
         <MilestoneTaskList
-          tasks={filteredActiveTasks}
-          {projects}
-          {workspaces}
-          {selectedProjectId}
-          {selectedWorkspaceId}
-          {selectedTask}
-          bind:accordionOpen
-          {transitions}
-          {onOpenTask}
-          {onTransitionTask}
-          {onDropTaskOnMilestone}
-          {onEditMilestone}
-          {onDeleteMilestone}
+          tasks={$filteredActiveTasks}
+          projects={$projects}
+          workspaces={$workspaces}
+          selectedProjectId={$selectedProjectId}
+          selectedWorkspaceId={$selectedWorkspaceId}
+          selectedTask={$selectedTask}
+          bind:accordionOpen={$accordionOpen}
+          transitions={$transitions}
+          onOpenTask={openTask}
+          onTransitionTask={transitionTask}
+          onDropTaskOnMilestone={dropTaskOnMilestone}
+          onEditMilestone={startEditMilestone}
+          onDeleteMilestone={removeMilestone}
         />
       {/if}
 
       <footer class="generated">
-        Generated {generatedAt ? new Date(generatedAt).toLocaleString() : ''} from {repositoryCount} repositories.
+        Generated {$data?.generated_at ? new Date($data.generated_at).toLocaleString() : ''} from {$data
+          ?.registry?.repositories_count || 0} repositories.
       </footer>
     </div>
   </div>
 </div>
 
-<SplitGutter axis="x" onDrag={onDragRight} />
+<SplitGutter axis="x" onDrag={dragRight} />
 
 <aside class="sidebar sidebar-right">
   <NeedsAttention
-    tasks={attentionTasks}
-    open={attentionOpen}
-    {transitions}
-    onToggle={onToggleAttention}
-    {onOpenTask}
-    onShowAll={onShowAttention}
-    {onTransitionTask}
+    tasks={$attentionTasks}
+    open={$rightPanels.attentionOpen}
+    transitions={$transitions}
+    onToggle={toggleAttention}
+    onOpenTask={openTask}
+    onShowAll={() => selectQuickView('attention')}
+    onTransitionTask={transitionTask}
   />
   <RecentCompleted
-    {tasks}
-    open={recentOpen}
-    {transitions}
-    onToggle={onToggleRecent}
-    {onOpenTask}
-    onShowAll={onShowDone}
-    {onTransitionTask}
+    tasks={$tasks}
+    open={$rightPanels.recentOpen}
+    transitions={$transitions}
+    onToggle={toggleRecent}
+    onOpenTask={openTask}
+    onShowAll={() => selectQuickView('done')}
+    onTransitionTask={transitionTask}
   />
 </aside>
 

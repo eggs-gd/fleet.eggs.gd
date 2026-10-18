@@ -4,7 +4,6 @@
     blockedReason,
     codexRemoteInstruction,
     copyText,
-    dependsOnDraft,
     dependsOnList,
     execution,
     executionClass,
@@ -17,7 +16,6 @@
     providerErrorKind,
     providerErrorReason,
     providerErrorRetryPolicy,
-    priorityValue,
     providerErrorSuggestedAction,
     showExecutionSignal,
     toolUsageWarning,
@@ -25,6 +23,7 @@
   } from '../../lib/taskDisplay';
   import { focusDialog } from '../../lib/dialog';
   import TaskComments from './TaskComments.svelte';
+  import { draftIsDirty, emptyTaskDraft, type TaskDraft } from '../../lib/taskDraft';
   import type { Project, Task, Workspace } from '../../lib/types';
 
   export let task: Task;
@@ -32,14 +31,7 @@
   export let projects: Project[] = [];
   export let statuses: string[] = [];
   export let assignees: string[] = [];
-  export let draftStatus = '';
-  export let draftPriority = 5;
-  export let draftAssignee = '';
-  export let draftProject = '';
-  export let draftMilestone = '';
-  export let draftDependsOn = '';
-  export let draftBody = '';
-  export let draftComment = '';
+  export let draft: TaskDraft = emptyTaskDraft();
   export let saving = false;
   export let editError = '';
   export let onSave: () => Promise<void> = async () => {};
@@ -50,12 +42,12 @@
   $: sortedProjects = [...projects].sort((a, b) =>
     (a.title || a.id).localeCompare(b.title || b.id)
   );
-  $: selectedProject = sortedProjects.find((project) => project.id === draftProject) || null;
+  $: selectedProject = sortedProjects.find((project) => project.id === draft.project) || null;
   $: selectedWorkspaceId =
     selectedProject?.workspace_id || selectedProject?.id || task?.workspace_id || '';
   $: currentDependsOn = dependsOnList(task);
   $: currentProject = task.project_id || task.project || '';
-  $: projectChanged = draftProject !== currentProject;
+  $: projectChanged = draft.project !== currentProject;
   $: milestoneOptions = projects.find((project) => project.id === currentProject)?.milestones ?? [];
 
   function resizeCommentField() {
@@ -67,24 +59,12 @@
   }
 
   // Grow on typing/paste and when an existing longer draft is restored.
-  $: (draftComment, tick().then(resizeCommentField));
-
-  function dirty() {
-    return (
-      draftStatus !== (task.status || '') ||
-      Number(draftPriority) !== priorityValue(task) ||
-      draftAssignee !== (task.assignee || '') ||
-      draftProject !== (task.project_id || task.project || '') ||
-      draftDependsOn !== dependsOnDraft(task) ||
-      (!projectChanged && draftMilestone !== (task.milestone || '')) ||
-      draftBody !== (task.body || '') ||
-      draftComment.trim() !== ''
-    );
-  }
+  $: (draft.comment, tick().then(resizeCommentField));
 
   function requestClose() {
     if (saving) return;
-    if (dirty() && !window.confirm('Discard unsaved changes to this task?')) return;
+    if (draftIsDirty(task, draft) && !window.confirm('Discard unsaved changes to this task?'))
+      return;
     onClose();
   }
 
@@ -118,7 +98,7 @@
     <section class="detail-grid">
       <label>
         <span>Status</span>
-        <select bind:value={draftStatus}>
+        <select bind:value={draft.status}>
           {#each statuses as status (status)}
             <option value={status}>{status}</option>
           {/each}
@@ -126,7 +106,7 @@
       </label>
       <label>
         <span>Priority</span>
-        <select bind:value={draftPriority}>
+        <select bind:value={draft.priority}>
           {#each [1, 2, 3, 4, 5] as priority (priority)}
             <option value={priority}>P{priority}</option>
           {/each}
@@ -134,24 +114,24 @@
       </label>
       <label>
         <span>Project</span>
-        <select bind:value={draftProject}>
+        <select bind:value={draft.project}>
           {#each sortedProjects as project (project.id)}
             <option value={project.id}>{project.title || project.id}</option>
           {/each}
-          {#if draftProject && !sortedProjects.some((project) => project.id === draftProject)}
-            <option value={draftProject}>{draftProject}</option>
+          {#if draft.project && !sortedProjects.some((project) => project.id === draft.project)}
+            <option value={draft.project}>{draft.project}</option>
           {/if}
         </select>
       </label>
       <label>
         <span>Milestone</span>
-        <select bind:value={draftMilestone} disabled={projectChanged}>
+        <select bind:value={draft.milestone} disabled={projectChanged}>
           <option value="">None</option>
           {#each milestoneOptions as milestone (milestone.id)}
             <option value={milestone.id}>{milestone.title || milestone.id}</option>
           {/each}
-          {#if draftMilestone && !milestoneOptions.some((milestone) => milestone.id === draftMilestone)}
-            <option value={draftMilestone}>{draftMilestone}</option>
+          {#if draft.milestone && !milestoneOptions.some((milestone) => milestone.id === draft.milestone)}
+            <option value={draft.milestone}>{draft.milestone}</option>
           {/if}
         </select>
         {#if projectChanged}
@@ -181,12 +161,12 @@
       </div>
       <label>
         <span>Assignee</span>
-        <select bind:value={draftAssignee}>
+        <select bind:value={draft.assignee}>
           {#each assignees.filter((assignee) => assignee !== 'all') as assignee (assignee)}
             <option value={assignee}>{assignee}</option>
           {/each}
-          {#if !assignees.includes(draftAssignee)}
-            <option value={draftAssignee}>{draftAssignee || 'unassigned'}</option>
+          {#if !assignees.includes(draft.assignee)}
+            <option value={draft.assignee}>{draft.assignee || 'unassigned'}</option>
           {/if}
         </select>
       </label>
@@ -194,7 +174,7 @@
 
     <label class="body-editor depends-editor">
       <span>Depends on (hard launch blockers)</span>
-      <input bind:value={draftDependsOn} placeholder="FLET-144, FLET-145" spellcheck="false" />
+      <input bind:value={draft.dependsOn} placeholder="FLET-144, FLET-145" spellcheck="false" />
       <p class="depends-hint">
         Comma-separated prerequisite refs. Daemon will not claim/launch this task until each
         dependency is <code>done</code>. Leave empty for no gate. Waiting stays in launch evaluation
@@ -298,16 +278,16 @@
     <label class="body-editor comment-editor">
       <span>
         Add Review Comment
-        {#if task.status === 'blocked' && draftStatus === 'needs_review'}
+        {#if task.status === 'blocked' && draft.status === 'needs_review'}
           <em>(required for blocked → needs_review)</em>
         {/if}
       </span>
       <textarea
         bind:this={commentField}
-        bind:value={draftComment}
+        bind:value={draft.comment}
         rows="3"
         class="comment-input"
-        placeholder={task.status === 'blocked' && draftStatus === 'needs_review'
+        placeholder={task.status === 'blocked' && draft.status === 'needs_review'
           ? 'Why is this blocked task ready for review without re-running?'
           : 'What should the next worker fix?'}
         on:input={resizeCommentField}></textarea>
@@ -315,7 +295,7 @@
 
     <label class="body-editor">
       <span>Description</span>
-      <textarea bind:value={draftBody} rows="18"></textarea>
+      <textarea bind:value={draft.body} rows="18"></textarea>
     </label>
 
     {#if editError}
