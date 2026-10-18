@@ -60,7 +60,7 @@ func TestProviderCommandOutput(t *testing.T) {
 	if err != nil || !strings.Contains(string(out), "out") || !strings.Contains(string(out), "err") {
 		t.Fatalf("out = %q, err = %v (stdout and stderr are both wanted)", out, err)
 	}
-	slow := writeScript(t, dir, "slow.sh", `sleep 5`)
+	slow := writeScript(t, dir, "slow.sh", `exec sleep 5`)
 	if _, err := providerCommandOutput(50*time.Millisecond, slow); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("a slow command returned %v, want a deadline error", err)
 	}

@@ -49,7 +49,7 @@ func TestStartProcessRunsTheCommandAndLogsItsOutput(t *testing.T) {
 
 func TestStartProcessKillsTheCommandWhenItsTimeoutPasses(t *testing.T) {
 	dir := t.TempDir()
-	script := writeScript(t, dir, "slow.sh", `sleep 30`)
+	script := writeScript(t, dir, "slow.sh", `exec sleep 30`)
 	process, err := StartProcess(context.Background(), Plan{Command: []string{script}, WorkingDir: dir}, sessionLogPath(t, "c2"), 100*time.Millisecond)
 	if err != nil {
 		t.Fatal(err)

@@ -9,10 +9,10 @@ import (
 	"time"
 )
 
-func driveFake(t *testing.T, fake *fakeCodex, session *RuntimeSession, idle time.Duration, controls chan SessionControlRequest) (error, *recorder) {
+func driveFake(t *testing.T, fake *fakeCodex, session *RuntimeSession, idle time.Duration, controls chan SessionControlRequest) (*recorder, error) {
 	t.Helper()
 	rec := newRecorder()
-	return driveWith(t, rec, fake, session, idle, controls), rec
+	return rec, driveWith(t, rec, fake, session, idle, controls)
 }
 
 func driveWith(t *testing.T, rec *recorder, fake *fakeCodex, session *RuntimeSession, idle time.Duration, controls chan SessionControlRequest) error {
@@ -32,7 +32,7 @@ func TestDriveCodexTurnRunsTheHandshakeAndOneTurn(t *testing.T) {
 		rpcNotify("item/agentMessage/delta", `{"threadId":"t1","turnId":"u1","delta":"working on it"}`)))
 	session := testSession(t.TempDir())
 
-	err, rec := driveFake(t, fake, &session, time.Minute, nil)
+	rec, err := driveFake(t, fake, &session, time.Minute, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestDriveCodexTurnPicksUpAWorkerResultFromTheStream(t *testing.T) {
 		rpcNotify("item/agentMessage/delta", `{"delta":`+jsonString(result)+`}`)))
 	session := testSession(t.TempDir())
 
-	if err, _ := driveFake(t, fake, &session, time.Minute, nil); err != nil {
+	if _, err := driveFake(t, fake, &session, time.Minute, nil); err != nil {
 		t.Fatal(err)
 	}
 	if session.Result == nil || session.Result.Outcome != "completed" || session.Result.Summary != "all done" {
@@ -80,7 +80,7 @@ func TestDriveCodexTurnResumesAKnownThread(t *testing.T) {
 	session := testSession(t.TempDir())
 	session.CodexThreadID = "t1"
 
-	if err, _ := driveFake(t, fake, &session, time.Minute, nil); err != nil {
+	if _, err := driveFake(t, fake, &session, time.Minute, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := fake.sent(), "initialize,initialized,thread/resume,thread/name/set,turn/start"; got != want {
@@ -102,7 +102,7 @@ func TestDriveCodexTurnFallsBackToANewThreadWhenResumeFails(t *testing.T) {
 	session := testSession(t.TempDir())
 	session.CodexThreadID = "gone"
 
-	if err, _ := driveFake(t, fake, &session, time.Minute, nil); err != nil {
+	if _, err := driveFake(t, fake, &session, time.Minute, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got, want := fake.sent(), "initialize,initialized,thread/resume,thread/start,thread/name/set,turn/start"; got != want {
@@ -121,7 +121,7 @@ func TestDriveCodexTurnRejectsAThreadStartWithoutAnID(t *testing.T) {
 		return []CodexRPCMessage{rpcResult(id, `{}`)}
 	})
 	session := testSession(t.TempDir())
-	err, _ := driveFake(t, fake, &session, time.Minute, nil)
+	_, err := driveFake(t, fake, &session, time.Minute, nil)
 	if err == nil || !strings.Contains(err.Error(), "thread.id") {
 		t.Fatalf("err = %v", err)
 	}
@@ -137,7 +137,7 @@ func TestDriveCodexTurnReportsHowATurnEnded(t *testing.T) {
 	for _, c := range cases {
 		fake := newFakeCodex(happyCodex(c.status))
 		session := testSession(t.TempDir())
-		err, _ := driveFake(t, fake, &session, time.Minute, nil)
+		_, err := driveFake(t, fake, &session, time.Minute, nil)
 		if err == nil || !strings.Contains(err.Error(), c.status) {
 			t.Fatalf("%s: err = %v", c.status, err)
 		}
@@ -159,7 +159,7 @@ func TestDriveCodexTurnAnswersServerRequestsWithAnErrorAndWaitsForInput(t *testi
 		return happy(method, id, params)
 	})
 	session := testSession(t.TempDir())
-	if err, _ := driveFake(t, fake, &session, time.Minute, nil); err != nil {
+	if _, err := driveFake(t, fake, &session, time.Minute, nil); err != nil {
 		t.Fatal(err)
 	}
 	var answered bool
@@ -184,7 +184,7 @@ func TestDriveCodexTurnFailsWhenStdoutClosesEarly(t *testing.T) {
 		return nil
 	})
 	session := testSession(t.TempDir())
-	err, _ := driveFake(t, fake, &session, time.Minute, nil)
+	_, err := driveFake(t, fake, &session, time.Minute, nil)
 	if err == nil || !strings.Contains(err.Error(), "closed") {
 		t.Fatalf("err = %v", err)
 	}
