@@ -10,13 +10,17 @@ import (
 
 // Sentinel errors returned by Service validation.
 var (
-	ErrClosed             = errors.New("task service closed")
-	ErrInvalidTransition  = errors.New("task status transition rejected")
-	ErrAlreadyClaimed     = errors.New("task is already claimed")
-	ErrUnknownOutcome     = errors.New("unknown execution outcome")
-	ErrEmptyTaskID        = errors.New("task id is required")
-	ErrEmptyComment       = errors.New("comment text is required")
-	ErrNilExecutionResult = errors.New("execution result is required")
+	ErrClosed            = errors.New("task service closed")
+	ErrInvalidTransition = errors.New("task status transition rejected")
+	// ErrMilestoneNotPersisted means a milestone patch was accepted by the
+	// provider call but the task read back without it (the provider has no
+	// milestone field), so reporting success would silently lose the change.
+	ErrMilestoneNotPersisted = errors.New("task provider does not store milestones")
+	ErrAlreadyClaimed        = errors.New("task is already claimed")
+	ErrUnknownOutcome        = errors.New("unknown execution outcome")
+	ErrEmptyTaskID           = errors.New("task id is required")
+	ErrEmptyComment          = errors.New("comment text is required")
+	ErrNilExecutionResult    = errors.New("execution result is required")
 )
 
 // Service is the single application-level TaskService implementation.
@@ -372,7 +376,14 @@ func patchLocked(ctx context.Context, p TaskProvider, id string, patch PatchInpu
 		}
 	}
 
-	return p.Get(ctx, locator)
+	result, err := p.Get(ctx, locator)
+	if err != nil {
+		return Task{}, err
+	}
+	if patch.Milestone != nil && result.Milestone != strings.TrimSpace(*patch.Milestone) {
+		return Task{}, ErrMilestoneNotPersisted
+	}
+	return result, nil
 }
 
 func reportExecutionLocked(ctx context.Context, p TaskProvider, result ExecutionResult) error {

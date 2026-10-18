@@ -499,11 +499,11 @@
   }
 
   async function saveCreatedMilestone(title: string, version: string) {
-    if (savingMilestone || !selectedProjectId) return;
+    if (savingMilestone || !milestoneCardId) return;
     savingMilestone = true;
     milestoneError = '';
     try {
-      await createMilestone(selectedProjectId, title, version);
+      await createMilestone(milestoneCardId, title, version);
       closeCreateMilestone();
       await requestManualRefresh();
     } catch (err: any) {
@@ -654,6 +654,16 @@
     projects.find((project) => project.id === selectedProjectId) ||
     workspaces.find((workspace) => workspace.id === selectedWorkspaceId) ||
     null;
+  // Milestones live on the workspace card, so a repository project adds them
+  // to its parent; nested task projects have no card of their own.
+  $: milestoneCardId =
+    selectedProjectId && selectedProject
+      ? selectedProject.kind === 'workspace'
+        ? selectedProject.id
+        : selectedProject.kind === 'repository_project'
+          ? (selectedProject as Project).workspace_id || ''
+          : ''
+      : '';
   $: people = (data?.people ?? []) as string[];
   // Who a task can be given to: nobody, the registered people, or an AI agent.
   $: assigneeChoices = ['unassigned', ...people, ...AGENT_ASSIGNEES];
@@ -829,9 +839,7 @@
           {taskSort}
           onChipChange={changeChip}
           onSortChange={(value) => (taskSort = value)}
-          onAddMilestone={selectedProjectId && selectedProject?.kind === 'workspace'
-            ? openCreateMilestone
-            : null}
+          onAddMilestone={milestoneCardId ? openCreateMilestone : null}
           {selectedProjectId}
           {selectedWorkspaceId}
           bind:accordionOpen
@@ -879,7 +887,7 @@
   />
 {/if}
 
-{#if creatingMilestone && selectedProjectId}
+{#if creatingMilestone && milestoneCardId}
   <CreateMilestoneModal
     projectTitle={selectedProject?.title || selectedProjectId}
     saving={savingMilestone}
