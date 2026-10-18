@@ -44,10 +44,16 @@
     saveAutoRefreshMs
   } from './lib/layoutPrefs';
   import { apiFetch } from './lib/api';
-  import { createMilestone } from './lib/milestones';
+  import {
+    createMilestone,
+    deleteMilestone,
+    milestoneCardId as cardIdOf,
+    patchMilestone
+  } from './lib/milestones';
+  import type { MilestoneTaskGroup } from './lib/taskDisplay';
   import { applyTheme, watchSystemTheme } from './lib/theme';
   import { readBoardLocation, reconcileBoardLocation, writeBoardLocation } from './lib/urlState';
-  import CreateMilestoneModal from './components/milestones/CreateMilestoneModal.svelte';
+  import MilestoneModal from './components/milestones/MilestoneModal.svelte';
   import CreateTaskModal from './components/tasks/CreateTaskModal.svelte';
   import ManagerSetup from './components/shell/ManagerSetup.svelte';
   import { PROJECT_SETTINGS_VIEW } from './lib/projectSettings';
@@ -94,6 +100,8 @@
   let creatingMilestone = false;
   let savingMilestone = false;
   let milestoneError = '';
+  let editingMilestone: { cardId: string; id: string; title: string; version: string } | null =
+    null;
   let accordionOpen = loadAccordionOpen();
   let leftWidth = loadLeftWidth();
   let rightWidth = loadRightWidth();
@@ -513,6 +521,57 @@
     }
   }
 
+  function startEditMilestone(group: MilestoneTaskGroup) {
+    const cardId = cardIdOf(projects.find((project) => project.id === group.projectId));
+    if (!cardId || !group.milestoneId) return;
+    editingMilestone = {
+      cardId,
+      id: group.milestoneId,
+      title: group.milestoneTitle,
+      version: group.version || ''
+    };
+    milestoneError = '';
+  }
+
+  function closeEditMilestone() {
+    editingMilestone = null;
+    milestoneError = '';
+  }
+
+  async function saveEditedMilestone(title: string, version: string) {
+    if (savingMilestone || !editingMilestone) return;
+    savingMilestone = true;
+    milestoneError = '';
+    try {
+      await patchMilestone(editingMilestone.cardId, editingMilestone.id, { title, version });
+      closeEditMilestone();
+      await requestManualRefresh();
+    } catch (err: any) {
+      milestoneError = err.message;
+    } finally {
+      savingMilestone = false;
+    }
+  }
+
+  async function removeMilestone(group: MilestoneTaskGroup) {
+    const cardId = cardIdOf(projects.find((project) => project.id === group.projectId));
+    if (!cardId || !group.milestoneId) return;
+    // Count from the whole board, not the rendered group: the delete clears
+    // every task of the workspace (archived, filtered out, sibling projects).
+    const count = tasks.filter(
+      (task) => task.workspace_id === cardId && task.milestone === group.milestoneId
+    ).length;
+    const name = group.milestoneTitle;
+    const detail = count ? ` ${count} task${count === 1 ? '' : 's'} will move to Unscheduled.` : '';
+    if (!window.confirm(`Delete milestone "${name}"?${detail}`)) return;
+    try {
+      await deleteMilestone(cardId, group.milestoneId);
+      await requestManualRefresh();
+    } catch (err: any) {
+      actionError = err.message;
+    }
+  }
+
   async function transitionTask(task: Task, status: string) {
     if (
       !task?.path ||
@@ -656,14 +715,7 @@
     null;
   // Milestones live on the workspace card, so a repository project adds them
   // to its parent; nested task projects have no card of their own.
-  $: milestoneCardId =
-    selectedProjectId && selectedProject
-      ? selectedProject.kind === 'workspace'
-        ? selectedProject.id
-        : selectedProject.kind === 'repository_project'
-          ? (selectedProject as Project).workspace_id || ''
-          : ''
-      : '';
+  $: milestoneCardId = selectedProjectId ? cardIdOf(selectedProject as Project | null) : '';
   $: people = (data?.people ?? []) as string[];
   // Who a task can be given to: nobody, the registered people, or an AI agent.
   $: assigneeChoices = ['unassigned', ...people, ...AGENT_ASSIGNEES];
@@ -853,6 +905,8 @@
           onOpenTask={openTask}
           onTransitionTask={transitionTask}
           onDropTaskOnMilestone={dropTaskOnMilestone}
+          onEditMilestone={startEditMilestone}
+          onDeleteMilestone={removeMilestone}
           generatedAt={data.generated_at || ''}
           repositoryCount={data.registry?.repositories_count || 0}
           {attentionTasks}
@@ -888,12 +942,21 @@
 {/if}
 
 {#if creatingMilestone && milestoneCardId}
-  <CreateMilestoneModal
+  <MilestoneModal
     projectTitle={selectedProject?.title || selectedProjectId}
     saving={savingMilestone}
     createError={milestoneError}
-    onCreate={saveCreatedMilestone}
+    onSubmit={saveCreatedMilestone}
     onClose={closeCreateMilestone}
+  />
+{:else if editingMilestone}
+  <MilestoneModal
+    projectTitle={editingMilestone.cardId}
+    initial={{ title: editingMilestone.title, version: editingMilestone.version }}
+    saving={savingMilestone}
+    createError={milestoneError}
+    onSubmit={saveEditedMilestone}
+    onClose={closeEditMilestone}
   />
 {/if}
 

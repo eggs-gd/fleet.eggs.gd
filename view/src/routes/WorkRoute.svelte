@@ -9,6 +9,7 @@
   import ProjectHeader from '../components/shell/ProjectHeader.svelte';
   import SplitGutter from '../components/shell/SplitGutter.svelte';
   import { PROJECT_SETTINGS_VIEW } from '../lib/projectSettings';
+  import type { MilestoneTaskGroup } from '../lib/taskDisplay';
   import type { Project, Repository, Session, Task, Workspace } from '../lib/types';
 
   interface Chip {
@@ -76,6 +77,8 @@
   export let onChipChange: (chipId: string) => void = () => {};
   export let onSortChange: (value: string) => void = () => {};
   export let onAddMilestone: (() => void) | null = null;
+  export let onEditMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
+  export let onDeleteMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
   export let onOpenTask: (task: Task) => void = () => {};
   export let onTransitionTask: (task: Task, status: string) => Promise<void> = async () => {};
   export let onDropTaskOnMilestone: (
@@ -160,6 +163,8 @@
           {onOpenTask}
           {onTransitionTask}
           {onDropTaskOnMilestone}
+          {onEditMilestone}
+          {onDeleteMilestone}
         />
       {/if}
 

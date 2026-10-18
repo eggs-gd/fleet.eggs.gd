@@ -130,11 +130,16 @@ milestones:
   often runs ahead of a milestone's official start).
 - Only the Markdown provider stores milestones. A provider that cannot read the
   field back (Plane) rejects a milestone change instead of dropping it.
-- Writes: `GET/POST/PATCH /api/projects/{id}/milestones`, `PATCH /api/tasks`
+- Writes: `GET/POST/PATCH/DELETE /api/projects/{id}/milestones`, `PATCH /api/tasks`
   with `milestone`, and the Manager tools `manager_milestone_create`,
   `manager_milestone_activate`, `manager_task_milestone`. A write refreshes the
   live board; hand edits and scanner-created cards are picked up on the
   scanner's next pass.
+- Deleting a milestone removes it from the card first, then clears it from every
+  task of the workspace that points at it (they become unscheduled). Assigning a
+  milestone validates and writes under the same card lock, so an assignment
+  either lands before the removal and is swept, or is rejected. If the sweep
+  fails midway, deleting again finishes it.
 
 ## Status machine
 

@@ -61,6 +61,24 @@ func registerMilestoneRoutes(mux *http.ServeMux, dashboard DashboardSurface) {
 				return
 			}
 			writeJSON(w, milestone)
+		case http.MethodDelete:
+			var del struct {
+				ID string `json:"id"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&del); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			if strings.TrimSpace(del.ID) == "" {
+				http.Error(w, "milestone id is required", http.StatusBadRequest)
+				return
+			}
+			cleared, err := dashboard.DeleteMilestone(project, del.ID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			writeJSON(w, map[string]int{"cleared": cleared})
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

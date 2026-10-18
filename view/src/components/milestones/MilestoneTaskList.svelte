@@ -14,7 +14,9 @@
   import Icon from '../shell/Icon.svelte';
   import TaskCard from '../tasks/TaskCard.svelte';
   import TaskList from '../tasks/TaskList.svelte';
+  import { milestoneCardId } from '../../lib/milestones';
   import type { Project, Task, Workspace } from '../../lib/types';
+  import type { MilestoneTaskGroup } from '../../lib/taskDisplay';
 
   export let tasks: Task[] = [];
   export let projects: Project[] = [];
@@ -27,6 +29,13 @@
   export let onOpenTask: (task: Task) => void = () => {};
   export let onTransitionTask: ((task: Task, status: string) => void) | null = null;
   export let onDropTaskOnMilestone: ((taskPath: string, milestoneId: string) => void) | null = null;
+  export let onEditMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
+  export let onDeleteMilestone: ((group: MilestoneTaskGroup) => void) | null = null;
+
+  // Only a milestone that has a card to write to can be edited or deleted.
+  const canManage = (group: MilestoneTaskGroup) =>
+    Boolean(group.milestoneId) &&
+    Boolean(milestoneCardId(projects.find((project) => project.id === group.projectId)));
 
   $: grouped = shouldGroupByMilestone(tasks, projects, selectedProjectId);
   $: groups = grouped
@@ -77,22 +86,40 @@
       {@const key = milestoneAccordionKey(group.projectId, group.milestoneId)}
       {@const open = isAccordionOpen(accordionOpen, key, true)}
       <section class="milestone-group" class:is-drag-over={dragOverKey === key}>
-        <button
-          type="button"
-          class="milestone-toggle"
-          aria-expanded={open}
-          on:click={() => toggle(key, open)}
+        <div
+          class="milestone-head"
+          role="presentation"
           on:dragover={(event) => handleDragOver(event, key)}
           on:dragleave={() => (dragOverKey = '')}
           on:drop={(event) => handleDrop(event, group)}
         >
-          <strong>{group.title}</strong>
-          <span class="milestone-summary">{statusSummary(group.tasks)}</span>
-          <span class="milestone-count">{group.tasks.length}</span>
-          <span class="tree-toggle" class:is-open={open} aria-hidden="true">
-            <Icon name="chevron-right" size={12} />
-          </span>
-        </button>
+          <button
+            type="button"
+            class="milestone-toggle"
+            aria-expanded={open}
+            on:click={() => toggle(key, open)}
+          >
+            <strong>{group.title}</strong>
+            {#if group.version}<span class="milestone-version">{group.version}</span>{/if}
+            <span class="milestone-summary">{statusSummary(group.tasks)}</span>
+            <span class="milestone-count">{group.tasks.length}</span>
+            <span class="tree-toggle" class:is-open={open} aria-hidden="true">
+              <Icon name="chevron-right" size={12} />
+            </span>
+          </button>
+          {#if canManage(group) && (onEditMilestone || onDeleteMilestone)}
+            <div class="milestone-actions">
+              {#if onEditMilestone}
+                <button type="button" on:click={() => onEditMilestone?.(group)}>Rename</button>
+              {/if}
+              {#if onDeleteMilestone}
+                <button type="button" class="danger" on:click={() => onDeleteMilestone?.(group)}>
+                  Delete
+                </button>
+              {/if}
+            </div>
+          {/if}
+        </div>
         {#if open}
           {#each group.tasks as task (taskKey(task))}
             <TaskCard
@@ -131,19 +158,50 @@
     box-shadow: inset 0 0 0 1px var(--accent);
   }
 
-  .milestone-toggle {
+  .milestone-head {
     display: flex;
-    align-items: center;
-    gap: var(--space-lg);
-    width: 100%;
-    min-height: 0;
-    border: none;
+    align-items: stretch;
     border-bottom: 1px solid var(--border);
     background: var(--surface-muted);
+  }
+
+  .milestone-toggle {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: var(--space-lg);
+    min-width: 0;
+    min-height: 0;
+    border: none;
+    background: transparent;
     color: var(--text);
     padding: var(--space-sm) var(--space-md);
     text-align: left;
     cursor: pointer;
+  }
+
+  .milestone-version {
+    flex: 0 0 auto;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .milestone-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 0 var(--space-md);
+  }
+
+  .milestone-actions button {
+    min-height: 0;
+    padding: var(--space-2xs) var(--space-md);
+    font-size: var(--text-xs);
+  }
+
+  .milestone-actions .danger {
+    color: var(--red-text);
   }
 
   .milestone-toggle:hover {

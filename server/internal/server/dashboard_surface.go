@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -217,6 +218,40 @@ func (d *Dashboard) PatchMilestone(project, milestoneID string, state, title, ve
 	}
 	d.ReloadProjectCard(project)
 	return milestone, nil
+}
+
+// DeleteMilestone removes a milestone from its card first, then clears it from
+// the tasks that still point at it. Removing first closes the race with a
+// concurrent assignment: the markdown provider validates and writes an
+// assignment under mdfile.EditMu, the same lock the card removal takes, so an
+// assignment either finished before the removal (and the sweep below finds it)
+// or is rejected because the milestone is gone. If the sweep fails midway the
+// milestone is already gone and some tasks still name it; calling delete again
+// finishes the sweep instead of reporting "not found".
+func (d *Dashboard) DeleteMilestone(project, milestoneID string) (int, error) {
+	if !workfiles.ValidProjectID(project) {
+		return 0, errors.New("project id is required")
+	}
+	removeErr := workfiles.DeleteMilestone(d.root, project, milestoneID)
+	if removeErr != nil && !errors.Is(removeErr, workfiles.ErrNoMilestone) {
+		return 0, removeErr
+	}
+	cleared := 0
+	none := ""
+	for _, task := range d.store.Snapshot().Tasks {
+		if task.WorkspaceID != project || task.Milestone != milestoneID {
+			continue
+		}
+		if _, err := d.taskService.Patch(context.Background(), task.Path, taskflow.PatchInput{Milestone: &none}); err != nil {
+			return cleared, fmt.Errorf("clear milestone on %s: %w", firstNonEmpty(task.Ref, task.Path), err)
+		}
+		cleared++
+	}
+	if removeErr != nil && cleared == 0 {
+		return 0, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+	}
+	d.ReloadProjectCard(project)
+	return cleared, nil
 }
 
 // ReloadProjectCard refreshes the live board from one project's PROJECT.md
