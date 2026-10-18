@@ -93,3 +93,18 @@ func TestDocScalarReadsUnquoted(t *testing.T) {
 		t.Fatal("found a missing key")
 	}
 }
+
+func TestDocListRangeIncludesBlankLinesBetweenItems(t *testing.T) {
+	d, err := ParseDoc("---\na: 1\nrepositories:\n  - x\n\n  - y\n\nz: 2\n---\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.SetStrings("repositories", []string{"n"})
+	// Both old items go; the blank line that only precedes the next key stays.
+	if got, want := d.String(), "---\na: 1\nrepositories:\n  - n\n\nz: 2\n---\n"; got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+	if items := (func() []string { d2, _ := ParseDoc("---\nr:\n  - x\n\n  - y\n---\n"); return d2.Items("r") })(); len(items) != 2 {
+		t.Fatalf("items across a blank line = %v", items)
+	}
+}

@@ -10,26 +10,42 @@ type cardStamp struct {
 	size    int64
 }
 
-// stampCard records path's current file state and reports whether it differs
-// from the last recorded one (a card seen for the first time counts as
-// changed). An unreadable path reports false and records nothing.
-func (b *Board) stampCard(path string) bool {
+// cardChanged reports whether path's file differs from the state recorded at
+// its last successful load (a card never loaded counts as changed), and
+// returns that state so the caller can record it once the load succeeds. An
+// unreadable path reports unchanged.
+func (b *Board) cardChanged(path string) (cardStamp, bool) {
 	if b == nil || path == "" {
-		return false
+		return cardStamp{}, false
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return false
+		return cardStamp{}, false
 	}
 	stamp := cardStamp{modTime: info.ModTime(), size: info.Size()}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	previous, ok := b.cardStamps[path]
+	return stamp, !ok || previous != stamp
+}
+
+// recordCard remembers the file state a card was successfully loaded at.
+func (b *Board) recordCard(path string, stamp cardStamp) {
+	if b == nil || path == "" {
+		return
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if b.cardStamps == nil {
 		b.cardStamps = map[string]cardStamp{}
 	}
-	if previous, ok := b.cardStamps[path]; ok && previous == stamp {
-		return false
-	}
 	b.cardStamps[path] = stamp
-	return true
+}
+
+// recordCardFile records path's current state; for loads that have no earlier
+// cardChanged check (Hydrate, an explicit reload).
+func (b *Board) recordCardFile(path string) {
+	if stamp, _ := b.cardChanged(path); stamp != (cardStamp{}) {
+		b.recordCard(path, stamp)
+	}
 }

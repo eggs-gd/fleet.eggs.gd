@@ -3,6 +3,8 @@ package taskprovider
 import (
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -56,4 +58,73 @@ func TestSyncCardsRefreshesOnlyCardsThatChanged(t *testing.T) {
 		t.Fatalf("board after sync: workspaces=%d projects=%+v", len(snap.Workspaces), snap.Projects)
 	}
 	_ = generated
+}
+
+func TestSyncCardsRetriesACardThatFailedToLoad(t *testing.T) {
+	root := t.TempDir()
+	base := time.Now().Add(-time.Hour)
+	writeCard(t, root, "acme", "", base)
+	b := NewBoard(root)
+	if _, err := SyncCards(b, root); err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(root, "Work", "acme", "PROJECT.md")
+	writeCard(t, root, "acme", "milestones:\n  - id: v1\n    title: v1\n    state: parked\n", base.Add(time.Minute))
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SyncCards(b, root); err == nil {
+		t.Skip("file stayed readable (running as root?)")
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Same size and mtime as the failed attempt: it must still be reloaded.
+	changed, err := SyncCards(b, root)
+	if err != nil || len(changed) != 1 {
+		t.Fatalf("retry = %v, %v", changed, err)
+	}
+}
+
+func TestSyncCardsRemovesRepositoriesDroppedFromTheCard(t *testing.T) {
+	root := t.TempDir()
+	base := time.Now().Add(-time.Hour)
+	group := func(repos string, mtime time.Time) {
+		writeCard(t, root, "acme", "repositories:\n"+repos, mtime)
+		path := filepath.Join(root, "Work", "acme", "PROJECT.md")
+		raw, _ := os.ReadFile(path)
+		text := strings.Replace(string(raw), "kind: standalone_repository", "kind: workspace_group", 1)
+		_ = os.WriteFile(path, []byte(text), 0o644)
+		_ = os.Chtimes(path, mtime, mtime)
+	}
+	group("  - acme/web\n  - acme/api\n", base)
+	b := NewBoard(root)
+	if _, err := SyncCards(b, root); err != nil {
+		t.Fatal(err)
+	}
+	ids := func() string {
+		var out []string
+		for _, p := range b.Snapshot().Projects {
+			out = append(out, p.ID)
+		}
+		sort.Strings(out)
+		return strings.Join(out, ",")
+	}
+	if got := ids(); got != "acme,acme/api,acme/web" {
+		t.Fatalf("before = %s", got)
+	}
+
+	group("  - acme/web\n", base.Add(time.Minute))
+	if _, err := SyncCards(b, root); err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(); got != "acme,acme/web" {
+		t.Fatalf("after removing a repository = %s", got)
+	}
+	for _, p := range b.Snapshot().Projects {
+		if p.ID == "acme" && strings.Join(p.Repositories, ",") != "acme/web" {
+			t.Fatalf("workspace project kept the old repositories: %v", p.Repositories)
+		}
+	}
 }

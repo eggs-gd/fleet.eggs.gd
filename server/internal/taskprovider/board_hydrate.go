@@ -22,7 +22,7 @@ func Hydrate(boardProj *Board, root string, tasks Provider) (listed []Task, work
 	}
 	for _, workspace := range workspaces {
 		boardProj.UpsertWorkspace(workspace)
-		boardProj.stampCard(workspace.Path)
+		boardProj.recordCardFile(workspace.Path)
 	}
 
 	listed, err = tasks.List()
@@ -64,8 +64,8 @@ func ReloadWorkspace(boardProj *Board, root, project string) error {
 	if err != nil {
 		return fmt.Errorf("reload workspace %s: %w", project, err)
 	}
-	boardProj.UpsertWorkspace(workspace)
-	boardProj.stampCard(workspace.Path)
+	boardProj.ReplaceWorkspace(workspace)
+	boardProj.recordCardFile(workspace.Path)
 	return nil
 }
 
@@ -83,14 +83,20 @@ func SyncCards(boardProj *Board, root string) ([]string, error) {
 	var refreshed []string
 	for _, path := range matches {
 		abs, err := filepath.Abs(path)
-		if err != nil || !boardProj.stampCard(abs) {
+		if err != nil {
+			continue
+		}
+		stamp, changed := boardProj.cardChanged(abs)
+		if !changed {
 			continue
 		}
 		workspace, err := board.LoadWorkspaceFile(root, abs)
 		if err != nil {
+			// Not recorded, so the next pass retries this card.
 			return refreshed, fmt.Errorf("sync card %s: %w", path, err)
 		}
-		boardProj.UpsertWorkspace(workspace)
+		boardProj.ReplaceWorkspace(workspace)
+		boardProj.recordCard(abs, stamp)
 		refreshed = append(refreshed, workspace.ID)
 	}
 	return refreshed, nil

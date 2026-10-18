@@ -115,6 +115,47 @@ func (b *Board) UpsertWorkspace(workspace board.Workspace) {
 	b.generatedAt = time.Now().UTC().Truncate(time.Second)
 }
 
+// ReplaceWorkspace installs a freshly read project card as the workspace's
+// truth: unlike UpsertWorkspace it does not union with the repositories it had
+// before, and it drops the repository projects the card no longer derives, so
+// a repository removed from the card leaves the live board. Repositories that
+// tasks of the workspace reference are kept, as ensureWorkspace does.
+func (b *Board) ReplaceWorkspace(workspace board.Workspace) {
+	if b == nil || workspace.ID == "" {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	repositories := append([]string{}, workspace.Repositories...)
+	for _, task := range b.tasks {
+		if firstNonEmpty(task.WorkspaceID, task.Project) == workspace.ID {
+			repositories = mergeStrings(repositories, task.Repositories)
+		}
+	}
+	workspace.Repositories = repositories
+	workspace.Technology = b.technologySummaryForRepositoriesLocked(repositories)
+	b.workspaces[workspace.ID] = workspace
+
+	derived := board.ProjectsFromWorkspace(workspace)
+	keep := make(map[string]bool, len(derived))
+	for _, project := range derived {
+		keep[project.ID] = true
+	}
+	for id, project := range b.projects {
+		if project.WorkspaceID == workspace.ID && project.Source == "workspace.repositories" && !keep[id] {
+			delete(b.projects, id)
+		}
+	}
+	// The workspace's own project would otherwise keep the old repositories,
+	// because upsertProjectLocked unions with what is already there.
+	delete(b.projects, workspace.ID)
+	for _, project := range derived {
+		b.upsertProjectLocked(project)
+	}
+	b.generatedAt = time.Now().UTC().Truncate(time.Second)
+}
+
 func (b *Board) SetRegistry(registry board.RegistryInfo) {
 	if b == nil {
 		return

@@ -61,16 +61,23 @@ func (d *Doc) Render(body string) string {
 }
 
 // keyRange finds the lines a key occupies: its own line plus any indented
-// continuation lines, or block-list dashes written flush left. It returns -1
-// when the key is absent.
+// continuation lines or block-list dashes written flush left, including blank
+// lines between them (but not blank lines that only precede the next key). It
+// returns -1 when the key is absent.
 func (d *Doc) keyRange(key string) (start, end int) {
 	for i, l := range d.lines {
 		if !strings.HasPrefix(l, key+":") {
 			continue
 		}
 		end = i
-		for end+1 < len(d.lines) && isContinuation(d.lines[end+1]) {
-			end++
+		for next := end + 1; next < len(d.lines); next++ {
+			if strings.TrimSpace(d.lines[next]) == "" {
+				continue // a blank line belongs to the key only if more of it follows
+			}
+			if !isContinuation(d.lines[next]) {
+				break
+			}
+			end = next
 		}
 		return i, end
 	}
