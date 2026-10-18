@@ -8,3 +8,6 @@ Call `manager_board` with `view=all` (the `total` field is the count; you need n
 Cover three things, in a few sentences: what is running, what is blocked, what is waiting for a decision. Skip empty sections. Do not read task files and do not propose new work unless asked.
 
 Example: "One task is running on the billing portal. One is blocked on invoice states. Nothing is waiting for review."
+
+When the person asks about one milestone, call `manager_board` with
+`milestone=<id>` and summarize that slice the same way.

@@ -39,7 +39,7 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name: "manager_vocabulary",
 		Description: "Return the current valid project ids, workspace ids, " +
-			"assignees, and statuses — the same board projection Fleet itself " +
+			"assignees, statuses, and each workspace's milestones — the same board projection Fleet itself " +
 			"uses to validate project/repository references. Call this instead " +
 			"of reading Work/INDEX.md or _registry/*.json by hand.",
 	}, func(_ context.Context, _ *mcp.CallToolRequest, _ emptyMCPInput) (*mcp.CallToolResult, manager.Vocabulary, error) {
@@ -60,7 +60,7 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		return nil, service.SubmitCommand(ctx, in), nil
 	})
 
-	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_board", Description: "Read the live board. view is needs_attention, blocked, in_review, or all. Filter by project or status. detail=summary adds the start of each description. Results are paged: pass next_offset back as offset."},
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_board", Description: "Read the live board. view is needs_attention, blocked, in_review, or all. Filter by project, status or milestone (a milestone id, or none for tasks in no milestone). detail=summary adds the start of each description. Results are paged: pass next_offset back as offset."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in boardMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.ShowBoard(ctx, in), nil
 		})

@@ -65,3 +65,26 @@ When `project.discovered` shows up in `manager_events`, or you notice a
 
 Do this one project at a time, not as a sweep, unless the person asks for a
 sweep.
+
+## Milestones
+
+A milestone is a flat group inside one project: "First public release",
+"Multi-worker". A task is in at most one. Its state (`parked`, `active`,
+`done`) is only a planning label. It never stops a task from launching, and
+work under a parked milestone is often done ahead of its start.
+
+`manager_vocabulary` lists each workspace's milestones with ids. A repository
+project of a group uses the milestones of its `workspace_id`. Use only listed
+ids; never invent one.
+
+- "put this under X" / "park this in X": the task exists, so
+  `manager_task_milestone(ref, milestone_id)`. For a new idea: capture, then
+  task, then assign. Leave its status alone (`backlog` unless told otherwise).
+- A milestone the person names that does not exist yet:
+  `manager_milestone_create(project, title, version?)`. It starts parked. Ask
+  first if a listed title is close.
+- "start X" / "activate X": `manager_milestone_activate(project, milestone_id)`.
+  It moves no task and starts no work.
+- Take a task out: `manager_task_milestone` with an empty `milestone_id`.
+- What is in one: `manager_board` with `milestone=<id>`, or `none` for tasks
+  in no milestone.

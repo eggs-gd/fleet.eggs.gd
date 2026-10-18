@@ -25,6 +25,8 @@ type TaskSummary struct {
 	// SourceInbox is the Inbox item this task was created from, if any — so a
 	// person or the Manager can find the raw input behind the task.
 	SourceInbox string `json:"source_inbox,omitempty"`
+	// Milestone is the id of the milestone the task belongs to, if any.
+	Milestone string `json:"milestone,omitempty"`
 }
 
 // BoardView is the workspace/registry projection Manager needs for vocabulary
@@ -62,6 +64,7 @@ func summaryFromFlow(task taskflow.Task) TaskSummary {
 		RelativePath: path,
 		Summary:      task.Summary,
 		SourceInbox:  task.SourceInbox,
+		Milestone:    task.Milestone,
 	}
 }
 

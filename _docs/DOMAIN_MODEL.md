@@ -12,6 +12,7 @@ in [ARCHITECTURE](ARCHITECTURE.md).
 | Workspace | A durable area `Work/<workspace-id>/` with project context, tasks, notes and decisions. | `Work/<workspace-id>/PROJECT.md` |
 | Project | The owner of a task. By default the workspace id. | task `project` |
 | Repository | A local git repository a task may touch. | task `repositories`, `_registry/repositories.json` |
+| Milestone | A flat group of one workspace's tasks. See [Milestones](#milestones). | `milestones` in `PROJECT.md`, task `milestone` |
 
 Tasks live in the project's workspace folder: `Work/<project-id>/tasks/*.md`.
 The API exposes `workspaces[]` and `projects[]`. For a `workspace_group`
@@ -73,6 +74,7 @@ repositories:
   - <relative/repository/path>
 depends_on:
   - <TAG>-<number>      # optional
+milestone: <milestone-id>   # optional, at most one
 assignee: <worker>
 assignment_reason: <short reason>
 source: voice | text | url | file | chat | manager
@@ -99,6 +101,40 @@ enough. A missing or self-referential dependency stays unresolved. An
 unresolved dependency keeps the task in its pickup status with a failed
 `depends_on` gate. It does not turn the task `blocked`. The dashboard and
 `manager_update` write the same field.
+
+## Milestones
+
+A milestone groups tasks inside one workspace. There is one level: no nesting,
+no epics or releases above it. `version` is optional metadata on the milestone,
+not another entity.
+
+```yaml
+# Work/<workspace-id>/PROJECT.md
+milestones:
+  - id: first-public-release
+    title: First public release
+    version: v0.1.0        # optional
+    state: parked          # parked | active | done
+```
+
+- The id is a slug of the title, unique on the card. Titles and versions are a
+  single line and are quoted when needed.
+- A task points at one with `milestone: <id>`. The id must exist on the card of
+  the workspace that holds the task. Moving a task to another project drops its
+  milestone. Clearing it removes the key.
+- Milestones belong to the workspace card. Repository projects of a
+  `workspace_group` show the workspace's milestones, and adding one from such a
+  project writes to the parent card.
+- `state` is a planning label. It never gates launch: a `todo` task under a
+  parked milestone launches like any other, which is intended (preparation work
+  often runs ahead of a milestone's official start).
+- Only the Markdown provider stores milestones. A provider that cannot read the
+  field back (Plane) rejects a milestone change instead of dropping it.
+- Writes: `GET/POST/PATCH /api/projects/{id}/milestones`, `PATCH /api/tasks`
+  with `milestone`, and the Manager tools `manager_milestone_create`,
+  `manager_milestone_activate`, `manager_task_milestone`. A write refreshes the
+  live board; hand edits and scanner-created cards are picked up on the
+  scanner's next pass.
 
 ## Status machine
 
