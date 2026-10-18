@@ -203,3 +203,35 @@ func TestMaintainPublishesProjectDiscoveredRepoChangeAndMissing(t *testing.T) {
 		t.Fatalf("a project already reported missing must not be reported again: %#v", events)
 	}
 }
+
+func TestMaintainSyncsCardsIntoTheLiveBoardAfterRepairing(t *testing.T) {
+	root := t.TempDir()
+	registry := filepath.Join(root, "_registry")
+	if err := os.MkdirAll(registry, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repos := `{"repositories": [{"id": "id-api", "name": "api", "relative_path": "Space/api", "stack": ["go"]}]}`
+	groups := `{"groups": [{"kind": "workspace_group", "reason": "same top-level folder", "suggested_project_id": "space", "repository_ids": ["id-api"]}]}`
+	for name, body := range map[string]string{"repositories.json": repos, "project-groups.json": groups} {
+		if err := os.WriteFile(filepath.Join(registry, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var cardsAtSync int
+	scanner := NewScanner(nil, nil)
+	scanner.Health = health.New()
+	scanner.SyncCards = func() error {
+		// The card the scanner just created must already exist when the sync
+		// runs, or a new project would still wait for a restart.
+		if _, err := os.Stat(filepath.Join(root, "Work", "space", "PROJECT.md")); err != nil {
+			t.Errorf("sync ran before the card was created: %v", err)
+		}
+		cardsAtSync++
+		return nil
+	}
+	scanner.maintain(root, false)
+	if cardsAtSync != 1 {
+		t.Fatalf("SyncCards ran %d times, want once per maintain pass", cardsAtSync)
+	}
+}

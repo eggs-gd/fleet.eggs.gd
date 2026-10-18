@@ -20,6 +20,9 @@ type Board struct {
 	projects    map[string]board.Project
 	registry    board.RegistryInfo
 	generatedAt time.Time
+	// cardStamps remembers the file state each project card was last loaded
+	// at, so SyncCards re-reads only the cards that changed.
+	cardStamps map[string]cardStamp
 }
 
 // Snapshot is the board-only poll projection (no runtime sessions).
@@ -40,6 +43,7 @@ func NewBoard(root string) *Board {
 		tasks:      map[string]Task{},
 		workspaces: map[string]board.Workspace{},
 		projects:   map[string]board.Project{},
+		cardStamps: map[string]cardStamp{},
 	}
 }
 

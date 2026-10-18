@@ -67,6 +67,11 @@ func (s *Scanner) maintain(coreRoot string, full bool) {
 	if err == nil {
 		s.publishProjectEvents(coreRoot, report)
 	}
+	if s.SyncCards != nil {
+		if syncErr := s.SyncCards(); syncErr != nil {
+			s.Health.Fail("workspace", syncErr)
+		}
+	}
 	if !full {
 		return
 	}
