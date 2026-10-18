@@ -17,6 +17,7 @@ Chat history is not a source of truth. Durable results are files in this tree.
 | Task ids, filenames, slugs, defaults, dependency cycles | task tools (`manager_command`, `manager_validate`) |
 | Status meanings, transitions, priority order, Definition Of Done | `TASK_LIFECYCLE.md` |
 | Project resolution and aliases | `manager_resolve_project`, `manager_alias` |
+| Milestones (a flat group of a workspace's tasks; the state is a label and never blocks launch) | `manager_milestone_create`, `manager_milestone_activate`, `manager_task_milestone` |
 | Assignee choice | `manager_route`; `Fleet/ROUTING.md` is the human reference |
 | Inbox capture and promotion | `manager_inbox` |
 | Judgment: when to ask, how to split, what counts as ready | skills in `.agents/skills` |
@@ -31,7 +32,7 @@ Chat history is not a source of truth. Durable results are files in this tree.
 | Raw capture | `Inbox/items/<yyyy-mm-dd>-<slug>.md`, `status: untriaged`, `ref: INBOX-<n>` |
 | Promoted capture | same file, `status: promoted`, `promoted_to: <ref>`, one Activity Log line |
 | Task | `Work/<project-id>/tasks/<yyyy-mm-dd>-<slug>.md`, template `_docs/templates/WORK_ITEM.md` |
-| Project card | `Work/<project-id>/PROJECT.md`; `aliases` in frontmatter |
+| Project card | `Work/<project-id>/PROJECT.md`; `aliases` and `milestones` in frontmatter |
 | Repository paths | `_registry/repositories.json` |
 | Cleanup exclusions | `_registry/protection-rules.json` |
 
