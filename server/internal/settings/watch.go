@@ -166,11 +166,9 @@ func (s *Scanner) publishProjectEvents(coreRoot string, report projectscan.CardR
 	for _, id := range report.ReposChanged {
 		publish("repos_changed", id)
 	}
-	if previous != nil {
-		for id := range previous {
-			if !now[id] {
-				publish("missing", id)
-			}
+	for id := range previous {
+		if !now[id] {
+			publish("missing", id)
 		}
 	}
 }
