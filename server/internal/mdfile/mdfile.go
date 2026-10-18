@@ -34,16 +34,12 @@ func ReadMarkdown(path string) (Frontmatter, string, error) {
 // and the remaining body. Text without a frontmatter block is returned as a
 // body with an empty Frontmatter.
 func ParseFrontmatter(text string) (Frontmatter, string) {
-	if !strings.HasPrefix(text, "---\n") {
+	block, rest, ok := splitEnvelope(text)
+	if !ok {
 		return Frontmatter{}, text
 	}
-	end := strings.Index(text[4:], "\n---")
-	if end < 0 {
-		return Frontmatter{}, text
-	}
-	end += 4
-	raw := strings.Split(text[4:end], "\n")
-	body := strings.TrimLeft(text[end+4:], "\n\r\t ")
+	raw := strings.Split(block, "\n")
+	body := strings.TrimLeft(strings.TrimPrefix(rest, "\n---"), "\n\r\t ")
 
 	fm := Frontmatter{}
 	currentKey := ""

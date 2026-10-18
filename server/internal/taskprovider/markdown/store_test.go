@@ -475,34 +475,6 @@ func TestPatchTaskFileProjectMoveDropsTheMilestone(t *testing.T) {
 	}
 }
 
-func TestSetFrontmatterRejectsNestedKeys(t *testing.T) {
-	_, err := setFrontmatterValue("launch:\n  agent: claude\n", "launch.agent", "codex")
-	if err == nil {
-		t.Fatal("expected nested frontmatter edit error")
-	}
-}
-
-func TestSetFrontmatterRepositoriesReplacesList(t *testing.T) {
-	frontmatter := "project: eggs-gd-prod\nrepositories:\n  - old/repo\nassignee: codex\n"
-	updated, err := setFrontmatterRepositories(frontmatter, []string{"eGGs.gd.prod/career-wizard"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(updated, "repositories:\n  - eGGs.gd.prod/career-wizard\n") {
-		t.Fatalf("updated = %q", updated)
-	}
-	if strings.Contains(updated, "old/repo") {
-		t.Fatalf("old repository remained: %q", updated)
-	}
-	cleared, err := setFrontmatterRepositories(updated, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(cleared, "repositories: []\n") {
-		t.Fatalf("cleared = %q", cleared)
-	}
-}
-
 func writeTestFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

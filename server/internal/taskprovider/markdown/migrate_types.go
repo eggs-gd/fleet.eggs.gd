@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
@@ -34,31 +34,14 @@ func migrateLegacyTodoTaskTypeFile(path string) error {
 	if err != nil {
 		return err
 	}
-	frontmatter, body, err := splitMarkdown(string(data))
+	doc, err := mdfile.ParseDoc(string(data))
 	if err != nil {
 		// Incomplete or non-card markdown under tasks/ — leave untouched.
 		return nil
 	}
-	if frontmatterScalar(frontmatter, "type") != "todo" {
+	if value, _ := doc.Scalar("type"); value != "todo" {
 		return nil
 	}
-	updated, err := setFrontmatterValue(frontmatter, "type", tasklifecycle.DefaultTaskType)
-	if err != nil {
-		return err
-	}
-	return writeFileAtomic(path, []byte("---\n"+updated+"---\n\n"+body), 0o644)
-}
-
-func frontmatterScalar(frontmatter string, key string) string {
-	for _, line := range strings.Split(frontmatter, "\n") {
-		currentKey, value, ok := strings.Cut(line, ":")
-		if !ok || strings.HasPrefix(line, "  ") {
-			continue
-		}
-		if strings.TrimSpace(currentKey) != key {
-			continue
-		}
-		return strings.Trim(strings.TrimSpace(value), `"'`)
-	}
-	return ""
+	doc.SetString("type", tasklifecycle.DefaultTaskType)
+	return writeFileAtomic(path, []byte(doc.Render(doc.Body())), 0o644)
 }

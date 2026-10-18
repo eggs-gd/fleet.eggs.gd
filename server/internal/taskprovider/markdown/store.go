@@ -217,10 +217,11 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	if err := validateExpectedTaskVersion(current, data, patch); err != nil {
 		return tasklifecycle.Task{}, err
 	}
-	frontmatter, body, err := splitMarkdown(string(data))
+	doc, err := mdfile.ParseDoc(string(data))
 	if err != nil {
-		return tasklifecycle.Task{}, err
+		return tasklifecycle.Task{}, fmt.Errorf("task markdown: %w", err)
 	}
+	body := doc.Body()
 
 	if patch.Status != "" {
 		if !tasklifecycle.IsKnownTaskStatus(patch.Status) {
@@ -229,31 +230,19 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 		if !patch.AllowStatusOverride && !tasklifecycle.AllowedTaskStatusTransition(current.Status, patch.Status) {
 			return tasklifecycle.Task{}, fmt.Errorf("%w: %s -> %s", tasklifecycle.ErrTaskTransitionRejected, current.Status, patch.Status)
 		}
-		frontmatter, err = setFrontmatterValue(frontmatter, "status", patch.Status)
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetString("status", patch.Status)
 	}
 	if patch.Assignee != "" {
-		frontmatter, err = setFrontmatterValue(frontmatter, "assignee", patch.Assignee)
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetString("assignee", patch.Assignee)
 	}
 	if patch.Priority != nil {
 		if *patch.Priority < 1 || *patch.Priority > 5 {
 			return tasklifecycle.Task{}, fmt.Errorf("unknown task priority %d", *patch.Priority)
 		}
-		frontmatter, err = setFrontmatterValue(frontmatter, "priority", fmt.Sprintf("%d", *patch.Priority))
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetString("priority", fmt.Sprintf("%d", *patch.Priority))
 	}
 	if patch.DependsOn != nil {
-		frontmatter, err = setFrontmatterDependsOn(frontmatter, tasklifecycle.NormalizeDependsOn(*patch.DependsOn))
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetStrings("depends_on", tasklifecycle.NormalizeDependsOn(*patch.DependsOn))
 	}
 
 	writePath := taskPath
@@ -267,25 +256,19 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 		if err := validateProjectForCreate(p.root, workProjectID); err != nil {
 			return tasklifecycle.Task{}, err
 		}
-		frontmatter, err = setFrontmatterValue(frontmatter, "project", workProjectID)
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetString("project", workProjectID)
 		repositories := []string{}
 		if repo := strings.TrimSpace(patch.Repository); repo != "" {
 			repositories = []string{repo}
 		}
-		frontmatter, err = setFrontmatterRepositories(frontmatter, repositories)
-		if err != nil {
-			return tasklifecycle.Task{}, err
-		}
+		doc.SetStrings("repositories", repositories)
 
 		currentWorkProjectID := filepath.Base(filepath.Dir(filepath.Dir(taskPath)))
 		if workProjectID != currentWorkProjectID {
 			// A milestone belongs to one project's card, so it does not follow
 			// the task to another project.
 			projectMoved = true
-			frontmatter = removeFrontmatterKey(frontmatter, "milestone")
+			doc.Remove("milestone")
 			destPath, destErr := uniqueTaskDestinationPath(p.root, workProjectID, filepath.Base(taskPath))
 			if destErr != nil {
 				return tasklifecycle.Task{}, destErr
@@ -303,22 +286,16 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	if patch.Milestone != nil && !projectMoved {
 		milestone := strings.TrimSpace(*patch.Milestone)
 		if milestone == "" {
-			frontmatter = removeFrontmatterKey(frontmatter, "milestone")
+			doc.Remove("milestone")
 		} else {
 			if err := validateMilestone(taskPath, milestone); err != nil {
 				return tasklifecycle.Task{}, err
 			}
-			frontmatter, err = setFrontmatterValue(frontmatter, "milestone", milestone)
-			if err != nil {
-				return tasklifecycle.Task{}, err
-			}
+			doc.SetString("milestone", milestone)
 		}
 	}
 
-	frontmatter, err = setFrontmatterValue(frontmatter, "updated_at", time.Now().Format(time.RFC3339))
-	if err != nil {
-		return tasklifecycle.Task{}, err
-	}
+	doc.SetString("updated_at", time.Now().Format(time.RFC3339))
 
 	if patch.Body != nil {
 		body = strings.TrimSpace(*patch.Body) + "\n"
@@ -327,7 +304,7 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 		body = appendReviewComment(body, patch.CommentAuthor, patch.Comment)
 	}
 
-	if err := writeFileAtomic(writePath, []byte("---\n"+frontmatter+"---\n\n"+body), 0o644); err != nil {
+	if err := writeFileAtomic(writePath, []byte(doc.Render(body)), 0o644); err != nil {
 		return tasklifecycle.Task{}, err
 	}
 	if writePath != taskPath {
