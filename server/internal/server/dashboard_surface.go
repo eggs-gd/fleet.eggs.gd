@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -217,6 +218,43 @@ func (d *Dashboard) PatchMilestone(project, milestoneID string, state, title, ve
 	}
 	d.ReloadProjectCard(project)
 	return milestone, nil
+}
+
+// DeleteMilestone clears the milestone from every task that points at it, then
+// removes it from the card. Tasks go first: if one fails the milestone is still
+// there and the delete can be retried, instead of leaving tasks that name a
+// milestone that no longer exists.
+func (d *Dashboard) DeleteMilestone(project, milestoneID string) (int, error) {
+	if !workfiles.ValidProjectID(project) {
+		return 0, errors.New("project id is required")
+	}
+	existing, err := workfiles.Milestones(d.root, project)
+	if err != nil {
+		return 0, err
+	}
+	found := false
+	for _, milestone := range existing {
+		found = found || milestone.ID == milestoneID
+	}
+	if !found {
+		return 0, fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+	}
+	cleared := 0
+	none := ""
+	for _, task := range d.store.Snapshot().Tasks {
+		if task.WorkspaceID != project || task.Milestone != milestoneID {
+			continue
+		}
+		if _, err := d.taskService.Patch(context.Background(), task.Path, taskflow.PatchInput{Milestone: &none}); err != nil {
+			return cleared, fmt.Errorf("clear milestone on %s: %w", firstNonEmpty(task.Ref, task.Path), err)
+		}
+		cleared++
+	}
+	if err := workfiles.DeleteMilestone(d.root, project, milestoneID); err != nil {
+		return cleared, err
+	}
+	d.ReloadProjectCard(project)
+	return cleared, nil
 }
 
 // ReloadProjectCard refreshes the live board from one project's PROJECT.md

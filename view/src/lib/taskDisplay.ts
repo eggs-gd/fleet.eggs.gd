@@ -431,7 +431,10 @@ export interface MilestoneTaskGroup {
   key: string;
   projectId: string;
   milestoneId: string;
+  /** Breadcrumb shown on the accordion (space / project / milestone). */
   title: string;
+  /** The milestone's own title, without the breadcrumb ('' for Unscheduled). */
+  milestoneTitle: string;
   state?: string;
   version?: string;
   tasks: Task[];
@@ -500,6 +503,7 @@ export const groupedByMilestone = (
         key,
         projectId,
         milestoneId,
+        milestoneTitle: milestoneId ? milestone?.title || milestoneId : '',
         title: milestoneGroupTitle(
           mode,
           workspaces,

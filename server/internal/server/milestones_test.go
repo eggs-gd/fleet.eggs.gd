@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
 func TestMilestoneRoutesUseDashboardSurface(t *testing.T) {
@@ -66,8 +68,25 @@ func TestMilestoneRoutesUseDashboardSurface(t *testing.T) {
 		}
 	})
 
+	t.Run("delete_removes_a_milestone_and_reports_cleared_tasks", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/api/projects/acme/milestones", strings.NewReader(`{"id":"v1-launch"}`))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"cleared":2`) {
+			t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+		}
+		if dash.deleteMilestoneCall != 1 || dash.lastMilestonePatch.id != "v1-launch" {
+			t.Fatalf("delete call = %d id = %q", dash.deleteMilestoneCall, dash.lastMilestonePatch.id)
+		}
+		bad := httptest.NewRecorder()
+		mux.ServeHTTP(bad, httptest.NewRequest(http.MethodDelete, "/api/projects/acme/milestones", strings.NewReader(`{}`)))
+		if bad.Code != http.StatusBadRequest {
+			t.Fatalf("missing id status = %d, want 400", bad.Code)
+		}
+	})
+
 	t.Run("method_not_allowed", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, "/api/projects/acme/milestones", nil)
+		req := httptest.NewRequest(http.MethodPut, "/api/projects/acme/milestones", nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusMethodNotAllowed {
@@ -99,5 +118,46 @@ func TestMilestoneWriteReachesLiveBoardWithoutRestart(t *testing.T) {
 	project = findProjectByID(app.State().Projects, "acme")
 	if project.Milestones[0].State != "active" {
 		t.Fatalf("board after patch = %#v", project.Milestones)
+	}
+}
+
+func TestDeletingAMilestoneClearsItFromItsTasks(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "Work", "acme", "PROJECT.md"), "---\nid: acme\ntitle: Acme\nkind: standalone_repository\nstatus: draft\nreview_status: draft\nrepositories:\n  - acme\n---\n\n# Acme\n")
+	writeTestFile(t, filepath.Join(root, "Work", "acme", "tasks", "2026-08-01-a.md"), strings.Replace(testTaskForProjectMarkdown("ACME-1", "In it", "todo", "acme", "acme"), "id: work-test", "id: work-a", 1))
+	writeTestFile(t, filepath.Join(root, "Work", "acme", "tasks", "2026-08-01-b.md"), strings.Replace(testTaskForProjectMarkdown("ACME-2", "Not in it", "todo", "acme", "acme"), "id: work-test", "id: work-b", 1))
+	app := Compose(ComposeConfig{CoreRoot: root})
+	if err := app.Bootstrap(); err != nil {
+		t.Fatal(err)
+	}
+	surface := app.Surface()
+	m, err := surface.CreateMilestone("acme", "v1 launch", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var assigned string
+	for _, task := range app.State().Tasks {
+		if task.Ref == "ACME-1" {
+			assigned = task.Path
+		}
+	}
+	if _, err := surface.PatchTask(tasklifecycle.TaskPatch{Path: assigned, Milestone: &m.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	cleared, err := surface.DeleteMilestone("acme", m.ID)
+	if err != nil || cleared != 1 {
+		t.Fatalf("DeleteMilestone = %d, %v; want 1 task cleared", cleared, err)
+	}
+	for _, task := range app.State().Tasks {
+		if task.Milestone != "" {
+			t.Fatalf("task %s still points at %q", task.Ref, task.Milestone)
+		}
+	}
+	if project := findProjectByID(app.State().Projects, "acme"); project == nil || len(project.Milestones) != 0 {
+		t.Fatalf("board still lists the milestone: %#v", project)
+	}
+	if _, err := surface.DeleteMilestone("acme", m.ID); err == nil {
+		t.Fatal("deleted the same milestone twice")
 	}
 }

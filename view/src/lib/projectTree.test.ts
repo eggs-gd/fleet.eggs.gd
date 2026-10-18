@@ -14,6 +14,7 @@ import {
   milestoneGroupStatusCounts
 } from './taskDisplay.ts';
 import { buildSidebarTree, projectInitial, projectOpenCount } from './projectTree.ts';
+import { milestoneCardId } from './milestones.ts';
 
 test('buildSidebarTree nests projects by id prefix and keeps a standalone workspace as one row', () => {
   const workspaces = [
@@ -175,6 +176,7 @@ test('groupedByMilestone trims the breadcrumb to what the selection does not alr
   );
 
   const launch = withinProject.find((g) => g.milestoneId === 'v1-launch')!;
+  assert.equal(launch.milestoneTitle, 'v1 launch');
   assert.equal(launch.tasks.length, 2);
   assert.equal(launch.state, 'active');
   assert.equal(launch.version, 'v1.0.0');
@@ -244,4 +246,14 @@ test('milestoneGroupStatusCounts sorts by count, most first', () => {
     { status: 'todo', count: 3 },
     { status: 'doing', count: 2 }
   ]);
+});
+
+test('milestones are read and written on the workspace card, never a nested project', () => {
+  assert.equal(milestoneCardId({ id: 'acme', kind: 'workspace' }), 'acme');
+  assert.equal(
+    milestoneCardId({ id: 'acme/web', kind: 'repository_project', workspace_id: 'acme' }),
+    'acme'
+  );
+  assert.equal(milestoneCardId({ id: 'acme/web/x', kind: 'task_project' }), '');
+  assert.equal(milestoneCardId(null), '');
 });

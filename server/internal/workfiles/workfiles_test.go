@@ -332,3 +332,39 @@ func TestSetProjectSummary(t *testing.T) {
 		t.Fatalf("summary_source not flipped to confirmed:\n%s", got)
 	}
 }
+
+func TestDeleteMilestone(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "Work", "acme")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	card := filepath.Join(dir, "PROJECT.md")
+	if err := os.WriteFile(card, []byte("---\nid: acme\nstatus: active\n---\n\n# Acme\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := CreateMilestone(root, "acme", "Alpha", "")
+	b, _ := CreateMilestone(root, "acme", "Beta", "")
+
+	if err := DeleteMilestone(root, "acme", a.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := Milestones(root, "acme")
+	if len(got) != 1 || got[0].ID != b.ID {
+		t.Fatalf("after deleting alpha = %+v", got)
+	}
+	if err := DeleteMilestone(root, "acme", "nope"); err == nil {
+		t.Fatal("deleted a milestone that does not exist")
+	}
+	if err := DeleteMilestone(root, "../acme", b.ID); err == nil {
+		t.Fatal("accepted a traversal project id")
+	}
+
+	// Removing the last one drops the key instead of leaving an empty block.
+	if err := DeleteMilestone(root, "acme", b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if raw, _ := os.ReadFile(card); strings.Contains(string(raw), "milestones") {
+		t.Fatalf("empty milestones key left behind:\n%s", raw)
+	}
+}

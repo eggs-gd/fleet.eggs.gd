@@ -23,6 +23,7 @@ type recordingDashboard struct {
 	milestonesCalls     int
 	createMilestoneCall int
 	patchMilestoneCall  int
+	deleteMilestoneCall int
 	lastPatch           tasklifecycle.TaskPatch
 	lastCreate          tasklifecycle.TaskCreateRequest
 	lastControl         execution.SessionControlPatch
@@ -70,6 +71,13 @@ func (r *recordingDashboard) CreateMilestone(project, title, version string) (bo
 	r.lastMilestoneTitle = title
 	r.lastMilestoneVer = version
 	return board.Milestone{ID: "test-milestone", Title: title, Version: version, State: "parked"}, nil
+}
+
+func (r *recordingDashboard) DeleteMilestone(project, milestoneID string) (int, error) {
+	r.deleteMilestoneCall++
+	r.lastMilestoneProj = project
+	r.lastMilestonePatch.id = milestoneID
+	return 2, nil
 }
 
 func (r *recordingDashboard) PatchMilestone(project, milestoneID string, state, title, version *string) (board.Milestone, error) {

@@ -209,6 +209,44 @@ func PatchMilestone(root, project, milestoneID string, state, title, version *st
 	})
 }
 
+// DeleteMilestone removes one milestone from a project card. Tasks that still
+// point at it are the caller's to clear first (see Dashboard.DeleteMilestone).
+func DeleteMilestone(root, project, milestoneID string) error {
+	if !ValidProjectID(project) {
+		return errors.New("project id is required")
+	}
+	mdfile.EditMu.Lock()
+	defer mdfile.EditMu.Unlock()
+	path := projectCard(root, project)
+	body, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("project %s has no card yet (%s); the scanner creates cards on its next pass", project, path)
+	}
+	if err != nil {
+		return err
+	}
+	doc, err := mdfile.ParseDoc(string(body))
+	if err != nil {
+		return fmt.Errorf("project card %s is malformed (%w); the scanner repairs cards on its next pass", path, err)
+	}
+	records := doc.Records("milestones")
+	kept := make([]map[string]string, 0, len(records))
+	for _, record := range records {
+		if record["id"] != milestoneID {
+			kept = append(kept, record)
+		}
+	}
+	if len(kept) == len(records) {
+		return fmt.Errorf("project %s has no milestone %q", project, milestoneID)
+	}
+	if len(kept) == 0 {
+		doc.Remove("milestones")
+	} else {
+		doc.SetRecords("milestones", board.MilestoneFields, kept)
+	}
+	return writeAtomic(path, []byte(doc.String()))
+}
+
 func updateMilestone(root, project, milestoneID string, apply func(*board.Milestone)) (board.Milestone, error) {
 	if !ValidProjectID(project) {
 		return board.Milestone{}, errors.New("project id is required")

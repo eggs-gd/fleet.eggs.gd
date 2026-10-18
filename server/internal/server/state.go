@@ -35,6 +35,9 @@ type DashboardSurface interface {
 	Milestones(project string) ([]board.Milestone, error)
 	CreateMilestone(project, title, version string) (board.Milestone, error)
 	PatchMilestone(project, milestoneID string, state, title, version *string) (board.Milestone, error)
+	// DeleteMilestone removes a milestone and clears it from the tasks that
+	// pointed at it; it returns how many tasks it cleared.
+	DeleteMilestone(project, milestoneID string) (cleared int, err error)
 }
 
 func boardHooks(runtimeRoot string, store *taskprovider.Board) execution.BoardHooks {
