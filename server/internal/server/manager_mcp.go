@@ -120,11 +120,11 @@ func registerManagerMCPRoute(mux *http.ServeMux, service *manager.Service) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in manager.UpdateInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.Update(ctx, in), nil
 		})
-	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_create", Description: "Add a new, parked milestone to a project — a flat grouping (with an optional version) tasks can opt into. Use this to file an idea away for later without putting it in the active backlog."},
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_create", Description: "Add a new, parked milestone to a project — a flat grouping (with an optional version) tasks can opt into. Use this to file work away under a milestone that will be launched later. A milestone's state is a planning label only: it never stops a todo task from being launched."},
 		func(_ context.Context, _ *mcp.CallToolRequest, in milestoneCreateMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.MilestoneCreate(in.Project, in.Title, in.Version), nil
 		})
-	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_activate", Description: "Flip a parked milestone to active, so its tasks show up as current work. Other milestones on the project are left as they are."},
+	mcp.AddTool(mcpServer, &mcp.Tool{Name: "manager_milestone_activate", Description: "Flip a parked milestone to active, marking it as the work in progress. Other milestones on the project are left as they are. This is a planning label; it does not start or stop any task."},
 		func(_ context.Context, _ *mcp.CallToolRequest, in milestoneActivateMCPInput) (*mcp.CallToolResult, manager.Response, error) {
 			return nil, service.MilestoneActivate(in.Project, in.MilestoneID), nil
 		})
