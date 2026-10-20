@@ -303,6 +303,22 @@ h3 {
   font-weight: 680;
 }
 
+.site-footer .cookie-link {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.site-footer .cookie-link:hover {
+  color: var(--text);
+}
+
 .to-top {
   position: fixed;
   right: 22px;

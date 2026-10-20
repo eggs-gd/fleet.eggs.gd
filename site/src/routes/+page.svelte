@@ -7,6 +7,7 @@
     OrchestratorSection,
     WorkersSection
   } from '$lib/sections_v2';
+  import { reopenConsent } from '$lib/analytics/consent';
 
   let showTop = $state(false);
 </script>
@@ -56,6 +57,7 @@
 
   <footer class="site-footer">
     <span>fleet.eggs.gd</span>
+    <button type="button" class="cookie-link" onclick={reopenConsent}>Cookie settings</button>
   </footer>
 
   {#if showTop}
