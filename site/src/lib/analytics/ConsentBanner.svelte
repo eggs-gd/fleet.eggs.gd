@@ -13,8 +13,8 @@
 {#if ready && $consent === 'unset'}
   <aside class="consent" aria-label="Analytics cookies">
     <p>
-      This site uses Google Analytics to count visits. It sets cookies only if you accept; nothing
-      is sent to Google before that.
+      This site uses Google Analytics to count visits. Cookies are set only if you accept; without
+      them it sends only cookieless pings.
     </p>
     <div class="consent-actions">
       <button type="button" onclick={() => choose('denied')}>Decline</button>
