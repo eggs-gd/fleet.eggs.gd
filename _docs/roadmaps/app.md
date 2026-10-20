@@ -144,6 +144,15 @@ Ref задачі — `<ТЕГ>-<номер>`. Тег проєкту лежить
 4. **поза релізом.** [Windows](../specs/windows.md). Асет не публікувати.
 5. Те, що не входить у випуск, зібрано в [release](release.md).
 
+## Технічний борг
+
+**немає.** Поведінку не змінює, тож у випуск не входить. Лишений свідомо після розбиття `runtime.go` (провайдери) і `App.svelte` (стани й логіка в `view/src/stores` та `view/src/lib`). Розбиття файлів нічого не зменшує: кожен новий файл додає ~15 рядків імпортів.
+
+- **Файли понад ліміт `AGENTS.md` (200–300 рядків).** Розбивати за відповідальністю, а не за розміром: `execution/session_hub.go` (818), `execution/host_launch.go` (599), `manager/service.go` (514), `taskflow/service.go` (475), `taskprovider/markdown/store.go` (471), `taskprovider/plane/provider.go` (469), `execution/providers/claude_background.go` (468, dispatch і polling), `execution/host_scheduling.go` (420), `execution/providers/codex_session.go` (402, життєвий цикл і драйв ходу).
+- **Покриття тестами.** Найнижче: `taskprovider/flowadapter` 0%, `execution` 20.6%, `board` 30.2%, `taskprovider` 39.8%, `taskprovider/open` 47.7%. Спершу `execution`: claim, планування, звірка після рестарту. Раннери провайдерів (`execution/providers`) вже на 68%.
+- **Сторі дашборда без автотестів.** Чиста логіка (`boardView`, `taskDraft`, `navigation`) покрита, а самі сторі (`view/src/stores`) перевірені лише руками на ізольованому екземплярі. Тонкі, але тут живуть полінг, відкрита задача й запис на сервер.
+- **Помилка керування сесією замінює весь екран.** `releaseSession` і `resolveOrphan` пишуть її в `error`, а той показує «Backoffice data is not available» замість сторінки. Має йти в `actionError`, як решта записів.
+
 ## Відоме, не в цьому випуску
 
 **частково.** Запис Fleet MCP: невідомі ключі й чужі сервери зберігаються, битий JSON не перезаписується (помилка). Секцію TOML для Codex Fleet замінює власним редактором, а не парсером.
