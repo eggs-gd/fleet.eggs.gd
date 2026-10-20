@@ -8,6 +8,29 @@
       content="Fleet coordinates coding agents across local projects without replacing Cursor, Claude Code, Codex, or your review workflow."
     />
     <link rel="icon" href="%sveltekit.assets%/favicon.svg" />
+    <!-- Google tag (gtag.js), with Consent Mode: no analytics cookies until the visitor accepts -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EZKCMTF6E0"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag('consent', 'default', {
+        analytics_storage: 'denied',
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        wait_for_update: 500
+      });
+      try {
+        // A returning visitor's choice has to be in place before the first page view.
+        if (localStorage.getItem('fleet.analyticsConsent') === 'granted') {
+          gtag('consent', 'update', { analytics_storage: 'granted' });
+        }
+      } catch (e) {}
+      gtag('js', new Date());
+      gtag('config', 'G-EZKCMTF6E0');
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
