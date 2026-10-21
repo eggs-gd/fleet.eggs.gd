@@ -395,3 +395,12 @@ h3 {
     width: 100%;
   }
 }
+
+/* Consent banner colours (the component reads --consent-*). */
+:root {
+  --consent-bg: var(--panel-strong);
+  --consent-text: var(--text);
+  --consent-muted: var(--muted);
+  --consent-border: var(--line-strong);
+  --consent-accent: var(--text);
+}
