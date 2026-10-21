@@ -473,6 +473,10 @@ npm run check
 npm run build
 ```
 
+Head metadata, sitemap, footer and cross-links follow the ecosystem spec in
+[eggs-gd/eggs.gd-site `docs/seo.md`](https://github.com/eggs-gd/eggs.gd-site/blob/main/docs/seo.md).
+The analytics and Consent Mode block in `site/src/app.html` is deliberate; do not remove it.
+
 Keep route modules TypeScript. Do not start a long-running dev server
 unless asked. If a browser preview is used, inspect desktop and mobile
 widths.
