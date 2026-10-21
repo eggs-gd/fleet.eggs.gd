@@ -8,19 +8,15 @@
     WorkersSection
   } from '$lib/sections_v2';
   import { reopenConsent } from '$lib/analytics/consent';
+  import Seo from '$lib/seo/Seo.svelte';
+  import { HOME_DESCRIPTION, HOME_TITLE, jsonLdHome } from '$lib/seo/seo';
 
   let showTop = $state(false);
 </script>
 
 <svelte:window onscroll={() => (showTop = window.scrollY > 480)} />
 
-<svelte:head>
-  <title>fleet.eggs.gd — one manager for coding-agent work</title>
-  <meta
-    name="description"
-    content="Fleet sits between a manager and real coding agents: projects, tasks, workers, ownership, and execution state — locally."
-  />
-</svelte:head>
+<Seo title={HOME_TITLE} description={HOME_DESCRIPTION} path="/" jsonLd={jsonLdHome} />
 
 <div class="site-shell" id="top">
   <header class="site-header" aria-label="Primary navigation">
@@ -56,7 +52,9 @@
   </main>
 
   <footer class="site-footer">
-    <span>fleet.eggs.gd</span>
+    <span>© 2026 earwiG Games</span>
+    <a href="https://eggs.gd">eggs.gd</a>
+    <a href="https://eggs.gd/privacy">Privacy</a>
     <button type="button" class="cookie-link" onclick={reopenConsent}>Cookie settings</button>
   </footer>
 
