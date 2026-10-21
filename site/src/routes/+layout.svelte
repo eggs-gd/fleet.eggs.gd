@@ -6,4 +6,4 @@
 </script>
 
 <slot />
-<ConsentBanner />
+<ConsentBanner privacyHref="https://eggs.gd/privacy" />

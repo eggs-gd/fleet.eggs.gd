@@ -11,16 +11,29 @@
       function gtag() {
         dataLayer.push(arguments);
       }
+      // Consent policy for analytics: one switch per site.
+      // 'granted' = no banner, Google Analytics cookies on.
+      // 'denied'  = Consent Mode: nothing is stored until the banner calls setAnalyticsConsent('granted').
+      var ANALYTICS_CONSENT = 'denied';
       gtag('consent', 'default', {
-        analytics_storage: 'denied',
+        analytics_storage: ANALYTICS_CONSENT,
         ad_storage: 'denied',
         ad_user_data: 'denied',
         ad_personalization: 'denied',
         wait_for_update: 500
       });
+      window.setAnalyticsConsent = function (choice) {
+        try {
+          localStorage.setItem('analyticsConsent', choice);
+        } catch (e) {}
+        gtag('consent', 'update', { analytics_storage: choice });
+      };
       try {
         // A returning visitor's choice has to be in place before the first page view.
-        if (localStorage.getItem('fleet.analyticsConsent') === 'granted') {
+        if (
+          ANALYTICS_CONSENT === 'denied' &&
+          localStorage.getItem('analyticsConsent') === 'granted'
+        ) {
           gtag('consent', 'update', { analytics_storage: 'granted' });
         }
       } catch (e) {}
