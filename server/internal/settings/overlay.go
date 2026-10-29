@@ -71,6 +71,11 @@ func SaveOverlay(root string, overlay Overlay) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return fmt.Errorf("create overlay dir: %w", err)
 	}
+	// Ignore the new name before it exists: a Data root made from the old
+	// template only lists the old one.
+	if err := appconfig.EnsureIgnored(root, "/"+OverlayFileName); err != nil {
+		return err
+	}
 	data := EncodeOverlay(overlay)
 	tmp, err := os.CreateTemp(root, ".fleet.local.yaml.*")
 	if err != nil {
