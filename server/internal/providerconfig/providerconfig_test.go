@@ -91,37 +91,3 @@ func writeConfig(t *testing.T, root string, content string) {
 		t.Fatal(err)
 	}
 }
-
-func TestLoadReadsALegacyConfigAndTheOldProjectKey(t *testing.T) {
-	root := t.TempDir()
-	legacy := `taskProvider:
-  type: plane
-  workspace: eggs_gd
-  coreProject: core-eggs-gd
-`
-	if err := os.WriteFile(filepath.Join(root, LegacyConfigFileName), []byte(legacy), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	settings, err := Load(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if settings.Type != "plane" || settings.Plane.FleetProject != "core-eggs-gd" {
-		t.Fatalf("legacy config not honoured: %#v", settings)
-	}
-}
-
-func TestLoadPrefersTheNewConfigNameOverTheLegacyOne(t *testing.T) {
-	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, LegacyConfigFileName), []byte("taskProvider:\n  type: plane\n  workspace: w\n  fleetProject: p\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	writeConfig(t, root, "taskProvider:\n  type: markdown\n")
-	settings, err := Load(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if settings.Type != "markdown" {
-		t.Fatalf("Type = %q: the legacy file must not win over the new one", settings.Type)
-	}
-}

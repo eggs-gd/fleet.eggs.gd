@@ -42,16 +42,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 )
 
-// ConfigFileName is the root-relative config file Load reads. Data roots
-// created before the rename keep working through LegacyConfigFileName.
-const (
-	ConfigFileName       = "fleet.config.yaml"
-	LegacyConfigFileName = "core.config.yaml"
-)
+// ConfigFileName is the root-relative config file Load reads.
+const ConfigFileName = "fleet.config.yaml"
 
 // Settings is Fleet's resolved task-provider configuration.
 type Settings struct {
@@ -113,9 +108,7 @@ func Default() Settings {
 // Load reads <root>/fleet.config.yaml, if present, and returns the resolved
 // Settings. A missing file is not an error — it returns Default().
 func Load(root string) (Settings, error) {
-	path := appconfig.ReadPath(root, ConfigFileName, LegacyConfigFileName)
-	name := filepath.Base(path)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Join(root, ConfigFileName))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Default(), nil
@@ -128,7 +121,7 @@ func Load(root string) (Settings, error) {
 	settings := Default()
 	settings.Type = strings.ToLower(strings.TrimSpace(mdfile.Scalar(fm, "taskProvider.type", settings.Type)))
 	if settings.Type != "markdown" && settings.Type != "plane" {
-		return Settings{}, fmt.Errorf("%s: unknown taskProvider.type %q", name, settings.Type)
+		return Settings{}, fmt.Errorf("%s: unknown taskProvider.type %q", ConfigFileName, settings.Type)
 	}
 
 	settings.Plane = PlaneSettings{
@@ -136,7 +129,7 @@ func Load(root string) (Settings, error) {
 		BaseURL:      mdfile.Scalar(fm, "taskProvider.baseUrl", "https://api.plane.so"),
 		TokenEnv:     mdfile.Scalar(fm, "taskProvider.tokenEnv", "PLANE_API_TOKEN"),
 		ProjectID:    mdfile.Scalar(fm, "taskProvider.project", ""),
-		FleetProject: mdfile.Scalar(fm, "taskProvider.fleetProject", mdfile.Scalar(fm, "taskProvider.coreProject", "")),
+		FleetProject: mdfile.Scalar(fm, "taskProvider.fleetProject", ""),
 		Repository:   mdfile.Scalar(fm, "taskProvider.repository", ""),
 		StatusMap:    statusMapFrom(fm),
 	}
@@ -145,10 +138,10 @@ func Load(root string) (Settings, error) {
 		return settings, nil
 	}
 	if settings.Plane.Workspace == "" {
-		return Settings{}, fmt.Errorf("%s: taskProvider.workspace is required when taskProvider.type is plane", name)
+		return Settings{}, fmt.Errorf("%s: taskProvider.workspace is required when taskProvider.type is plane", ConfigFileName)
 	}
 	if settings.Plane.FleetProject == "" {
-		return Settings{}, fmt.Errorf("%s: taskProvider.fleetProject is required when taskProvider.type is plane", name)
+		return Settings{}, fmt.Errorf("%s: taskProvider.fleetProject is required when taskProvider.type is plane", ConfigFileName)
 	}
 	return settings, nil
 }

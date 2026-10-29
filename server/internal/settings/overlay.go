@@ -7,16 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
 )
 
-// OverlayFileName is the machine overlay Save writes. A Data root from before
-// the rename keeps its settings through LegacyOverlayFileName until the next Save.
-const (
-	OverlayFileName       = "fleet.local.yaml"
-	LegacyOverlayFileName = "core.local.yaml"
-)
+// OverlayFileName is the machine overlay Save writes.
+const OverlayFileName = "fleet.local.yaml"
 
 var knownAgentIDs = []string{"claude", "codex", "cursor", "gemini"}
 
@@ -51,18 +46,16 @@ func OverlayPath(root string) string {
 }
 
 func LoadOverlay(root string) (Overlay, error) {
-	path := appconfig.ReadPath(root, OverlayFileName, LegacyOverlayFileName)
-	name := filepath.Base(path)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(OverlayPath(root))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Overlay{Agents: map[string]AgentOverlay{}}, nil
 		}
-		return Overlay{}, fmt.Errorf("read %s: %w", name, err)
+		return Overlay{}, fmt.Errorf("read %s: %w", OverlayFileName, err)
 	}
 	overlay, err := ParseOverlay(data)
 	if err != nil {
-		return Overlay{}, fmt.Errorf("parse %s: %w", name, err)
+		return Overlay{}, fmt.Errorf("parse %s: %w", OverlayFileName, err)
 	}
 	return overlay, nil
 }
@@ -70,11 +63,6 @@ func LoadOverlay(root string) (Overlay, error) {
 func SaveOverlay(root string, overlay Overlay) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return fmt.Errorf("create overlay dir: %w", err)
-	}
-	// Ignore the new name before it exists: a Data root made from the old
-	// template only lists the old one.
-	if err := appconfig.EnsureIgnored(root, "/"+OverlayFileName); err != nil {
-		return err
 	}
 	data := EncodeOverlay(overlay)
 	tmp, err := os.CreateTemp(root, ".fleet.local.yaml.*")
@@ -100,10 +88,6 @@ func SaveOverlay(root string, overlay Overlay) error {
 	}
 	if err := os.Rename(tmpName, OverlayPath(root)); err != nil {
 		return fmt.Errorf("replace %s: %w", OverlayFileName, err)
-	}
-	// The overlay now lives under its new name; a stale legacy copy would only confuse.
-	if err := os.Remove(filepath.Join(root, LegacyOverlayFileName)); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove legacy %s: %w", LegacyOverlayFileName, err)
 	}
 	return nil
 }

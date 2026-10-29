@@ -9,8 +9,6 @@ Markdown.
 
 An optional `fleet.config.yaml` in the data root. No file means Markdown.
 
-Data roots created before the rename keep working: `core.config.yaml` is read when there is no `fleet.config.yaml`, and `coreProject` is read when there is no `fleetProject`. The machine overlay that Settings writes moved the same way, `core.local.yaml` to `fleet.local.yaml`; the next Save writes the new file and removes the old one.
-
 ```yaml
 taskProvider:
   type: plane
