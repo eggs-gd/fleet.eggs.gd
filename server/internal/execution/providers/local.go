@@ -6,7 +6,7 @@ import (
 )
 
 // LocalAgent is the machine overlay for one registered executor. Launch and
-// discovery read this; Settings persists it in core.local.yaml.
+// discovery read this; Settings persists it in fleet.local.yaml.
 type LocalAgent struct {
 	Enabled    *bool
 	Executable string

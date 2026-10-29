@@ -1,5 +1,6 @@
 <script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import type { AnyRecord } from '../../lib/types';
 
   export let diagnostics: AnyRecord = {};
@@ -71,8 +72,4 @@
   </div>
 </section>
 
-{#if diagnostics.notes?.length}
-  <ul class="settings-notes">
-    {#each diagnostics.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={diagnostics.notes} />

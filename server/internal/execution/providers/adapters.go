@@ -57,9 +57,9 @@ func resolveClaudeBinary() (string, error) {
 func resolveClaudeBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("claude"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Claude executable"); err != nil {
-			return "", "core.local.yaml", err
+			return "", "fleet.local.yaml", err
 		}
-		return overlay, "core.local.yaml", nil
+		return overlay, "fleet.local.yaml", nil
 	}
 	if path, err := exec.LookPath("claude"); err == nil {
 		return path, "path", nil
@@ -145,7 +145,7 @@ func codexMissingCLIDiagnostic() string {
 // resolveCodexBinary finds the official standalone Codex CLI for daemon
 // launches (CORE-151). Resolution order:
 //  1. FLEET_CODEX_BINARY — process env wins over overlay;
-//  2. core.local.yaml agents.codex.executable;
+//  2. fleet.local.yaml agents.codex.executable;
 //  3. exec.LookPath("codex") — shell-visible standalone install.
 //
 // ChatGPT.app's bundled binary is intentionally not a fallback: silent use of
@@ -168,9 +168,9 @@ func resolveCodexBinaryWithSource() (string, string, error) {
 	}
 	if overlay := localExecutable("codex"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Codex executable"); err != nil {
-			return "", "core.local.yaml", err
+			return "", "fleet.local.yaml", err
 		}
-		return overlay, "core.local.yaml", nil
+		return overlay, "fleet.local.yaml", nil
 	}
 	if path, err := exec.LookPath("codex"); err == nil {
 		return path, "path", nil
@@ -234,9 +234,9 @@ func resolveCursorAgentBinary() (string, error) {
 func resolveCursorAgentBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("cursor"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Cursor executable"); err != nil {
-			return "", "core.local.yaml", err
+			return "", "fleet.local.yaml", err
 		}
-		return overlay, "core.local.yaml", nil
+		return overlay, "fleet.local.yaml", nil
 	}
 	if path, err := exec.LookPath("cursor-agent"); err == nil {
 		return path, "path", nil
@@ -320,9 +320,9 @@ func resolveGeminiBinary() (string, error) {
 func resolveGeminiBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("gemini"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Gemini executable"); err != nil {
-			return "", "core.local.yaml", err
+			return "", "fleet.local.yaml", err
 		}
-		return overlay, "core.local.yaml", nil
+		return overlay, "fleet.local.yaml", nil
 	}
 	if path, err := exec.LookPath("agy"); err == nil {
 		return path, "path", nil

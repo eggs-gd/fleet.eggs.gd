@@ -7,8 +7,8 @@ import (
 
 const (
 	SourceDefault = "default"
-	SourceConfig  = "core.config.yaml"
-	SourceLocal   = "core.local.yaml"
+	SourceConfig  = "fleet.config.yaml"
+	SourceLocal   = "fleet.local.yaml"
 	SourceEnv     = "env"
 	SourcePath    = "path"
 	SourceBundled = "bundled"
@@ -119,15 +119,15 @@ type TaskBackend struct {
 }
 
 type PlaneInspect struct {
-	Workspace   string            `json:"workspace,omitempty"`
-	BaseURL     string            `json:"base_url,omitempty"`
-	TokenEnv    string            `json:"token_env,omitempty"`
-	TokenEnvSet bool              `json:"token_env_set"`
-	CoreProject string            `json:"core_project,omitempty"`
-	Repository  string            `json:"repository,omitempty"`
-	StatusMap   map[string]string `json:"status_map,omitempty"`
-	Active      bool              `json:"active"`
-	Notes       string            `json:"notes,omitempty"`
+	Workspace    string            `json:"workspace,omitempty"`
+	BaseURL      string            `json:"base_url,omitempty"`
+	TokenEnv     string            `json:"token_env,omitempty"`
+	TokenEnvSet  bool              `json:"token_env_set"`
+	FleetProject string            `json:"fleet_project,omitempty"`
+	Repository   string            `json:"repository,omitempty"`
+	StatusMap    map[string]string `json:"status_map,omitempty"`
+	Active       bool              `json:"active"`
+	Notes        string            `json:"notes,omitempty"`
 }
 
 type Agents struct {

@@ -12,9 +12,9 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
-// Core <-> Plane priority mapping. Plane's priority enum
+// Fleet <-> Plane priority mapping. Plane's priority enum
 // (urgent/high/medium/low/none) is coarser in name but the same cardinality
-// as Core's 1-5 scale, so this is a direct, deterministic bijection — no
+// as Fleet's 1-5 scale, so this is a direct, deterministic bijection — no
 // project-specific configuration needed, unlike status.
 var corePriorityToPlane = map[int]string{1: "urgent", 2: "high", 3: "medium", 4: "low", 5: "none"}
 var planePriorityToCore = map[string]int{"urgent": 1, "high": 2, "medium": 3, "low": 4, "none": 5}
@@ -35,10 +35,10 @@ func corePriorityForPlane(priority string) int {
 
 // groupFallbackStatus maps a Plane workflow state's *group* (backlog /
 // unstarted / started / completed / cancelled — the only classification
-// every Plane state is guaranteed to carry) onto the closest Core status.
+// every Plane state is guaranteed to carry) onto the closest Fleet status.
 // Used only when a state's name does not match the configured/identity
 // status map, so an unrecognized-but-valid Plane state degrades to a
-// reasonable Core status instead of Core failing to load the task at all.
+// reasonable Fleet status instead of Fleet failing to load the task at all.
 var groupFallbackStatus = map[string]string{
 	"backlog":   "backlog",
 	"unstarted": "todo",
@@ -47,8 +47,8 @@ var groupFallbackStatus = map[string]string{
 	"cancelled": "archived",
 }
 
-// effectiveStatusMap returns the Core-status -> Plane-state-name mapping:
-// identity by default (a Core status maps to a Plane state literally named
+// effectiveStatusMap returns the Fleet-status -> Plane-state-name mapping:
+// identity by default (a Fleet status maps to a Plane state literally named
 // the same thing, case-insensitively), overridden per status by
 // settings.StatusMap. Determinism first (Ground Rule 1): no fuzzy guessing
 // beyond the documented group fallback in statusForState.
@@ -65,7 +65,7 @@ func (p *Provider) effectiveStatusMap() map[string]string {
 	return out
 }
 
-// stateIDForStatus resolves a Core status to the Plane state UUID to write.
+// stateIDForStatus resolves a Fleet status to the Plane state UUID to write.
 // Returns an error (not a guess) when the target project has no state
 // matching the configured/identity name — a missing state is a setup
 // problem the operator must fix, not something to paper over.
@@ -77,10 +77,10 @@ func (p *Provider) stateIDForStatus(status string, states []stateObj) (string, e
 			return s.ID, nil
 		}
 	}
-	return "", fmt.Errorf("plane: project %s has no workflow state named %q for Core status %q (configure taskProvider.statusMap in %s or rename/add a matching state)", p.settings.ProjectID, wantName, status, "core.config.yaml")
+	return "", fmt.Errorf("plane: project %s has no workflow state named %q for Fleet status %q (configure taskProvider.statusMap in %s or rename/add a matching state)", p.settings.ProjectID, wantName, status, "fleet.config.yaml")
 }
 
-// statusForState resolves a Plane work item's state back to a Core status:
+// statusForState resolves a Plane work item's state back to a Fleet status:
 // exact name match against the effective status map first, then the state's
 // group as a coarse fallback.
 func (p *Provider) statusForState(state *stateRef, states []stateObj) string {
@@ -111,13 +111,13 @@ func (p *Provider) statusForState(state *stateRef, states []stateObj) string {
 	return "todo"
 }
 
-// Core-specific enum metadata (assignee, task type) has no native Plane
+// Fleet-specific enum metadata (assignee, task type) has no native Plane
 // field that fits a closed worker-identity vocabulary (Plane "assignees" are
 // real workspace members/UUIDs, not "claude"/"codex"/"cursor"/"unassigned").
-// Rather than requiring a Plane member account per Core worker, both are
+// Rather than requiring a Plane member account per Fleet worker, both are
 // carried as project labels — visible in the Plane UI, queryable, and
 // requiring no Plane user-management setup. See the architecture note for
-// the alternatives considered (custom fields, a dedicated Core member per
+// the alternatives considered (custom fields, a dedicated Fleet member per
 // worker) and why labels won.
 const assigneeLabelPrefix = "core:assignee:"
 const typeLabelPrefix = "core:type:"
@@ -226,7 +226,7 @@ func stripHTML(text string) string {
 	return strings.TrimSpace(html.UnescapeString(htmlTagPattern.ReplaceAllString(text, "")))
 }
 
-// formatCommentHTML renders a Core review comment the same
+// formatCommentHTML renders a Fleet review comment the same
 // "author: text" convention the Markdown adapter's "## Review Comments"
 // section already uses (see tasklifecycle's appendReviewComment), so a
 // human reading either backend sees the same authorship convention. Plane

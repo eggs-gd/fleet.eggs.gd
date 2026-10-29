@@ -3,7 +3,7 @@
 // It owns every Plane-coupled concern for tasks:
 //
 //   - REST API calls (client.go / entities.go)
-//   - Plane work-item IDs and Core CORE-N ref mapping (external_id)
+//   - Plane work-item IDs and Fleet CORE-N ref mapping (external_id)
 //   - state/status and priority mapping (mapping.go)
 //   - comments, labels (assignee/type), pagination, API errors
 //   - provider-specific metadata placement (see _docs/PLANE_TASK_PROVIDER.md)
@@ -17,7 +17,7 @@
 //
 // client.go is the thin HTTP layer: request/response JSON, auth, pagination,
 // and error classification. provider.go and mapping.go own what a Plane work
-// item means to Core.
+// item means to Fleet.
 package plane
 
 import (
@@ -34,7 +34,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
-// externalSource tags every Core-created work item/comment/label so Core can
+// externalSource tags every Fleet-created work item/comment/label so Fleet can
 // find its own records via Plane's external_id/external_source filter
 // (list-issues supports external_id + external_source query params) without
 // colliding with issues created by other integrations.
@@ -43,8 +43,8 @@ const externalSource = "core"
 const defaultBaseURL = "https://api.plane.so"
 
 // ClientConfig configures a low-level Plane REST client scoped to one
-// workspace/project — the shape Core needs, since one Provider maps to
-// exactly one Core project (see providerconfig.PlaneSettings.CoreProject).
+// workspace/project — the shape Fleet needs, since one Provider maps to
+// exactly one Fleet project (see providerconfig.PlaneSettings.FleetProject).
 type ClientConfig struct {
 	BaseURL    string
 	Workspace  string
@@ -55,7 +55,7 @@ type ClientConfig struct {
 
 // Client is the low-level Plane REST client. It knows Plane's URL shape,
 // auth header, and pagination/error conventions; it does not know what a
-// Core Task is.
+// Fleet Task is.
 type Client struct {
 	baseURL   string
 	workspace string

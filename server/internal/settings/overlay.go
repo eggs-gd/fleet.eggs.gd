@@ -7,14 +7,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
 )
 
-const OverlayFileName = "core.local.yaml"
+// OverlayFileName is the machine overlay Save writes. A Data root from before
+// the rename keeps its settings through LegacyOverlayFileName until the next Save.
+const (
+	OverlayFileName       = "fleet.local.yaml"
+	LegacyOverlayFileName = "core.local.yaml"
+)
 
 var knownAgentIDs = []string{"claude", "codex", "cursor", "gemini"}
 
-// Overlay is the gitignored machine overlay merged above core.config.yaml
+// Overlay is the gitignored machine overlay merged above fleet.config.yaml
 // and below process environment.
 type Overlay struct {
 	ScanRoots      []string
@@ -45,17 +51,18 @@ func OverlayPath(root string) string {
 }
 
 func LoadOverlay(root string) (Overlay, error) {
-	path := OverlayPath(root)
+	path := appconfig.ReadPath(root, OverlayFileName, LegacyOverlayFileName)
+	name := filepath.Base(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Overlay{Agents: map[string]AgentOverlay{}}, nil
 		}
-		return Overlay{}, fmt.Errorf("read %s: %w", OverlayFileName, err)
+		return Overlay{}, fmt.Errorf("read %s: %w", name, err)
 	}
 	overlay, err := ParseOverlay(data)
 	if err != nil {
-		return Overlay{}, fmt.Errorf("parse %s: %w", OverlayFileName, err)
+		return Overlay{}, fmt.Errorf("parse %s: %w", name, err)
 	}
 	return overlay, nil
 }
@@ -65,7 +72,7 @@ func SaveOverlay(root string, overlay Overlay) error {
 		return fmt.Errorf("create overlay dir: %w", err)
 	}
 	data := EncodeOverlay(overlay)
-	tmp, err := os.CreateTemp(root, ".core.local.yaml.*")
+	tmp, err := os.CreateTemp(root, ".fleet.local.yaml.*")
 	if err != nil {
 		return fmt.Errorf("create overlay temp: %w", err)
 	}
@@ -88,6 +95,10 @@ func SaveOverlay(root string, overlay Overlay) error {
 	}
 	if err := os.Rename(tmpName, OverlayPath(root)); err != nil {
 		return fmt.Errorf("replace %s: %w", OverlayFileName, err)
+	}
+	// The overlay now lives under its new name; a stale legacy copy would only confuse.
+	if err := os.Remove(filepath.Join(root, LegacyOverlayFileName)); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove legacy %s: %w", LegacyOverlayFileName, err)
 	}
 	return nil
 }
@@ -115,7 +126,7 @@ const (
 )
 
 // ResolveLaunchMode decides whether serve only plans launches. --live and
-// --dry-run win over core.local.yaml, which wins over the default (dry-run). It
+// --dry-run win over fleet.local.yaml, which wins over the default (dry-run). It
 // returns dryRun.
 func ResolveLaunchMode(flagLive, flagDryRun bool, overlay Overlay) (dryRun bool, err error) {
 	switch {
@@ -139,7 +150,7 @@ func ResolveLaunchMode(flagLive, flagDryRun bool, overlay Overlay) (dryRun bool,
 const DefaultSessionTimeout = 10 * time.Minute
 
 // ResolveServeTimeout uses an explicit --session-timeout when the flag was
-// passed. Otherwise it uses core.local.yaml, then the default. The overlay
+// passed. Otherwise it uses fleet.local.yaml, then the default. The overlay
 // value applies on the next serve; a running process keeps the timeout it
 // started with.
 func ResolveServeTimeout(flagSet bool, flagValue time.Duration, overlay Overlay) (time.Duration, error) {

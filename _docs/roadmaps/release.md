@@ -68,7 +68,7 @@ checksums.txt
 - **немає.** Dry-run не видно на екрані Work: задача в `todo` просто висить. Потрібен постійний банер і показ того, що було б запущено.
 - **немає.** Після «Set up later» Manager-сесію не створити: Settings → Agents лише підхоплює наявні сесії.
 - **немає.** «New Task» без проєктів веде в глухий кут (`project is required`), а додати папку для сканування ховається глибоко в Settings.
-- **немає.** Settings → General читається як дамп для розробника: внутрішні назви (`core_root`, `Dashboard.Bootstrap → …`), «MISSING» для необовʼязкових файлів. Лишки старої назви Core (`core.local.yaml`, `core.config.yaml`) краще прибрати, поки v0.x.
+- **немає.** Settings → General читається як дамп для розробника: внутрішні назви (`core_root`, `Dashboard.Bootstrap → …`), «MISSING» для необовʼязкових файлів. Лишки старої назви Core (`fleet.local.yaml`, `fleet.config.yaml`) краще прибрати, поки v0.x.
 - **немає.** Шлях встановлення: Release workflow, `install.sh`, нотаризація, або чесний CTA «збери з коду» замість Download.
 - **немає.** Демо (GIF чи відео) у README.
 

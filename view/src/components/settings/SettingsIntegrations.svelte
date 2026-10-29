@@ -1,5 +1,6 @@
 <script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import type { AnyRecord } from '../../lib/types';
 
   export let integrations: AnyRecord = {};
@@ -67,8 +68,4 @@
   {/each}
 </section>
 
-{#if integrations.notes?.length}
-  <ul class="settings-notes">
-    {#each integrations.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={integrations.notes} />

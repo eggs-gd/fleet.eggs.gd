@@ -71,7 +71,7 @@ func loadIndexWorkspaces(root string, workDir string) ([]board.Workspace, error)
 func renderWorkIndex(tasks []tasklifecycle.Task, workspaces []board.Workspace, projects []board.Project) string {
 	var out strings.Builder
 	out.WriteString("# Work Index\n\n")
-	out.WriteString("Generated read-only projection from canonical Core task and workspace files. Do not edit by hand.\n\n")
+	out.WriteString("Generated read-only projection from canonical Fleet task and workspace files. Do not edit by hand.\n\n")
 	out.WriteString("## Task Queue\n\n")
 	out.WriteString("| Status | Count |\n")
 	out.WriteString("|---|---:|\n")
@@ -136,7 +136,7 @@ func writeProjectSection(out *strings.Builder, projects []board.Project, tasks [
 
 func writeWorkspaceSection(out *strings.Builder, workspaces []board.Workspace) {
 	out.WriteString("## Workspaces\n\n")
-	out.WriteString("Canonical workspace cards tracked by Core.\n\n")
+	out.WriteString("Canonical workspace cards tracked by Fleet.\n\n")
 	out.WriteString("| Workspace | Kind | Repositories | Status |\n")
 	out.WriteString("|---|---|---:|---|\n")
 	for _, workspace := range workspaces {

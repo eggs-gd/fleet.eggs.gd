@@ -1,8 +1,8 @@
-// Package providerconfig loads Core's task-provider selection: which
+// Package providerconfig loads Fleet's task-provider selection: which
 // taskprovider.Provider implementation the daemon should construct, and the
 // settings that implementation needs.
 //
-// Config lives in an optional root-level core.config.yaml:
+// Config lives in an optional root-level fleet.config.yaml:
 //
 //	taskProvider:
 //	  type: markdown
@@ -14,7 +14,7 @@
 //	  workspace: eggs_gd
 //	  baseUrl: https://api.plane.so
 //	  tokenEnv: PLANE_API_TOKEN
-//	  coreProject: core-eggs-gd
+//	  fleetProject: core-eggs-gd
 //	statusMap:
 //	  backlog: Backlog
 //	  todo: Todo
@@ -27,9 +27,9 @@
 //
 // taskProvider.project (a raw Plane project UUID) may also be set, but is
 // optional: when absent, the Plane adapter resolves it at first use by
-// matching coreProject against the workspace's project list (identifier or
+// matching fleetProject against the workspace's project list (identifier or
 // name, case-insensitive). Set project explicitly only when the Plane
-// project's name doesn't match coreProject.
+// project's name doesn't match fleetProject.
 //
 // When the file is absent, Load returns the markdown default unchanged —
 // existing installs need no config file to keep working exactly as before
@@ -42,13 +42,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/mdfile"
 )
 
-// ConfigFileName is the root-relative config file Load reads.
-const ConfigFileName = "core.config.yaml"
+// ConfigFileName is the root-relative config file Load reads. Data roots
+// created before the rename keep working through LegacyConfigFileName.
+const (
+	ConfigFileName       = "fleet.config.yaml"
+	LegacyConfigFileName = "core.config.yaml"
+)
 
-// Settings is Core's resolved task-provider configuration.
+// Settings is Fleet's resolved task-provider configuration.
 type Settings struct {
 	// Type selects the taskprovider.Provider implementation: "markdown"
 	// (default) or "plane".
@@ -59,7 +64,7 @@ type Settings struct {
 }
 
 // PlaneSettings configures the Plane adapter: which workspace/project to
-// talk to, where to find the API token, and how Core statuses map onto that
+// talk to, where to find the API token, and how Fleet statuses map onto that
 // project's configured workflow states.
 type PlaneSettings struct {
 	// Workspace is the Plane workspace slug, e.g. "eggs_gd".
@@ -68,32 +73,32 @@ type PlaneSettings struct {
 	// to Plane Cloud when unset.
 	BaseURL string
 	// TokenEnv names the environment variable holding the Plane API token
-	// (never the token value itself — Core does not persist secrets in
+	// (never the token value itself — Fleet does not persist secrets in
 	// files it can commit).
 	TokenEnv string
-	// ProjectID is the Plane project UUID that holds Core-managed work
+	// ProjectID is the Plane project UUID that holds Fleet-managed work
 	// items. Optional: when unset, the Plane adapter resolves it at first
 	// use by listing the workspace's projects and matching one whose
-	// identifier or name equals CoreProject (case-insensitive) — see
+	// identifier or name equals FleetProject (case-insensitive) — see
 	// plane.Provider.ensureProjectID. Set this only to pin an explicit UUID
-	// when the Plane project's name doesn't match CoreProject.
+	// when the Plane project's name doesn't match FleetProject.
 	ProjectID string
-	// CoreProject is the Core project id (Work/<project-id>) whose tasks
+	// FleetProject is the Fleet project id (Work/<project-id>) whose tasks
 	// live in this Plane project — also the default lookup key used to find
 	// the matching Plane project when ProjectID is unset. The first Plane
-	// adapter supports mapping exactly one Core project to one Plane
+	// adapter supports mapping exactly one Fleet project to one Plane
 	// project (_docs/PLANE_TASK_PROVIDER.md, Limits).
-	CoreProject string
+	FleetProject string
 	// Repository is the single repository (relative path, matching
 	// _registry/repositories.json shape) that Plane-backed tasks under
-	// CoreProject launch against. Optional: launch validation simply fails
+	// FleetProject launch against. Optional: launch validation simply fails
 	// its repository gate (as it already does for a Markdown task with no
 	// repositories) when unset.
 	Repository string
-	// StatusMap overrides the default identity mapping from Core status
+	// StatusMap overrides the default identity mapping from Fleet status
 	// (e.g. "needs_review") to a Plane workflow state *name* configured in
-	// the target project. Keys are Core status strings; values are Plane
-	// state names, matched case-insensitively. A Core status absent from
+	// the target project. Keys are Fleet status strings; values are Plane
+	// state names, matched case-insensitively. A Fleet status absent from
 	// this map falls back to a state literally named the same as the
 	// status.
 	StatusMap map[string]string
@@ -105,10 +110,11 @@ func Default() Settings {
 	return Settings{Type: "markdown"}
 }
 
-// Load reads <root>/core.config.yaml, if present, and returns the resolved
+// Load reads <root>/fleet.config.yaml, if present, and returns the resolved
 // Settings. A missing file is not an error — it returns Default().
 func Load(root string) (Settings, error) {
-	path := filepath.Join(root, ConfigFileName)
+	path := appconfig.ReadPath(root, ConfigFileName, LegacyConfigFileName)
+	name := filepath.Base(path)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -122,27 +128,27 @@ func Load(root string) (Settings, error) {
 	settings := Default()
 	settings.Type = strings.ToLower(strings.TrimSpace(mdfile.Scalar(fm, "taskProvider.type", settings.Type)))
 	if settings.Type != "markdown" && settings.Type != "plane" {
-		return Settings{}, fmt.Errorf("%s: unknown taskProvider.type %q", ConfigFileName, settings.Type)
+		return Settings{}, fmt.Errorf("%s: unknown taskProvider.type %q", name, settings.Type)
 	}
 
 	settings.Plane = PlaneSettings{
-		Workspace:   mdfile.Scalar(fm, "taskProvider.workspace", ""),
-		BaseURL:     mdfile.Scalar(fm, "taskProvider.baseUrl", "https://api.plane.so"),
-		TokenEnv:    mdfile.Scalar(fm, "taskProvider.tokenEnv", "PLANE_API_TOKEN"),
-		ProjectID:   mdfile.Scalar(fm, "taskProvider.project", ""),
-		CoreProject: mdfile.Scalar(fm, "taskProvider.coreProject", ""),
-		Repository:  mdfile.Scalar(fm, "taskProvider.repository", ""),
-		StatusMap:   statusMapFrom(fm),
+		Workspace:    mdfile.Scalar(fm, "taskProvider.workspace", ""),
+		BaseURL:      mdfile.Scalar(fm, "taskProvider.baseUrl", "https://api.plane.so"),
+		TokenEnv:     mdfile.Scalar(fm, "taskProvider.tokenEnv", "PLANE_API_TOKEN"),
+		ProjectID:    mdfile.Scalar(fm, "taskProvider.project", ""),
+		FleetProject: mdfile.Scalar(fm, "taskProvider.fleetProject", mdfile.Scalar(fm, "taskProvider.coreProject", "")),
+		Repository:   mdfile.Scalar(fm, "taskProvider.repository", ""),
+		StatusMap:    statusMapFrom(fm),
 	}
 
 	if settings.Type != "plane" {
 		return settings, nil
 	}
 	if settings.Plane.Workspace == "" {
-		return Settings{}, fmt.Errorf("%s: taskProvider.workspace is required when taskProvider.type is plane", ConfigFileName)
+		return Settings{}, fmt.Errorf("%s: taskProvider.workspace is required when taskProvider.type is plane", name)
 	}
-	if settings.Plane.CoreProject == "" {
-		return Settings{}, fmt.Errorf("%s: taskProvider.coreProject is required when taskProvider.type is plane", ConfigFileName)
+	if settings.Plane.FleetProject == "" {
+		return Settings{}, fmt.Errorf("%s: taskProvider.fleetProject is required when taskProvider.type is plane", name)
 	}
 	return settings, nil
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import type { AnyRecord } from '../../lib/types';
 
   export let workflow: AnyRecord = {};
@@ -62,8 +63,4 @@
   {/each}
 </section>
 
-{#if workflow.notes?.length}
-  <ul class="settings-notes">
-    {#each workflow.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={workflow.notes} />

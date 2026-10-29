@@ -78,7 +78,7 @@ the outcome protocol and per-agent notes: [AGENT_LAUNCHER](AGENT_LAUNCHER.md).
 
 Fleet starts in dry-run: it plans launches and logs them but starts no
 process. `--live` (or the saved launch mode in Settings) turns launching on.
-Precedence: command-line flag, then the saved mode in `core.local.yaml`, then
+Precedence: command-line flag, then the saved mode in `fleet.local.yaml`, then
 dry-run.
 
 ## Storage
@@ -90,8 +90,8 @@ dry-run.
 | Runtime sessions, session logs, audit events, Manager relay log | `~/.fleet/runtime.db` (SQLite, mode 0600) |
 | Local launch token | `~/.fleet/launch-token` |
 | Saved data-root choice | `~/.fleet/app.json` |
-| Per-install settings (agents, launch mode, scan roots) | `core.local.yaml` in the data root |
-| Task provider selection | `core.config.yaml` in the data root |
+| Per-install settings (agents, launch mode, scan roots) | `fleet.local.yaml` in the data root |
+| Task provider selection | `fleet.config.yaml` in the data root |
 
 Runtime state lives outside the data root and outside any git repository. A
 database from an older layout is imported from its `_registry` files on first

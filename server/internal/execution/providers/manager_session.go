@@ -61,7 +61,7 @@ func StartCodexManagerThread(ctx context.Context, workingDir string, logFile io.
 					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
 				}
 				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Core manager setup does not service server-initiated requests")
+					_ = client.respondError(msg.ID, -32601, "Fleet manager setup does not service server-initiated requests")
 					continue
 				}
 				if codexMessageID(msg) == id {

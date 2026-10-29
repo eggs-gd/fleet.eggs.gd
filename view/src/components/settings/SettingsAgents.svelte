@@ -1,5 +1,6 @@
 <script lang="ts">
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import { fieldHint } from '../../lib/settingsDraft';
   import {
     capabilityRows,
@@ -42,7 +43,7 @@
   <h3>Workers</h3>
   <p class="settings-lede">
     Registered executor providers only. Save writes overlay enabled/executable/routing. Recheck
-    probes discovery and does not write core.local.yaml.
+    probes discovery and does not write fleet.local.yaml.
   </p>
   <div class="settings-row">
     <span class="settings-key">Discovery</span>
@@ -176,8 +177,4 @@
   {/each}
 </section>
 
-{#if agents.notes?.length}
-  <ul class="settings-notes">
-    {#each agents.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={agents.notes} />

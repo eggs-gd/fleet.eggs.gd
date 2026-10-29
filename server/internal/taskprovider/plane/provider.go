@@ -28,7 +28,7 @@ const requestTimeout = 20 * time.Second
 
 // cacheTTL bounds how long states/labels are trusted between refetches.
 // Both change rarely (an operator editing project workflow/labels in the
-// Plane UI) relative to Core's task pickup cadence, so caching them avoids
+// Plane UI) relative to Fleet's task pickup cadence, so caching them avoids
 // spending a meaningful fraction of Plane's 60 req/min budget on metadata
 // that is not the thing actually changing.
 const cacheTTL = 60 * time.Second
@@ -56,7 +56,7 @@ type Provider struct {
 }
 
 // New builds a Plane-backed taskprovider.Provider. coreRoot is needed only
-// to allocate refs from the tag of the mapped Core project and the same
+// to allocate refs from the tag of the mapped Fleet project and the same
 // _registry/counters.json the Markdown adapter uses (refs must never collide
 // between providers — see tasklifecycle.AllocateNextRef).
 func New(settings providerconfig.PlaneSettings, apiToken string, coreRoot string) *Provider {
@@ -103,7 +103,7 @@ func requestContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), requestTimeout)
 }
 
-// ensureProjectID resolves p.client.projectID by matching settings.CoreProject
+// ensureProjectID resolves p.client.projectID by matching settings.FleetProject
 // against the workspace's project list (case-insensitively, by Plane
 // identifier or name), when config did not pin a raw project UUID. An
 // explicit settings.ProjectID always wins and skips the lookup entirely.
@@ -119,10 +119,10 @@ func (p *Provider) ensureProjectID(ctx context.Context) error {
 	}
 	projects, err := p.client.ListProjects(ctx)
 	if err != nil {
-		return fmt.Errorf("plane: resolve project for core project %q: %w", p.settings.CoreProject, err)
+		return fmt.Errorf("plane: resolve project for core project %q: %w", p.settings.FleetProject, err)
 	}
 	for _, project := range projects {
-		if strings.EqualFold(project.Identifier, p.settings.CoreProject) || strings.EqualFold(project.Name, p.settings.CoreProject) {
+		if strings.EqualFold(project.Identifier, p.settings.FleetProject) || strings.EqualFold(project.Name, p.settings.FleetProject) {
 			// Keep both in sync: client.projectID drives request URLs,
 			// settings.ProjectID is what locatorFor/RelativePath and error
 			// messages elsewhere in this package read directly.
@@ -131,12 +131,12 @@ func (p *Provider) ensureProjectID(ctx context.Context) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("plane: no project in workspace %q matches core project %q by identifier or name — pin taskProvider.project explicitly or rename the Plane project", p.settings.Workspace, p.settings.CoreProject)
+	return fmt.Errorf("plane: no project in workspace %q matches core project %q by identifier or name — pin taskProvider.project explicitly or rename the Plane project", p.settings.Workspace, p.settings.FleetProject)
 }
 
-// List returns every Plane work item Core created (or synced) in the
+// List returns every Plane work item Fleet created (or synced) in the
 // configured project. Comments are fetched only for "blocked" tasks — the
-// one status where Core actually reads Comments to derive BlockedReason for
+// one status where Fleet actually reads Comments to derive BlockedReason for
 // the dashboard/pickup surfaces — to keep a full List() call within Plane's
 // 60 requests/minute budget regardless of board size. A single-task detail
 // view always has full comments via Load.
@@ -211,7 +211,7 @@ func (p *Provider) Load(locator string) (Task, error) {
 
 // CreateFromRequest validates req with the same rules the Markdown adapter
 // uses (tasklifecycle.NormalizeTaskCreateRequest), allocates a ref from the
-// tag of the Core project this Plane project is mapped to, and creates the corresponding Plane work item with that ref recorded
+// tag of the Fleet project this Plane project is mapped to, and creates the corresponding Plane work item with that ref recorded
 // in external_id/external_source.
 func (p *Provider) CreateFromRequest(req TaskCreateRequest) (Task, error) {
 	normalized, err := tasklifecycle.NormalizeTaskCreateRequest(req)
@@ -221,11 +221,11 @@ func (p *Provider) CreateFromRequest(req TaskCreateRequest) (Task, error) {
 	if !tasklifecycle.KnownAssignee(p.coreRoot, normalized.Assignee) {
 		return Task{}, fmt.Errorf("unknown assignee %q: use unassigned, an agent, or a person with a Fleet/<name>.md file", normalized.Assignee)
 	}
-	if normalized.Project != "" && !strings.EqualFold(normalized.Project, p.settings.CoreProject) {
-		return Task{}, fmt.Errorf("plane: project %q is not served by this provider (configured for %q)", normalized.Project, p.settings.CoreProject)
+	if normalized.Project != "" && !strings.EqualFold(normalized.Project, p.settings.FleetProject) {
+		return Task{}, fmt.Errorf("plane: project %q is not served by this provider (configured for %q)", normalized.Project, p.settings.FleetProject)
 	}
 
-	tag, err := projecttag.ForProject(p.coreRoot, p.settings.CoreProject)
+	tag, err := projecttag.ForProject(p.coreRoot, p.settings.FleetProject)
 	if err != nil {
 		return Task{}, err
 	}
@@ -440,9 +440,9 @@ func (p *Provider) taskFromWorkItem(item workItem, states []stateObj, labels []l
 		Type:          typeFromLabels(names),
 		Status:        status,
 		Priority:      corePriorityForPlane(item.Priority),
-		Project:       p.settings.CoreProject,
-		ProjectID:     p.settings.CoreProject,
-		WorkspaceID:   p.settings.CoreProject,
+		Project:       p.settings.FleetProject,
+		ProjectID:     p.settings.FleetProject,
+		WorkspaceID:   p.settings.FleetProject,
 		Repositories:  repositoriesFor(p.settings.Repository),
 		Assignee:      assignee,
 		Source:        "plane",

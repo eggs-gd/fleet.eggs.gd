@@ -13,7 +13,7 @@ export function draftFromSnapshot(snapshot?: SettingsSnapshot | null): SettingsD
       enabled: agent.enabled?.value !== false,
       executable: agent.configured_executable?.value || '',
       routingInstructions:
-        agent.routing_instructions?.source === 'core.local.yaml'
+        agent.routing_instructions?.source === 'fleet.local.yaml'
           ? agent.routing_instructions.value || ''
           : ''
     };

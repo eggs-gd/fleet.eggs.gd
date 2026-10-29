@@ -1,6 +1,7 @@
 <script lang="ts">
   import { apiFetch } from '../../lib/api';
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import { timeAgo } from '../../lib/taskDisplay';
   import type { AnyRecord } from '../../lib/types';
   import { managerCreated, openManagerSetup } from '../../stores/managerSetup';
@@ -123,8 +124,4 @@
   {/if}
 </section>
 
-{#if manager.notes?.length}
-  <ul class="settings-notes">
-    {#each manager.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={manager.notes} />

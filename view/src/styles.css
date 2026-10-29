@@ -569,6 +569,16 @@ code {
   font-size: var(--text-sm);
 }
 
+.settings-tech {
+  margin-top: var(--space-lg);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.settings-tech summary {
+  cursor: pointer;
+}
+
 .settings-table-wrap {
   overflow-x: auto;
 }

@@ -88,7 +88,7 @@ func NewMarkdown(root, runtimeRoot string, board *taskprovider.Board) *markdown.
 				hadBefore = true
 			}
 			changes := taskProjectionChangeSummary(before, task, hadBefore)
-			emitTaskEvent(runtimeRoot, "core_projected", task, "Task file projected into runtime state", map[string]any{
+			emitTaskEvent(runtimeRoot, "fleet_projected", task, "Task file projected into runtime state", map[string]any{
 				"stage":      "project",
 				"kind":       "task",
 				"event_kind": observed.Event.Kind,

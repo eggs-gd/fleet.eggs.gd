@@ -98,7 +98,7 @@ func TestSettingsRescanConflictWhenBusy(t *testing.T) {
 	if err := os.MkdirAll(scanRoot, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "core.local.yaml"), []byte("scanRoots:\n  - "+scanRoot+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "fleet.local.yaml"), []byte("scanRoots:\n  - "+scanRoot+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	started := make(chan struct{})

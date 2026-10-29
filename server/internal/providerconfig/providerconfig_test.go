@@ -36,7 +36,7 @@ func TestLoadPlaneWithStatusMapAndRepository(t *testing.T) {
   baseUrl: https://api.plane.so
   tokenEnv: PLANE_API_TOKEN
   project: 550e8400-e29b-41d4-a716-446655440000
-  coreProject: core-eggs-gd
+  fleetProject: core-eggs-gd
   repository: core.eggs.gd
 statusMap:
   needs_review: In Review
@@ -58,8 +58,8 @@ statusMap:
 	if settings.Plane.ProjectID != "550e8400-e29b-41d4-a716-446655440000" {
 		t.Fatalf("ProjectID = %q", settings.Plane.ProjectID)
 	}
-	if settings.Plane.CoreProject != "core-eggs-gd" {
-		t.Fatalf("CoreProject = %q", settings.Plane.CoreProject)
+	if settings.Plane.FleetProject != "core-eggs-gd" {
+		t.Fatalf("FleetProject = %q", settings.Plane.FleetProject)
 	}
 	if settings.Plane.Repository != "core.eggs.gd" {
 		t.Fatalf("Repository = %q", settings.Plane.Repository)
@@ -69,11 +69,11 @@ statusMap:
 	}
 }
 
-func TestLoadPlaneRequiresWorkspaceProjectAndCoreProject(t *testing.T) {
+func TestLoadPlaneRequiresWorkspaceProjectAndFleetProject(t *testing.T) {
 	root := t.TempDir()
 	writeConfig(t, root, "taskProvider:\n  type: plane\n")
 	if _, err := Load(root); err == nil {
-		t.Fatal("expected an error when taskProvider.workspace/project/coreProject are missing")
+		t.Fatal("expected an error when taskProvider.workspace/project/fleetProject are missing")
 	}
 }
 
@@ -89,5 +89,39 @@ func writeConfig(t *testing.T, root string, content string) {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(root, ConfigFileName), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestLoadReadsALegacyConfigAndTheOldProjectKey(t *testing.T) {
+	root := t.TempDir()
+	legacy := `taskProvider:
+  type: plane
+  workspace: eggs_gd
+  coreProject: core-eggs-gd
+`
+	if err := os.WriteFile(filepath.Join(root, LegacyConfigFileName), []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Type != "plane" || settings.Plane.FleetProject != "core-eggs-gd" {
+		t.Fatalf("legacy config not honoured: %#v", settings)
+	}
+}
+
+func TestLoadPrefersTheNewConfigNameOverTheLegacyOne(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, LegacyConfigFileName), []byte("taskProvider:\n  type: plane\n  workspace: w\n  fleetProject: p\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeConfig(t, root, "taskProvider:\n  type: markdown\n")
+	settings, err := Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Type != "markdown" {
+		t.Fatalf("Type = %q: the legacy file must not win over the new one", settings.Type)
 	}
 }

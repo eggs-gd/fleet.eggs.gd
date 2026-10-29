@@ -236,11 +236,11 @@ func newTestProvider(t *testing.T, baseURL string) *Provider {
 	writeProjectCard(t, root, "CORE")
 
 	settings := providerconfig.PlaneSettings{
-		Workspace:   "eggs_gd",
-		BaseURL:     baseURL,
-		ProjectID:   "proj-1",
-		CoreProject: "core-eggs-gd",
-		Repository:  "core.eggs.gd",
+		Workspace:    "eggs_gd",
+		BaseURL:      baseURL,
+		ProjectID:    "proj-1",
+		FleetProject: "core-eggs-gd",
+		Repository:   "core.eggs.gd",
 	}
 	return New(settings, "test-token", root)
 }
@@ -417,15 +417,15 @@ func newTestProviderNoProjectID(t *testing.T, baseURL string) *Provider {
 	writeProjectCard(t, root, "CORE")
 
 	settings := providerconfig.PlaneSettings{
-		Workspace:   "eggs_gd",
-		BaseURL:     baseURL,
-		CoreProject: "core-eggs-gd",
-		Repository:  "core.eggs.gd",
+		Workspace:    "eggs_gd",
+		BaseURL:      baseURL,
+		FleetProject: "core-eggs-gd",
+		Repository:   "core.eggs.gd",
 	}
 	return New(settings, "test-token", root)
 }
 
-func TestProvider_ResolvesProjectIDByCoreProjectMatch(t *testing.T) {
+func TestProvider_ResolvesProjectIDByFleetProjectMatch(t *testing.T) {
 	fake := newFakePlane()
 	fake.projects = []projectObj{
 		{ID: "other-proj", Identifier: "OTH", Name: "some-other-repo"},
@@ -457,7 +457,7 @@ func TestProvider_ResolveProjectIDNoMatchReturnsError(t *testing.T) {
 
 	_, err := provider.List()
 	if err == nil {
-		t.Fatal("expected List to fail when no workspace project matches coreProject")
+		t.Fatal("expected List to fail when no workspace project matches fleetProject")
 	}
 	if !strings.Contains(err.Error(), "no project in workspace") {
 		t.Fatalf("expected a clear no-match error, got: %v", err)
@@ -509,7 +509,7 @@ func writeProjectCard(t *testing.T, root, tag string) {
 	}
 }
 
-func TestProvider_CreateTakesTheTagOfTheMappedCoreProject(t *testing.T) {
+func TestProvider_CreateTakesTheTagOfTheMappedFleetProject(t *testing.T) {
 	fake := newFakePlane()
 	server := fake.server(t)
 	defer server.Close()

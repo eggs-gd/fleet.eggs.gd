@@ -42,9 +42,9 @@ func TestNewTaskProviderSelectsPlane(t *testing.T) {
 		Settings: providerconfig.Settings{
 			Type: "plane",
 			Plane: providerconfig.PlaneSettings{
-				Workspace:   "eggs_gd",
-				ProjectID:   "proj-1",
-				CoreProject: "core-eggs-gd",
+				Workspace:    "eggs_gd",
+				ProjectID:    "proj-1",
+				FleetProject: "core-eggs-gd",
 			},
 		},
 		Board: taskprovider.NewBoard(root),
@@ -70,9 +70,9 @@ func TestTaskproviderNewServiceAcceptsPlaneProvider(t *testing.T) {
 		Settings: providerconfig.Settings{
 			Type: "plane",
 			Plane: providerconfig.PlaneSettings{
-				Workspace:   "eggs_gd",
-				ProjectID:   "proj-1",
-				CoreProject: "core-eggs-gd",
+				Workspace:    "eggs_gd",
+				ProjectID:    "proj-1",
+				FleetProject: "core-eggs-gd",
 			},
 		},
 		Board: taskprovider.NewBoard(root),
@@ -107,10 +107,10 @@ func TestRuntimeBootstrapWithPlaneProviderSkipsWorkIndexRebuild(t *testing.T) {
 		TaskProvider: providerconfig.Settings{
 			Type: "plane",
 			Plane: providerconfig.PlaneSettings{
-				Workspace:   "eggs_gd",
-				BaseURL:     srv.URL,
-				ProjectID:   "proj-1",
-				CoreProject: "core-eggs-gd",
+				Workspace:    "eggs_gd",
+				BaseURL:      srv.URL,
+				ProjectID:    "proj-1",
+				FleetProject: "core-eggs-gd",
 			},
 		},
 	})

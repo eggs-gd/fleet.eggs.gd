@@ -17,7 +17,7 @@
 
 - Gemini launches through Google's Antigravity CLI, binary `agy` (not
   `gemini`). Daemon launches require `agy` on PATH (`exec.LookPath("agy")`).
-  Optional override: `agents.gemini.executable` in `core.local.yaml`.
+  Optional override: `agents.gemini.executable` in `fleet.local.yaml`.
 - Backend is `gemini-headless`, visibility class `cli_visible`: `agy --print
   <prompt> --output-format stream-json` is a synchronous call that blocks
   until the turn's terminal `result` event, not a background process like

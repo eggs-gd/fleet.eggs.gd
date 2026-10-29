@@ -125,7 +125,7 @@ func (d *Dashboard) Bootstrap() error {
 	}
 	_ = audit.AppendEvent(runtimeRoot, audit.Event{
 		Type:    "bootstrap_started",
-		Message: "Core runtime bootstrap started",
+		Message: "Fleet runtime bootstrap started",
 		Details: map[string]any{
 			"stage":           "scan",
 			"mode":            "initial",
@@ -154,7 +154,7 @@ func (d *Dashboard) Bootstrap() error {
 	}
 	_ = audit.AppendEvent(runtimeRoot, audit.Event{
 		Type:    "bootstrap_completed",
-		Message: "Core runtime bootstrap completed",
+		Message: "Fleet runtime bootstrap completed",
 		Details: map[string]any{
 			"stage":           "scan",
 			"mode":            "initial",

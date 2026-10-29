@@ -35,7 +35,7 @@ repositories:
 	}
 	index := string(data)
 	for _, expected := range []string{
-		"Generated read-only projection from canonical Core task and workspace files. Do not edit by hand.",
+		"Generated read-only projection from canonical Fleet task and workspace files. Do not edit by hand.",
 		"| `backlog` | 1 |",
 		"| `todo` | 1 |",
 		"| `needs_review` | 1 |",
