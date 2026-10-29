@@ -8,7 +8,7 @@ make build       # dashboard, then bin/fleet with the dashboard embedded
 make check       # go vet, the Go tests, and the dashboard tests
 ```
 
-You need Go 1.27.2 or newer (the `go` line in `server/go.mod` fetches the toolchain
+You need Go 1.27.3 or newer (the `go` line in `server/go.mod` fetches the toolchain
 for you) and Node 22.12 or newer. `make help` lists every target.
 
 `make serve` builds and runs `bin/fleet serve`. It uses the Data root saved in

@@ -22,7 +22,7 @@ Fleet's tools. Fleet does not host a chat of its own.
 ## What you need
 
 - macOS on Apple Silicon.
-- Go 1.27.2 or newer, and Node 22.12 or newer, to build it (there is no download yet).
+- Go 1.27.3 or newer, and Node 22.12 or newer, to build it (there is no download yet).
 - At least one supported agent installed and signed in: Claude, Codex, Cursor, or
   Gemini. Without one Fleet still runs, but it has nobody to give work to.
 
