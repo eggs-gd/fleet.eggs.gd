@@ -1,11 +1,21 @@
 <script lang="ts">
+  import { get } from 'svelte/store';
   import { addScanRoot } from '../../lib/scanRoots';
-  import { requestManualRefresh } from '../../stores/board';
+  import { projects, requestManualRefresh } from '../../stores/board';
 
   let path = '';
   let adding = false;
   let error = '';
   let warnings: string[] = [];
+
+  // The scan runs in the background after Save, so look again until a project shows up.
+  async function waitForProjects() {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      await requestManualRefresh();
+      if (get(projects).length) return;
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  }
 
   async function add() {
     if (adding) return;
@@ -15,7 +25,7 @@
     try {
       warnings = await addScanRoot(path);
       path = '';
-      await requestManualRefresh();
+      await waitForProjects();
     } catch (err: any) {
       error = err.message || String(err);
     } finally {

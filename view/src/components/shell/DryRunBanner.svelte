@@ -35,6 +35,7 @@
   }
 
   p {
+    flex: 1 1 320px;
     margin: 0;
   }
 

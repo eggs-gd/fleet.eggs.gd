@@ -52,7 +52,6 @@
     </span>
   </div>
   <p class="settings-hint">
-    Save, then restart Fleet for a new mode to apply.
     {general.launch_config?.warning ||
       'Live mode starts AI agents that edit files without asking each time.'}
     {#if general.launch_config?.overridden_by}
