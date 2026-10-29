@@ -137,13 +137,13 @@ func (agent Codex) Plan(task TaskContext) (Plan, error) {
 }
 
 // codexMissingCLIDiagnostic is the operator-facing setup message when the
-// daemon cannot resolve a standalone Codex CLI (CORE-151).
+// daemon cannot resolve a standalone Codex CLI.
 func codexMissingCLIDiagnostic() string {
 	return "Codex CLI is not available on the daemon PATH. Install the standalone Codex CLI or configure the Codex binary path, then retry this task."
 }
 
 // resolveCodexBinary finds the official standalone Codex CLI for daemon
-// launches (CORE-151). Resolution order:
+// launches. Resolution order:
 //  1. FLEET_CODEX_BINARY — process env wins over overlay;
 //  2. fleet.local.yaml agents.codex.executable;
 //  3. exec.LookPath("codex") — shell-visible standalone install.

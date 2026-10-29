@@ -61,7 +61,7 @@ func (p *Provider) Load(path string) (tasklifecycle.Task, error) {
 
 // Reload reloads one task card after a filesystem change. Prefer
 // ObserveFileChange when the caller also needs a normalized TaskEvent
-// for the execution chain (CORE-103).
+// for the execution chain.
 func (p *Provider) Reload(path string) (tasklifecycle.Task, error) {
 	return p.Load(path)
 }

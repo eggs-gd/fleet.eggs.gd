@@ -27,7 +27,7 @@ type OpenOptions struct {
 }
 
 // Wiring carries factory-time capabilities so composition never branches on
-// Provider.Type() strings (CORE-107).
+// Provider.Type() strings.
 type Wiring struct {
 	PollInterval time.Duration
 }

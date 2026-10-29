@@ -191,7 +191,7 @@ func looksLikeWorkerResultOnly(text string) bool {
 	if !strings.HasPrefix(trimmed, "{") || !strings.Contains(trimmed, `"outcome"`) {
 		return false
 	}
-	// If the blob is small and looks like the CORE-97 payload, ignore it.
+	// If the blob is small and looks like the worker result payload, ignore it.
 	if len(trimmed) < 2000 && !strings.Contains(trimmed, "CallMcpTool") && !strings.Contains(trimmed, "tool_use") && !strings.Contains(trimmed, "mcpToolCall") {
 		var probe map[string]any
 		if err := json.Unmarshal([]byte(trimmed), &probe); err == nil {

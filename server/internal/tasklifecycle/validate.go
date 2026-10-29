@@ -9,7 +9,7 @@ import (
 )
 
 // DependencySatisfiedStatus is the only durable status that unblocks a
-// depends_on gate. Conservative default (CORE-148): prerequisites must be
+// depends_on gate. Conservative default: prerequisites must be
 // fully accepted (`done`), not merely awaiting review.
 const DependencySatisfiedStatus = "done"
 

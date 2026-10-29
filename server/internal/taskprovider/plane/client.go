@@ -1,4 +1,4 @@
-// Package plane is the Plane-backed TaskProvider (CORE-106).
+// Package plane is the Plane-backed TaskProvider.
 //
 // It owns every Plane-coupled concern for tasks:
 //
@@ -8,7 +8,7 @@
 //   - comments, labels (assignee/type), pagination, API errors
 //   - provider-specific metadata placement (see _docs/PLANE_TASK_PROVIDER.md)
 //   - change observation: ObservePoll and ObserveWebhook →
-//     TaskEvent{Before,After,Source} (CORE-111)
+//     TaskEvent{Before,After,Source}
 //
 // *Provider satisfies taskprovider.Provider for Runtime bootstrap/sync.
 // Provider.Flow() satisfies taskflow.TaskProvider for TaskService — the same

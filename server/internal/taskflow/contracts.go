@@ -49,7 +49,7 @@ type Task struct {
 	// "" for none.
 	Milestone string
 	// DependsOn lists prerequisite refs/ids/locators that must be done before
-	// daemon launch (CORE-148). Empty means no hard dependency gate.
+	// daemon launch. Empty means no hard dependency gate.
 	DependsOn        []string
 	Assignee         string
 	AssignmentReason string
@@ -123,8 +123,8 @@ type PatchInput struct {
 	// Milestone is a pointer so callers can distinguish omit from clear: nil
 	// leaves it unchanged, a pointer to "" clears it.
 	Milestone *string
-	// DependsOn replaces the hard launch dependency list when non-nil
-	// (CORE-148). An empty slice clears depends_on.
+	// DependsOn replaces the hard launch dependency list when non-nil. An
+	// empty slice clears depends_on.
 	DependsOn     *[]string
 	Body          *string
 	Comment       string
@@ -232,7 +232,7 @@ func (e TaskEvent) StatusChanged() bool {
 // MayConsiderLaunch reports whether Contour 2 should evaluate this event for
 // agent launch. Eligibility is derived only from Before/After (deleted /
 // pickup status on After). Source is diagnostics-only and must not affect
-// this decision — Markdown and Plane share the same path (CORE-112).
+// this decision — Markdown and Plane share the same path.
 func (e TaskEvent) MayConsiderLaunch() bool {
 	if e.IsDeleted() {
 		return false

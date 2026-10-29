@@ -115,7 +115,6 @@ tag: "FLET"
 - Numbers count per tag in `_registry/counters.json` and are never reused. A
   task keeps its ref if the project's tag changes later. Only new tasks use the
   new tag.
-- A ref written before its project had a tag (for example `CORE-12`) stays valid.
 - `INBOX-<number>` is the global Inbox ref space.
 
 ### Task dependencies (`depends_on`)

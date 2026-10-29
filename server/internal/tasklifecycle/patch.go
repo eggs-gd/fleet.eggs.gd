@@ -19,7 +19,7 @@ type TaskPatch struct {
 	// never legitimately empty on a real task.
 	Milestone *string `json:"milestone"`
 	// DependsOn is a pointer so callers can distinguish omit from clear
-	// (empty list). Dashboard/UI use this for hard launch blockers (CORE-148).
+	// (empty list). Dashboard/UI use this for hard launch blockers.
 	DependsOn           *[]string `json:"depends_on"`
 	Body                *string   `json:"body"`
 	Comment             string    `json:"comment"`

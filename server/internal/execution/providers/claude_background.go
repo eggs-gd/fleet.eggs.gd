@@ -53,7 +53,7 @@ func SetBackgroundRemotePollInterval(d time.Duration) {
 // BackgroundRemoteControlReadyTimeout is how long Core waits after a
 // successful `claude --bg --remote-control` dispatch for the phone/app
 // remote-control URL to appear in `claude logs`. A background id without a
-// URL is a hollow session (CORE-142): nothing appears on desktop/mobile and
+// URL is a hollow session: nothing appears on desktop/mobile and
 // the transcript never grows. Fail that case as provider_error instead of
 // waiting the full idle-attention threshold with a misleading "open the
 // remote session" comment.
@@ -289,7 +289,7 @@ func RunBackgroundRemoteSession(ctx context.Context, session RuntimeSession, tas
 			}
 		}
 
-		// Hollow session (CORE-142 / CORE-150): background id exists but
+		// Hollow session: background id exists but
 		// Claude never published an app-visible URL. Prefer a concrete
 		// auth/quota/billing classification from provider output; only fall
 		// back to remote_control_unavailable when nothing more specific is

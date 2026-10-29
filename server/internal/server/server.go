@@ -84,7 +84,7 @@ func Serve(cfg Config) error {
 
 	// Contour 1 (Manager) and Dashboard both write through TaskService.
 	// Dashboard additionally polls RuntimeService — it is outside the three
-	// contours and must not subscribe to Go channels (CORE-114).
+	// contours and must not subscribe to Go channels.
 	managerService := manager.NewService(coreRuntime.TaskService(), boardReader{app: coreRuntime})
 	managerService.DataRoot = cfg.CoreRoot
 	managerService.OnProjectCardChanged = coreRuntime.ReloadProjectCard

@@ -6,7 +6,7 @@ import (
 )
 
 // NewValidator gates launch using tasklifecycle.EvaluateLaunch.
-// knownTasks supplies the board snapshot for depends_on resolution (CORE-148).
+// knownTasks supplies the board snapshot for depends_on resolution.
 func NewValidator(root string, knownTasks func() []Task, in <-chan *Task, out chan<- *Task) chain.Processor {
 	return chain.NewDecorator(in, out, &Validator{Root: root, KnownTasks: knownTasks})
 }

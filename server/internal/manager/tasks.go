@@ -39,7 +39,7 @@ type BoardView struct {
 
 // BoardReader provides read-only workspace/registry projection for vocabulary
 // and project/repository resolution. Task queries and mutations go through
-// TaskManagement (TaskService), never through this reader (CORE-110).
+// TaskManagement (TaskService), never through this reader.
 type BoardReader interface {
 	Board() BoardView
 }

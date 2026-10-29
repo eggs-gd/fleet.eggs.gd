@@ -175,7 +175,7 @@ func (s *Service) EvaluateAndStartCandidate(ctx context.Context, candidate Task,
 }
 
 // RequeueDependentsOf starts launch evaluation for pickup tasks that list
-// completed as a depends_on prerequisite (CORE-148).
+// completed as a depends_on prerequisite.
 func (s *Service) RequeueDependentsOf(ctx context.Context, completed Task) {
 	if s == nil || !s.cfg.AllowsProcessStart() {
 		return

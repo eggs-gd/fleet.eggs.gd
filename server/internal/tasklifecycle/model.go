@@ -4,7 +4,7 @@
 // task-facing provider errors.
 //
 // Core does not permanently own tasks; it orchestrates them. Markdown file
-// I/O lives in internal/taskprovider/markdown (CORE-102). Domain rules stay
+// I/O lives in internal/taskprovider/markdown. Domain rules stay
 // here so every provider shares identical lifecycle semantics.
 //
 // corechain (the daemon/runtime package) depends on tasklifecycle, never the
@@ -110,7 +110,7 @@ type ExecutionState struct {
 	BlockingReason string         `json:"blocking_reason,omitempty"`
 	ProviderError  *ProviderError `json:"provider_error,omitempty"`
 	// ToolWarning is a compact operator-facing note when required tools were
-	// not observed during the session (CORE-120). Full evidence lives on the
+	// not observed during the session. Full evidence lives on the
 	// runtime session, not on every task annotation.
 	ToolWarning string `json:"tool_warning,omitempty"`
 }

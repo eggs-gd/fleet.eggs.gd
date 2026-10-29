@@ -35,11 +35,11 @@ const cacheTTL = 60 * time.Second
 
 // Provider implements taskprovider.Provider against one Plane
 // workspace/project, per providerconfig.PlaneSettings. Use Flow() for the
-// taskflow.TaskProvider application contract (CORE-106). Setup and metadata
+// taskflow.TaskProvider application contract. Setup and metadata
 // placement: _docs/PLANE_TASK_PROVIDER.md.
 //
 // Provider also implements taskprovider.ChangeSource so Runtime can attach
-// the listener without Type() or *plane.Provider branches (CORE-107).
+// the listener without Type() or *plane.Provider branches.
 type Provider struct {
 	client   *Client
 	settings providerconfig.PlaneSettings
@@ -351,7 +351,7 @@ func (p *Provider) Mutate(patch TaskPatch) (Task, error) {
 		payload["description_stripped"] = *patch.Body
 		payload["description_html"] = "<p>" + htmlParagraphs(*patch.Body) + "</p>"
 	}
-	// DependsOn is Markdown-backed for CORE-148; Plane has no durable field yet.
+	// DependsOn is Markdown-backed; Plane has no durable field yet.
 	// Ignore the patch key so status/assignee updates from TaskService still work.
 
 	updated := current

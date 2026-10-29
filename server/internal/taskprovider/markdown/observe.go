@@ -8,7 +8,7 @@ import (
 )
 
 // ObserveFileChange reloads a task card after a filesystem change and returns
-// a normalized TaskEvent for Contour 2 (CORE-103 / CORE-111).
+// a normalized TaskEvent for Contour 2.
 //
 // FsWalker detects the path; this method owns the Markdown reload and event
 // shape. Generic launcher code must not take filesystem paths as input.

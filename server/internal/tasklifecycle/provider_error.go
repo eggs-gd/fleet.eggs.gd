@@ -57,7 +57,7 @@ func ClassifyProviderError(provider string, backend string, operation string, er
 	}
 	if pe := classifyTransportProviderError(provider, operation, err, text); pe != nil {
 		// err-backed transport failures always win. Text-only transport
-		// keyword hits must not override a valid worker outcome (CORE-98).
+		// keyword hits must not override a valid worker outcome.
 		if err != nil || !hasOutcome {
 			return pe
 		}
