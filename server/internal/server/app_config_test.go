@@ -100,3 +100,33 @@ func TestAppConfigPatchRejectsEmptyDataRoot(t *testing.T) {
 		t.Fatalf("status = %d, want 400", rec.Code)
 	}
 }
+
+func TestAppConfigPatchRejectsARelativeDataRoot(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	// A relative path would be resolved against whatever directory the server
+	// happens to run in, and the data root would be moved there.
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+	oldRoot := filepath.Join(t.TempDir(), "data")
+	if err := os.MkdirAll(oldRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	registerAppConfigRoutes(mux, Config{CoreRoot: oldRoot, DataRootSource: "config"})
+
+	for _, path := range []string{"relative-root", "../elsewhere", "./here"} {
+		body, _ := json.Marshal(map[string]string{"dataRoot": path})
+		req := httptest.NewRequest(http.MethodPatch, "/api/app-config", bytes.NewReader(body))
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("dataRoot %q: status = %d, want 400", path, rec.Code)
+		}
+	}
+	if _, err := os.Stat(oldRoot); err != nil {
+		t.Fatalf("a rejected request must leave the data root where it is: %v", err)
+	}
+	if entries, _ := os.ReadDir(cwd); len(entries) != 0 {
+		t.Fatalf("nothing may be created in the working directory, found %d entries", len(entries))
+	}
+}
