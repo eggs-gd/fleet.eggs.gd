@@ -16,10 +16,6 @@ import (
 const FileName = "runtime.db"
 
 const schema = `
-CREATE TABLE IF NOT EXISTS meta (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
 CREATE TABLE IF NOT EXISTS sessions (
   claim_id TEXT PRIMARY KEY,
   task_ref TEXT,
