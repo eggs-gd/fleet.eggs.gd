@@ -12,8 +12,8 @@ func TestWorkerResultNeedsInput(t *testing.T) {
 	if !WorkerResultNeedsInput(&WorkerResult{Outcome: "needs_input"}) {
 		t.Fatal("needs_input is HITL")
 	}
-	if !WorkerResultNeedsInput(&WorkerResult{Outcome: "waiting_input"}) {
-		t.Fatal("waiting_input is HITL")
+	if WorkerResultNeedsInput(&WorkerResult{Outcome: "waiting_input"}) {
+		t.Fatal("waiting_input is a session status, not a worker outcome")
 	}
 	if WorkerResultNeedsInput(&WorkerResult{Outcome: "blocked"}) {
 		t.Fatal("blocked closes the task; it is not a HITL pause")
@@ -110,8 +110,8 @@ func TestFinalizeSucceededExecutionFailedResultMapsToBlocked(t *testing.T) {
 	}
 }
 
-func TestFinalizeSucceededExecutionWaitingInputMapsToBlocked(t *testing.T) {
-	status, comment := FinalizeSucceededExecution(&WorkerResult{Outcome: "waiting_input", Summary: "Need a decision."}, "")
+func TestFinalizeSucceededExecutionNeedsInputMapsToBlocked(t *testing.T) {
+	status, comment := FinalizeSucceededExecution(&WorkerResult{Outcome: "needs_input", Summary: "Need a decision."}, "")
 	if status != "blocked" {
 		t.Fatalf("status = %q, want blocked", status)
 	}
@@ -120,23 +120,23 @@ func TestFinalizeSucceededExecutionWaitingInputMapsToBlocked(t *testing.T) {
 	}
 }
 
-func TestFinalizeSucceededExecutionComposesBlockersReviewNotesAndSuggestion(t *testing.T) {
+func TestFinalizeSucceededExecutionComposesTheQuestionArtifactsAndTests(t *testing.T) {
 	status, comment := FinalizeSucceededExecution(&WorkerResult{
-		Outcome:             "blocked",
-		Summary:             "Missing access.",
-		Blockers:            []string{"need staging credentials", "need Alex to confirm scope"},
-		ReviewNotes:         "Checked both providers first.",
-		SuggestedNextStatus: "todo",
-	}, "")
+		Outcome:   "blocked",
+		Summary:   "Missing access.",
+		Question:  "Who can grant staging access?",
+		Artifacts: []string{"notes.md"},
+		Tests:     []string{"go test ./..."},
+	}, "sessions/a.log")
 	if status != "blocked" {
 		t.Fatalf("status = %q, want blocked", status)
 	}
 	for _, want := range []string{
-		"need staging credentials",
-		"need Alex to confirm scope",
-		"Checked both providers first.",
-		"Worker-suggested next status: `todo`",
-		"informational only",
+		"Missing access.",
+		"Question: Who can grant staging access?",
+		"`notes.md`",
+		"`go test ./...`",
+		"Session log: `sessions/a.log`",
 	} {
 		if !strings.Contains(comment, want) {
 			t.Fatalf("comment missing %q:\n%s", want, comment)
@@ -181,7 +181,7 @@ func TestParseWorkerResultIgnoresEchoedPromptPlaceholderButFindsRealResultAfterI
 	transcript := `You are a Core worker agent launched by the deterministic Core daemon.
 ...
 - Still finish with a compact JSON result payload once real work is done:
-  {"outcome":"<completed|blocked|needs_rework|failed|waiting_input>","summary":"...","artifacts":["..."],"tests":["..."]}
+  {"outcome":"<completed|blocked|needs_rework|failed|needs_input>","summary":"...","artifacts":["..."],"tests":["..."]}
 
 I read the task card and made the change.
 
@@ -198,7 +198,7 @@ I read the task card and made the change.
 
 func TestParseWorkerResultIgnoresPlaceholderOnlyTranscript(t *testing.T) {
 	transcript := `Still finish with a compact JSON result payload once real work is done:
-  {"outcome":"<completed|blocked|needs_rework|failed|waiting_input>","summary":"...","artifacts":["..."],"tests":["..."]}
+  {"outcome":"<completed|blocked|needs_rework|failed|needs_input>","summary":"...","artifacts":["..."],"tests":["..."]}
 
 Still working on it...`
 

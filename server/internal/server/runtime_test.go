@@ -1025,7 +1025,7 @@ if [ "$1" = "create-chat" ]; then
   exit 0
 fi
 echo "I could not find the credentials I need."
-echo '{"outcome":"blocked","summary":"Need staging credentials.","blockers":["missing CORE_STAGING_TOKEN"]}'
+echo '{"outcome":"blocked","summary":"Need staging credentials: missing CORE_STAGING_TOKEN."}'
 exit 0
 `
 	if err := os.WriteFile(cursorPath, []byte(script), 0o755); err != nil {
@@ -3046,7 +3046,7 @@ if [ "$1" = "agents" ]; then
 fi
 if [ "$1" = "logs" ]; then
   echo "Continue here, on your phone, or at https://claude.ai/code/session_BLOCKED"
-  echo '{"outcome":"blocked","summary":"Need staging credentials.","blockers":["missing CORE_STAGING_TOKEN"]}'
+  echo '{"outcome":"blocked","summary":"Need staging credentials: missing CORE_STAGING_TOKEN."}'
   exit 0
 fi
 if [ "$1" = "stop" ]; then

@@ -8,7 +8,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
-// executionResultFromWorker converts a CORE-97 WorkerResult (or nil) into the
+// ExecutionResultFromWorker converts a WorkerResult (or nil) into the
 // canonical taskflow.ExecutionResult used by TaskService.ReportExecution.
 // Session log path is folded into Summary so Finalizer comments keep an
 // operator-visible pointer without extending the ExecutionResult contract.
@@ -59,16 +59,6 @@ func executionResultFromWorkerBase(task tasklifecycle.Task, result *tasklifecycl
 			er.Summary += "\n\n" + summary
 		}
 	}
-	if er.Question == "" && len(result.Blockers) > 0 {
-		er.Question = joinNonEmptyLines(result.Blockers)
-	}
-	if notes := strings.TrimSpace(result.ReviewNotes); notes != "" {
-		er.Summary = strings.TrimSpace(er.Summary + "\n\nReview notes: " + notes)
-	}
-	if hint := strings.TrimSpace(result.SuggestedNextStatus); hint != "" {
-		er.Summary = strings.TrimSpace(er.Summary + "\n\nWorker-suggested next status: `" + hint +
-			"` (informational only; Core's lifecycle layer decides the actual transition).")
-	}
 	return withSessionLog(er, logPath)
 }
 
@@ -118,16 +108,4 @@ func withSessionLog(result taskflow.ExecutionResult, logPath string) taskflow.Ex
 		result.Summary += "\n\n" + note
 	}
 	return result
-}
-
-func joinNonEmptyLines(values []string) string {
-	parts := make([]string, 0, len(values))
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			continue
-		}
-		parts = append(parts, value)
-	}
-	return strings.Join(parts, "; ")
 }

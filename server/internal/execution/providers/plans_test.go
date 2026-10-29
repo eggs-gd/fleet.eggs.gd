@@ -122,7 +122,7 @@ func TestBuildPromptOutcomeExampleIsNotAValidWorkerOutcome(t *testing.T) {
 	}
 	example := prompt[start : start+end]
 
-	for _, outcome := range []string{"completed", "blocked", "needs_rework", "failed", "waiting_input", "needs_input"} {
+	for _, outcome := range []string{"completed", "blocked", "needs_rework", "failed", "needs_input"} {
 		if strings.Contains(example, `"outcome": "`+outcome+`"`) || strings.Contains(example, `"outcome":"`+outcome+`"`) {
 			t.Fatalf("prompt example uses a real recognized outcome %q, which an echoed transcript could mistake for a real report: %s", outcome, example)
 		}
