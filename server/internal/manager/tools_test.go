@@ -196,7 +196,7 @@ func TestInboxProjectAnswerReview(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(`{"next_work_ref":1,"next_inbox_ref":1}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(`{"next":{"CORE":1,"INBOX":1}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	svc := NewService(mem, BoardView{})
@@ -551,7 +551,7 @@ func TestDirectTaskCreationLinksSourceInboxWithoutPromote(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(`{"next_work_ref":1,"next_inbox_ref":1}`), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(`{"next":{"CORE":1,"INBOX":1}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	svc := NewService(mem, BoardView{})

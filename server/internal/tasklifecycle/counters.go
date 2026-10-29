@@ -16,51 +16,22 @@ import (
 
 var workRefCounterMu sync.Mutex
 
-// LegacyWorkPrefix is the prefix every task ref had before projects got their
-// own tags. Refs that carry it stay valid.
-const LegacyWorkPrefix = "CORE"
-
 // InboxPrefix is the prefix of the global Inbox ref space.
 const InboxPrefix = "INBOX"
 
 var refLine = regexp.MustCompile(`(?m)^ref:\s*["']?([A-Za-z][A-Za-z0-9]*)-(\d+)["']?\s*$`)
 
 // counters is _registry/counters.json: the next number to hand out per ref
-// prefix. The legacy fields are read so an older file migrates, and are never
-// written back.
+// prefix.
 type counters struct {
 	Next  map[string]int `json:"next"`
 	Notes []string       `json:"notes,omitempty"`
-
-	LegacyWorkPrefix  string `json:"work_ref_prefix,omitempty"`
-	LegacyNextWork    int    `json:"next_work_ref,omitempty"`
-	LegacyInboxPrefix string `json:"inbox_ref_prefix,omitempty"`
-	LegacyNextInbox   int    `json:"next_inbox_ref,omitempty"`
 }
 
-func (c *counters) migrate() {
+func (c *counters) ensureNext() {
 	if c.Next == nil {
 		c.Next = map[string]int{}
 	}
-	if c.LegacyNextWork > 0 {
-		prefix := strings.ToUpper(strings.TrimSpace(c.LegacyWorkPrefix))
-		if prefix == "" {
-			prefix = LegacyWorkPrefix
-		}
-		if c.Next[prefix] < c.LegacyNextWork {
-			c.Next[prefix] = c.LegacyNextWork
-		}
-	}
-	if c.LegacyNextInbox > 0 {
-		prefix := strings.ToUpper(strings.TrimSpace(c.LegacyInboxPrefix))
-		if prefix == "" {
-			prefix = InboxPrefix
-		}
-		if c.Next[prefix] < c.LegacyNextInbox {
-			c.Next[prefix] = c.LegacyNextInbox
-		}
-	}
-	c.LegacyWorkPrefix, c.LegacyNextWork, c.LegacyInboxPrefix, c.LegacyNextInbox = "", 0, "", 0
 }
 
 func countersPath(root string) string {
@@ -72,7 +43,7 @@ func countersPath(root string) string {
 func readCounters(root string) (c counters, missing bool, err error) {
 	data, err := os.ReadFile(countersPath(root))
 	if errors.Is(err, fs.ErrNotExist) {
-		c.migrate()
+		c.ensureNext()
 		return c, true, nil
 	}
 	if err != nil {
@@ -81,7 +52,7 @@ func readCounters(root string) (c counters, missing bool, err error) {
 	if err := json.Unmarshal(data, &c); err != nil {
 		return c, false, fmt.Errorf("counters file %s is not valid JSON, fix it by hand: %w", countersPath(root), err)
 	}
-	c.migrate()
+	c.ensureNext()
 	return c, false, nil
 }
 
@@ -147,10 +118,6 @@ func EnsureCounters(root string) (bool, error) {
 		return false, err
 	}
 	before := fmt.Sprint(sortedCounters(c.Next))
-	legacy := false
-	if data, readErr := os.ReadFile(countersPath(root)); readErr == nil {
-		legacy = strings.Contains(string(data), "next_work_ref") || strings.Contains(string(data), "next_inbox_ref") || strings.Contains(string(data), "next_life_ref")
-	}
 	if c.Next[InboxPrefix] < 1 {
 		c.Next[InboxPrefix] = 1
 	}
@@ -163,13 +130,13 @@ func EnsureCounters(root string) (bool, error) {
 			c.Next[prefix] = n + 1
 		}
 	}
-	if len(c.Notes) == 0 || legacy {
+	if len(c.Notes) == 0 {
 		c.Notes = []string{
 			"Task refs are TAG-N, where TAG is the tag in the project's PROJECT.md. INBOX-N is the global Inbox.",
 			"Refs are monotonically increasing and must not be reused.",
 		}
 	}
-	if !missing && !legacy && before == fmt.Sprint(sortedCounters(c.Next)) {
+	if !missing && before == fmt.Sprint(sortedCounters(c.Next)) {
 		return false, nil
 	}
 	if err := writeCounters(root, c); err != nil {

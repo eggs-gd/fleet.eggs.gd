@@ -21,13 +21,8 @@ func TestCreateFromRequestWritesTaskIncrementsCounterAndRefreshesIndex(t *testin
 	projectDir := filepath.Join(root, "Work", "core-eggs-gd")
 	writeTestFile(t, filepath.Join(projectDir, "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
-  "work_ref_prefix": "CORE",
-  "next_work_ref": 42,
-  "inbox_ref_prefix": "INBOX",
-  "next_inbox_ref": 1,
-  "life_ref_prefix": "LIFE",
-  "next_life_ref": 1,
-  "notes": []
+  "next": {"CORE": 42, "INBOX": 1},
+    "notes": []
 }
 `)
 

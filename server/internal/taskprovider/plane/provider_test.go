@@ -229,7 +229,7 @@ func newTestProvider(t *testing.T, baseURL string) *Provider {
 	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	counters := `{"work_ref_prefix":"CORE","next_work_ref":100,"inbox_ref_prefix":"INBOX","next_inbox_ref":1,"life_ref_prefix":"LIFE","next_life_ref":1,"notes":[]}`
+	counters := `{"next":{"CORE":100,"INBOX":1},"notes":[]}`
 	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(counters), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +410,7 @@ func newTestProviderNoProjectID(t *testing.T, baseURL string) *Provider {
 	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	counters := `{"work_ref_prefix":"CORE","next_work_ref":100,"inbox_ref_prefix":"INBOX","next_inbox_ref":1,"life_ref_prefix":"LIFE","next_life_ref":1,"notes":[]}`
+	counters := `{"next":{"CORE":100,"INBOX":1},"notes":[]}`
 	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(counters), 0o644); err != nil {
 		t.Fatal(err)
 	}

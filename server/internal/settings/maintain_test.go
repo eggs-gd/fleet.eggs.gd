@@ -29,7 +29,7 @@ func TestMaintainReportsBrokenCountersAndRecovers(t *testing.T) {
 		t.Fatal("an unscanned registry must not count as a failure")
 	}
 
-	if err := os.WriteFile(counters, []byte(`{"next_work_ref": 1}`), 0o644); err != nil {
+	if err := os.WriteFile(counters, []byte(`{"next":{"CORE":1}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	scanner.maintain(root, true)

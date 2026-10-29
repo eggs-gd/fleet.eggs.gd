@@ -18,7 +18,7 @@ func newRoot(t *testing.T) string {
 	if err := os.MkdirAll(filepath.Join(root, "_registry"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	counters := `{"work_ref_prefix":"CORE","next_work_ref":1,"inbox_ref_prefix":"INBOX","next_inbox_ref":10}`
+	counters := `{"next":{"CORE":1,"INBOX":10}}`
 	if err := os.WriteFile(filepath.Join(root, "_registry", "counters.json"), []byte(counters), 0o644); err != nil {
 		t.Fatal(err)
 	}
