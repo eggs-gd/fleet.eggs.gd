@@ -22,9 +22,9 @@ type flowProvider interface {
 	Flow() taskflow.TaskProvider
 }
 
-// NewService returns the canonical task boundary for callers. During the
-// migration it reuses taskflow.Service internally, but callers should depend on
-// taskprovider rather than constructing taskflow.Service directly.
+// NewService returns the canonical task boundary for callers. It reuses
+// taskflow.Service internally, but callers should depend on taskprovider
+// rather than constructing taskflow.Service directly.
 func NewService(provider Provider) *Service {
 	return taskflow.NewService(flowContract(provider))
 }

@@ -6,12 +6,12 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 )
 
-// Flow returns a taskflow.TaskProvider view of this Plane provider (CORE-106).
+// Flow returns a taskflow.TaskProvider view of this Plane provider.
 //
 // *Provider itself implements taskprovider.Provider for Runtime bootstrap,
 // listener, and claim paths. The application contract uses different
-// List/Create signatures, so TaskService wires through Flow() — the same
-// pattern Markdown uses — instead of the temporary flowadapter.
+// List/Create signatures, so TaskService wires through Flow(), the same
+// pattern Markdown uses.
 func (p *Provider) Flow() taskflow.TaskProvider {
 	return flowView{inner: p}
 }
