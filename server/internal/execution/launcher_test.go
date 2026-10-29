@@ -197,12 +197,6 @@ func TestLaunchGateAcceptsTerminalResumeSessions(t *testing.T) {
 	}
 }
 
-func TestLaunchGateReadsLegacyCoreVisibleName(t *testing.T) {
-	if !VisibilityClass("core_visible").AllowsDaemonAutoLaunch() {
-		t.Fatal("the former name core_visible must still count as fleet_visible")
-	}
-}
-
 func TestHeadlessBackendRemainsBlockedFromDaemonAutoLaunch(t *testing.T) {
 	task := &Task{
 		Ref:      "CORE-130",

@@ -236,7 +236,7 @@ func composeAgent(root string, overlay Overlay, row providers.AgentDiscovery, se
 		Expected:             row.Expected,
 		Version:              row.Version,
 		Error:                row.Error,
-		VisibilityClass:      string(executionapi.NormalizeVisibility(row.VisibilityClass)),
+		VisibilityClass:      row.VisibilityClass,
 		VisibilityLabel:      executionapi.VisibilityClass(row.VisibilityClass).Label(),
 		VisibilitySummary:    executionapi.VisibilityClass(row.VisibilityClass).Summary(),
 		LiveReady:            row.LiveReady && enabled,

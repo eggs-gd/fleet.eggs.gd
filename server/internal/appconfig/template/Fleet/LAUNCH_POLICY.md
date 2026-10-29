@@ -113,8 +113,7 @@ Adapter mapping:
 - Gemini `gemini-headless` → `cli_visible` (`agy --project <id> --conversation <id>`
   reopens the conversation in a terminal).
 
-There is no per-task override. An old `core_visible` value reads as
-`fleet_visible`, and `launch.mode: allow_core_visible` in an old card is ignored.
+There is no per-task override.
 Settings → Agents shows what each provider can do.
 
 ## Pickup Order
