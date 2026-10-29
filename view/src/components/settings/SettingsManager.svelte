@@ -1,8 +1,10 @@
 <script lang="ts">
   import { apiFetch } from '../../lib/api';
   import SettingsField from './SettingsField.svelte';
+  import SettingsNotes from './SettingsNotes.svelte';
   import { timeAgo } from '../../lib/taskDisplay';
   import type { AnyRecord } from '../../lib/types';
+  import { managerCreated, openManagerSetup } from '../../stores/managerSetup';
 
   export let manager: AnyRecord = {};
   export let onReload: () => Promise<void> = async () => {};
@@ -12,6 +14,13 @@
   let threadsNote = '';
   let adoptError = '';
   let adopting = '';
+
+  // A session created from the setup dialog changes what this section shows.
+  let seenCreated = $managerCreated;
+  $: if ($managerCreated !== seenCreated) {
+    seenCreated = $managerCreated;
+    onReload();
+  }
 
   $: session = manager?.session || null;
   $: agent = session ? manager.provider : '';
@@ -75,6 +84,15 @@
   <SettingsField label="Session" value={session?.id || 'none'} mono />
   <SettingsField label="Workspace" value={session?.workspace || '—'} mono />
 
+  {#if !session}
+    <p class="settings-lede">
+      There is no Manager session yet. Create one to talk to Fleet from an agent you already use.
+    </p>
+    <button type="button" class="settings-btn is-primary" on:click={openManagerSetup}>
+      Create Manager session…
+    </button>
+  {/if}
+
   {#if session}
     <p class="settings-lede">Sessions whose root is this workspace</p>
     {#if threadsLoading}
@@ -106,8 +124,4 @@
   {/if}
 </section>
 
-{#if manager.notes?.length}
-  <ul class="settings-notes">
-    {#each manager.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}
+<SettingsNotes notes={manager.notes} />

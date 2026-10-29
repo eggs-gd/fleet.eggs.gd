@@ -67,7 +67,7 @@ func renderDeletionReport(candidates []DeletionCandidate, generatedAt string) st
 		"",
 		fmt.Sprintf("Generated at: `%s`", generatedAt),
 		"",
-		"These are review candidates only. Core never deletes repositories from this report.",
+		"These are review candidates only. Fleet never deletes repositories from this report.",
 		"",
 		fmt.Sprintf("Candidates: **%d**", len(candidates)),
 		"",

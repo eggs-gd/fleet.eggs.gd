@@ -125,7 +125,7 @@ func discoverGemini() AgentDiscovery {
 	row := AgentDiscovery{
 		ID:                   "gemini",
 		Name:                 "Gemini",
-		Expected:             "agy (Antigravity CLI) on PATH, or core.local.yaml",
+		Expected:             "agy (Antigravity CLI) on PATH, or fleet.local.yaml",
 		VisibilityClass:      "cli_visible",
 		ConfiguredExecutable: localExecutable("gemini"),
 		DetectedExecutables:  detectGemini(),
@@ -152,7 +152,7 @@ func discoverCodex() AgentDiscovery {
 	row := AgentDiscovery{
 		ID:                   "codex",
 		Name:                 "Codex",
-		Expected:             "standalone `codex` on PATH, FLEET_CODEX_BINARY, or core.local.yaml. ChatGPT.app's bundled binary is not canonical.",
+		Expected:             "standalone `codex` on PATH, FLEET_CODEX_BINARY, or fleet.local.yaml. ChatGPT.app's bundled binary is not canonical.",
 		VisibilityClass:      "fleet_visible",
 		ConfiguredExecutable: localExecutable("codex"),
 		DetectedExecutables:  detectCodex(),
@@ -196,7 +196,7 @@ func classifyCodexDiscovery(row AgentDiscovery, resolved, source string, resolve
 		row.Status = AgentNonCanonical
 		row.Canonical = false
 		row.LiveReady = false
-		row.Error = "resolved Codex executable is the ChatGPT.app bundle; Core requires the standalone CLI on PATH (CORE-151)"
+		row.Error = "resolved Codex executable is the ChatGPT.app bundle; Fleet requires the standalone CLI on PATH"
 	}
 	return row
 }

@@ -81,7 +81,7 @@ func RelayCodexManagerMessage(ctx context.Context, workingDir, threadID, prompt 
 					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
 				}
 				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Core manager relay does not service server-initiated requests")
+					_ = client.respondError(msg.ID, -32601, "Fleet manager relay does not service server-initiated requests")
 					continue
 				}
 				if text := CodexMessageFullText(msg.Params); text != "" {
@@ -149,7 +149,7 @@ func RelayCodexManagerMessage(ctx context.Context, workingDir, threadID, prompt 
 				return RelayManagerResult{}, errors.New("codex app-server stdout closed before turn/completed")
 			}
 			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Core manager relay does not service server-initiated requests")
+				_ = client.respondError(msg.ID, -32601, "Fleet manager relay does not service server-initiated requests")
 				continue
 			}
 			if text := CodexMessageFullText(msg.Params); text != "" {
@@ -232,7 +232,7 @@ func ListCodexManagerThreads(ctx context.Context, timeout time.Duration, logFile
 					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
 				}
 				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Core thread listing does not service server-initiated requests")
+					_ = client.respondError(msg.ID, -32601, "Fleet thread listing does not service server-initiated requests")
 					continue
 				}
 				if codexMessageID(msg) == id {

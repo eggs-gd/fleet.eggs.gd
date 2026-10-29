@@ -11,6 +11,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/board"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
+	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider"
 )
 
 // recordingDashboard is a DashboardSurface stand-in that records which
@@ -176,5 +177,24 @@ func TestDashboardSurfaceImplementedByCompose(t *testing.T) {
 	}
 	if app.TaskService() == nil {
 		t.Fatal("compose must still expose TaskService for Manager")
+	}
+}
+
+func TestDashboardStateReportsLaunchMode(t *testing.T) {
+	cases := []struct {
+		name   string
+		dryRun bool
+		want   string
+	}{
+		{"dry-run plans launches only", true, "dry-run"},
+		{"live starts agents", false, "live"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := NewDashboard(DashboardOptions{DryRun: tc.dryRun, Store: taskprovider.NewBoard(t.TempDir())})
+			if got := d.State().LaunchMode; got != tc.want {
+				t.Fatalf("LaunchMode = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

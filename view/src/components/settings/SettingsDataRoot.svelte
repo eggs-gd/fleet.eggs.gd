@@ -91,22 +91,31 @@
     Boolean(config) && input.trim() !== (config?.dataRoot || config?.effectiveRoot || '')
   );
 
+  const SOURCE_LABELS: Record<string, string> = {
+    flag: '--root flag',
+    config: 'saved setting',
+    default: 'default location'
+  };
+
   onMount(load);
 </script>
 
-<section class="settings-block" aria-label="Data root">
-  <h3>Data root</h3>
+<section class="settings-block" aria-label="Your data">
+  <h3>Your data</h3>
+  <p class="settings-lede">
+    Tasks, projects and notes are plain Markdown files in one folder. It is private to you; keep it
+    out of public repositories.
+  </p>
   {#if loading && !config}
     <p class="settings-hint">Loading…</p>
   {:else if config}
-    <SettingsField label="Currently serving" value={config.effectiveRoot} mono />
+    <SettingsField label="Data folder" value={config.effectiveRoot} mono />
     <SettingsField
-      label="Source"
-      value={config.source || '—'}
-      hint="flag = --root on the command line, config = ~/.fleet/app.json, default = first-run ~/.fleet/workspace."
+      label="Chosen by"
+      value={SOURCE_LABELS[config.source || ''] || config.source || '—'}
     />
     <div class="settings-row">
-      <span class="settings-key">Data root path</span>
+      <span class="settings-key">Move it to</span>
       <span class="settings-val">
         <input
           class="settings-input"
@@ -118,8 +127,7 @@
       </span>
     </div>
     <p class="settings-hint">
-      Changing this moves the Data directory on disk to the new path, then updates
-      ~/.fleet/app.json. Requires a server restart to take effect.
+      Moving copies your data to the new folder and remembers it. Restart Fleet afterwards.
     </p>
 
     {#if !confirming}
@@ -129,11 +137,11 @@
         disabled={!changed || saving}
         onclick={requestMove}
       >
-        Move data root…
+        Move data folder…
       </button>
     {:else}
       <div class="settings-savebar">
-        <span>Move Data from {config.effectiveRoot} to {input.trim()}?</span>
+        <span>Move your data from {config.effectiveRoot} to {input.trim()}?</span>
         <button type="button" class="settings-btn" disabled={saving} onclick={cancelMove}
           >Cancel</button
         >
@@ -149,7 +157,7 @@
     {/if}
 
     {#if restartRequired}
-      <p class="settings-warn">Data was moved. Restart Fleet to serve from the new path.</p>
+      <p class="settings-warn">Your data was moved. Restart Fleet to use the new folder.</p>
     {/if}
     {#if recreateOffer}
       <div class="settings-savebar">

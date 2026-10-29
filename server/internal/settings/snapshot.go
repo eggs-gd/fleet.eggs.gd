@@ -25,7 +25,7 @@ type Input struct {
 	SessionTimeout     time.Duration
 	SessionTimeoutFlag bool
 	// LaunchFlag names the flag this process was started with (--live or
-	// --dry-run), or "" when the mode came from core.local.yaml or the default.
+	// --dry-run), or "" when the mode came from fleet.local.yaml or the default.
 	LaunchFlag      string
 	Workspaces      []board.Workspace
 	Projects        []board.Project
@@ -103,13 +103,13 @@ func inspectGeneral(in Input, overlay Overlay, now time.Time) General {
 		LaunchConfig:         launchField(overlay, in.LaunchFlag),
 		AutoRefresh: ClientPref{
 			Value:         "browser localStorage core.autoRefreshMs",
-			Source:        "layoutPrefs.js",
+			Source:        "remembered in this browser",
 			Stored:        "localStorage",
 			EditableInGUI: true,
 		},
 		Theme: ClientPref{
 			Value:         "system|light|dark",
-			Source:        "browser localStorage key core.theme (layoutPrefs.js / ThemeSwitch)",
+			Source:        "remembered in this browser",
 			Stored:        "localStorage",
 			EditableInGUI: true,
 		},
@@ -123,7 +123,7 @@ func inspectGeneral(in Input, overlay Overlay, now time.Time) General {
 		},
 		Notes: []string{
 			"Startup on/off toggles from the product spec are not implemented; facts above are observed bootstrap behaviour.",
-			"Theme and auto-refresh are browser preferences. They apply immediately and are not written to core.local.yaml.",
+			"Theme and auto-refresh are browser preferences. They apply immediately and are not written to fleet.local.yaml.",
 			"Resume of resumable sessions is classified at bootstrap (attach vs orphaned-but-resumable), not an ask/off/on setting.",
 		},
 	}
@@ -186,11 +186,11 @@ func inspectAgents(root string, overlay Overlay, sessions []executionapi.Runtime
 	discovered := providers.DiscoverAgents()
 	out := Agents{
 		Notes: []string{
-			"Only providers registered in execution/providers.NewRegistry() are listed (claude, codex, cursor, gemini).",
+			"Fleet supports Claude, Codex, Cursor and Gemini.",
 			"Preferred use is overlay routingInstructions, else Fleet/<agent>.md “Best At”. Fleet files are not rewritten.",
 			"Disable blocks new launches only. Live sessions stay running.",
-			"Recheck probes PATH/env/bundled and does not write core.local.yaml.",
-			"Merge order: defaults < core.config.yaml < core.local.yaml < environment.",
+			"Recheck probes PATH/env/bundled and does not write fleet.local.yaml.",
+			"Merge order: defaults < fleet.config.yaml < fleet.local.yaml < environment.",
 		},
 	}
 	for _, row := range discovered {
@@ -280,7 +280,6 @@ func inspectManager(root string, overlay Overlay) Manager {
 	} else {
 		notes = append(notes, "No manager session is recorded.")
 	}
-	notes = append(notes, "Project-level managers are not implemented; this is not modeled as a hard singleton in the task domain.")
 	return Manager{
 		Role:               "Provider session for this data root. Conversation stays in the provider app.",
 		Provider:           provider,

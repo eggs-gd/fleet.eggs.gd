@@ -1,6 +1,5 @@
 <script lang="ts">
   import ThemeSwitch from '../shell/ThemeSwitch.svelte';
-  import SettingsField from './SettingsField.svelte';
   import SettingsDataRoot from './SettingsDataRoot.svelte';
   import SettingsProjects from './SettingsProjects.svelte';
   import { AUTO_REFRESH_MS } from '../../lib/layoutPrefs';
@@ -22,16 +21,21 @@
   export let onRefreshChange: (ms: number) => void = () => {};
 
   const label = (ms: number) => `${Math.round(ms / 1000)}s`;
+  $: live = general.launch_mode === 'live';
 </script>
 
-<section class="settings-block" aria-label="Runtime">
-  <h3>Runtime</h3>
-  <SettingsField label="Fleet version" value={general.version || '—'} />
-  <SettingsField label="Build hash" value={general.build_hash || '—'} mono />
-  <SettingsField label="Runtime status" value={general.runtime_status || '—'} />
-  <SettingsField label="Launch mode" value={general.launch_mode || '—'} />
+<section class="settings-block" aria-label="Launching agents">
+  <h3>Launching agents</h3>
+  <p class="settings-lede">
+    {#if live}
+      Fleet is <strong>live</strong>: it starts your agents on tasks in <code>todo</code>. They edit
+      files in your repositories without asking each time.
+    {:else}
+      Fleet is in <strong>dry-run</strong> mode: it plans what it would start, and starts nothing.
+    {/if}
+  </p>
   <div class="settings-row">
-    <label class="settings-key" for="saved-launch-mode">Saved launch mode</label>
+    <label class="settings-key" for="saved-launch-mode">Mode on next start</label>
     <span class="settings-val">
       <select
         id="saved-launch-mode"
@@ -41,7 +45,7 @@
         value={launch}
         on:change={(e) => onLaunch(e.currentTarget.value)}
       >
-        <option value="">Default (dry-run)</option>
+        <option value="">Dry-run (default)</option>
         <option value="dry-run">Dry-run: plan launches only</option>
         <option value="live">Live: start agents for ready tasks</option>
       </select>
@@ -51,59 +55,25 @@
     {general.launch_config?.warning ||
       'Live mode starts AI agents that edit files without asking each time.'}
     {#if general.launch_config?.overridden_by}
-      This process was started with {general.launch_config.overridden_by}.
-    {/if}
-  </p>
-  <SettingsField label="Started at" value={general.started_at || '—'} />
-  <SettingsField label="Uptime" value={general.uptime || '—'} />
-  <SettingsField label="Host" value={general.host || '—'} />
-  <SettingsField label="API endpoint" value={general.api_endpoint || '—'} mono />
-  <SettingsField
-    label="Session timeout"
-    value={general.session_timeout || '—'}
-    hint="Running process. Idle attention threshold, not a total session cap."
-  />
-  <div class="settings-row">
-    <label class="settings-key" for="saved-session-timeout">Saved timeout</label>
-    <span class="settings-val">
-      <input
-        id="saved-session-timeout"
-        class="settings-input"
-        name="session_timeout"
-        autocomplete="off"
-        value={sessionTimeout}
-        placeholder="10m"
-        on:input={(e) => onSessionTimeout(e.currentTarget.value)}
-      />
-    </span>
-  </div>
-  <p class="settings-hint">
-    Written to core.local.yaml. New sessions use it after restart. An explicit --session-timeout
-    overrides the file.
-    {#if general.session_timeout_config?.overridden_by}
-      This process was started with {general.session_timeout_config.overridden_by}.
+      This run was started with {general.launch_config.overridden_by}, which takes priority.
     {/if}
   </p>
 </section>
 
-<SettingsDataRoot />
-
 <SettingsProjects {projects} {scanRoots} {scanDirty} {onScanRoots} {onRescan} />
 
-<section class="settings-block" aria-label="Browser preferences">
-  <h3>Browser preferences</h3>
+<SettingsDataRoot />
+
+<section class="settings-block" aria-label="Appearance">
+  <h3>Appearance</h3>
   <div class="settings-row">
-    <span class="settings-key">Default theme</span>
+    <span class="settings-key">Theme</span>
     <span class="settings-val">
       <ThemeSwitch pref={themePref} onChange={onThemeChange} />
     </span>
   </div>
-  <p class="settings-hint">
-    {general.theme?.source ||
-      'Same localStorage state as the sidebar switcher. Applies immediately.'}
-  </p>
   <div class="settings-row">
-    <label class="settings-key" for="auto-refresh-interval">Auto-refresh interval</label>
+    <label class="settings-key" for="auto-refresh-interval">Refresh the board every</label>
     <span class="settings-val">
       <select
         id="auto-refresh-interval"
@@ -119,23 +89,34 @@
       </select>
     </span>
   </div>
-  <p class="settings-hint">
-    Work board poll of /api/state. Stored in localStorage core.autoRefreshMs. Applies immediately.
-  </p>
+  <p class="settings-hint">These apply immediately and are remembered in this browser.</p>
 </section>
 
-<section class="settings-block" aria-label="Startup behaviour">
-  <h3>Startup behaviour</h3>
-  <p class="settings-lede">
-    Observed bootstrap. These are not toggles — Fleet does not expose startup flags yet.
-  </p>
-  {#each general.startup || [] as fact (fact.id)}
-    <SettingsField label={fact.label} value={fact.value} hint={fact.source} />
-  {/each}
+<section class="settings-block" aria-label="Advanced">
+  <details class="settings-tech">
+    <summary>Advanced</summary>
+    <div class="settings-row">
+      <label class="settings-key" for="saved-session-timeout">Silent agent timeout</label>
+      <span class="settings-val">
+        <input
+          id="saved-session-timeout"
+          class="settings-input"
+          name="session_timeout"
+          autocomplete="off"
+          value={sessionTimeout}
+          placeholder="10m"
+          on:input={(e) => onSessionTimeout(e.currentTarget.value)}
+        />
+      </span>
+    </div>
+    <p class="settings-hint">
+      How long an agent can stay silent before Fleet asks for your attention. It is not a limit on
+      how long a task may run. Applies to new sessions after a restart; currently {general.session_timeout ||
+        '10m'}.
+      {#if general.session_timeout_config?.overridden_by}
+        This run was started with {general.session_timeout_config.overridden_by}, which takes
+        priority.
+      {/if}
+    </p>
+  </details>
 </section>
-
-{#if general.notes?.length}
-  <ul class="settings-notes">
-    {#each general.notes as note}<li>{note}</li>{/each}
-  </ul>
-{/if}

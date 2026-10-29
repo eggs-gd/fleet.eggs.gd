@@ -14,6 +14,7 @@
   import SettingsGeneral from './SettingsGeneral.svelte';
   import SettingsIntegrations from './SettingsIntegrations.svelte';
   import SettingsManager from './SettingsManager.svelte';
+  import SettingsRuntime from './SettingsRuntime.svelte';
   import SettingsWorkflow from './SettingsWorkflow.svelte';
   import type { SettingsDraft, SettingsDraftAgent } from '../../lib/types';
 
@@ -165,7 +166,7 @@
   <header class="settings-head">
     <div>
       <h1>{title || settingsSectionLabel(section)}</h1>
-      <p class="settings-mode">{dirty ? 'Unsaved changes' : 'Effective configuration'}</p>
+      {#if dirty}<p class="settings-mode">Unsaved changes</p>{/if}
     </div>
     {#if error}
       <p class="settings-error">{error}</p>
@@ -174,7 +175,7 @@
 
   {#if dirty}
     <div class="settings-savebar">
-      <span>Save writes gitignored core.local.yaml. Browser prefs are not included.</span>
+      <span>These settings are saved on this computer, outside your projects.</span>
       <button type="button" class="settings-btn" disabled={saving} on:click={discardSettings}
         >Discard</button
       >
@@ -228,6 +229,7 @@
       <SettingsIntegrations integrations={snapshot.integrations} />
     {:else if section === 'diagnostics'}
       <SettingsDiagnostics diagnostics={snapshot.diagnostics} inventory={snapshot.inventory} />
+      <SettingsRuntime general={snapshot.general} projects={snapshot.projects} />
     {/if}
   {/if}
 </section>

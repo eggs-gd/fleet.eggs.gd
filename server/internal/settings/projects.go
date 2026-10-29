@@ -29,13 +29,13 @@ func inspectProjects(root, runtimeRoot string, workspaces []board.Workspace, pro
 		Scan:               scan,
 		Roots: []ProjectRoot{
 			{
-				Kind:           "core_root",
+				Kind:           "data_root",
 				Path:           coreRoot,
 				Reachable:      dirExists(coreRoot),
 				WorkspaceCount: len(workspaces),
 				ProjectCount:   len(projects),
 				Enabled:        true,
-				Source:         "fleet serve --root / server.Config.CoreRoot",
+				Source:         "fleet serve --root, the saved setting, or the default location",
 				Notes:          "Task cards and workspace PROJECT.md files live under Work/ in this tree. Project checkouts are scanned from the scan roots above.",
 			},
 		},

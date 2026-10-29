@@ -9,7 +9,7 @@
 // anywhere (see MoveDataRoot), same as any other configured value.
 //
 // This is deliberately separate from internal/settings' Overlay
-// (core.local.yaml): that file lives inside the Data root it describes, so
+// (fleet.local.yaml): that file lives inside the Data root it describes, so
 // it cannot also be where App learns the Data root's own location.
 package appconfig
 

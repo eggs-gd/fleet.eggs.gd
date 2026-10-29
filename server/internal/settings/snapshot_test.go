@@ -16,12 +16,12 @@ import (
 func TestBuildReadModelDoesNotLeakSecretsOrInventProviders(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "Work", "INDEX.md"), "# Work\n")
-	writeFile(t, filepath.Join(root, "core.config.yaml"), `taskProvider:
+	writeFile(t, filepath.Join(root, "fleet.config.yaml"), `taskProvider:
   type: markdown
   workspace: eggs_gd
   baseUrl: https://api.plane.so
   tokenEnv: PLANE_API_TOKEN
-  coreProject: core_eggs_gd
+  fleetProject: core_eggs_gd
 `)
 	writeFile(t, filepath.Join(root, ".mcp.json"), `{
   "mcpServers": {

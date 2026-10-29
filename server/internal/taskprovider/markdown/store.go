@@ -444,7 +444,7 @@ func safeTaskPath(root string, path string) (string, error) {
 		return "", errors.New("task path is outside the Data root")
 	}
 	if !IsTaskFile(taskPath) {
-		return "", errors.New("path is not a Core task markdown file")
+		return "", errors.New("path is not a Fleet task markdown file")
 	}
 	return taskPath, nil
 }

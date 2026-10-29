@@ -209,7 +209,7 @@ func copyCodexStderr(stderr io.Reader, logFile io.Writer) {
 
 func codexInitializeParams() map[string]any {
 	return map[string]any{
-		"clientInfo":   map[string]any{"name": "core_launcher", "title": "Core Agent Launcher", "version": "0.1.0"},
+		"clientInfo":   map[string]any{"name": "fleet_launcher", "title": "Fleet Agent Launcher", "version": "0.1.0"},
 		"capabilities": map[string]any{"experimentalApi": true},
 	}
 }

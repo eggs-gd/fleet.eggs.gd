@@ -76,7 +76,7 @@ commits.
 ## Task provider
 
 Markdown task cards in `Work/*/tasks/` are the default. To use Plane instead,
-add `core.config.yaml` to the data root and export the token variable, see
+add `fleet.config.yaml` to the data root and export the token variable, see
 [`_docs/PLANE_TASK_PROVIDER.md`](../_docs/PLANE_TASK_PROVIDER.md). The
 dashboard, the Manager, the launcher and the finalizer all talk to
 `TaskService`, not to a provider.

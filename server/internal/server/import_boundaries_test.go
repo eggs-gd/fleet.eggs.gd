@@ -207,11 +207,11 @@ func TestRuntimeWiresIndependentServices(t *testing.T) {
 		TaskProvider: providerconfig.Settings{
 			Type: "plane",
 			Plane: providerconfig.PlaneSettings{
-				Workspace:   "eggs_gd",
-				ProjectID:   "proj-1",
-				CoreProject: "core-eggs-gd",
-				TokenEnv:    "CORE_TEST_PLANE_TOKEN_UNSET",
-				BaseURL:     "https://example.invalid",
+				Workspace:    "eggs_gd",
+				ProjectID:    "proj-1",
+				FleetProject: "core-eggs-gd",
+				TokenEnv:     "CORE_TEST_PLANE_TOKEN_UNSET",
+				BaseURL:      "https://example.invalid",
 			},
 		},
 	})

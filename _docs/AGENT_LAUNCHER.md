@@ -15,7 +15,7 @@ bin/fleet serve --live      # the same, without make
 
 Dry-run is the default. It keeps validation and launch planning active and
 logs the plan, but starts no process and changes no status. Live mode can also
-be saved in Settings (`core.local.yaml`). `--session-timeout` (make
+be saved in Settings (`fleet.local.yaml`). `--session-timeout` (make
 `SESSION_TIMEOUT`, default `10m`) is an idle attention threshold, not a
 lifetime cap.
 
@@ -234,7 +234,7 @@ There is no link. The Antigravity remote-control daemon (`agy remote-control`)
 could give a phone view, but Fleet does not use it yet.
 
 Requirements: `agy` on `PATH` or `agents.gemini.executable` in
-`core.local.yaml`, and an authenticated user. Global MCP servers (`agy mcp
+`fleet.local.yaml`, and an authenticated user. Global MCP servers (`agy mcp
 add`) work. Project-scoped MCP through `.agents/mcp_config.json` is documented
 by Antigravity but was not recognized in testing. Stream-json turns
 have upstream reliability issues (a turn can end with an empty response while

@@ -85,7 +85,7 @@ func TestResolveCodexPrefersEnvThenOverlayThenPath(t *testing.T) {
 	t.Cleanup(func() { ApplyLocalAgents(nil) })
 
 	resolved, source, err := resolveCodexBinaryWithSource()
-	if err != nil || resolved != overlay || source != "core.local.yaml" {
+	if err != nil || resolved != overlay || source != "fleet.local.yaml" {
 		t.Fatalf("overlay resolve = %q %q %v", resolved, source, err)
 	}
 

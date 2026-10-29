@@ -105,8 +105,8 @@ type labelListResponse struct {
 }
 
 // projectObj is one entry from Plane's workspace-level project list — used
-// only to resolve a project's UUID by name/identifier when Core's config
-// names a Core project instead of pinning a raw UUID (Provider.ensureProjectID).
+// only to resolve a project's UUID by name/identifier when Fleet's config
+// names a Fleet project instead of pinning a raw UUID (Provider.ensureProjectID).
 type projectObj struct {
 	ID         string `json:"id"`
 	Identifier string `json:"identifier"`
@@ -148,7 +148,7 @@ func (c *Client) ListWorkItems(ctx context.Context) ([]workItem, error) {
 	return all, nil
 }
 
-// FindWorkItemByExternalID looks up the (at most one) work item Core created
+// FindWorkItemByExternalID looks up the (at most one) work item Fleet created
 // for a given CORE-N ref, via Plane's external_id/external_source filter.
 func (c *Client) FindWorkItemByExternalID(ctx context.Context, coreRef string) (*workItem, error) {
 	query := url.Values{"external_id": {coreRef}, "external_source": {externalSource}, "per_page": {"1"}}

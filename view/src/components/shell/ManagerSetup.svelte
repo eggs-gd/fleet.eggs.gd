@@ -6,6 +6,7 @@
   export let providers: AnyRecord[] = [];
   export let onDone: () => void = () => {};
   export let onSkip: () => void = () => {};
+  export let skipLabel = 'Set up later';
 
   $: available = providers.filter((provider) => provider.available);
   let agent = '';
@@ -90,7 +91,7 @@
         </button>
       {/if}
       <button type="button" class="settings-btn" disabled={creating} on:click={onSkip}>
-        Set up later
+        {skipLabel}
       </button>
     </footer>
   </section>

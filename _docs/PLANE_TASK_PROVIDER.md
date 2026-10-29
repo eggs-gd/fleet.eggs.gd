@@ -7,7 +7,7 @@ Markdown.
 
 ## Config
 
-An optional `core.config.yaml` in the data root. No file means Markdown.
+An optional `fleet.config.yaml` in the data root. No file means Markdown.
 
 ```yaml
 taskProvider:
@@ -15,7 +15,7 @@ taskProvider:
   workspace: my-workspace
   baseUrl: https://api.plane.so
   tokenEnv: PLANE_API_TOKEN
-  coreProject: my-project
+  fleetProject: my-project
   repository: my-repo
 statusMap:
   backlog: Backlog
@@ -34,8 +34,8 @@ statusMap:
 | `workspace` | Plane workspace slug |
 | `baseUrl` | API base, default `https://api.plane.so` |
 | `tokenEnv` | **Name** of the environment variable holding the API token, never the token |
-| `coreProject` | The Fleet project (`Work/<id>`) whose tasks live in this Plane project |
-| `project` | Optional Plane project UUID. When absent, Fleet finds the Plane project whose identifier or name equals `coreProject` (case-insensitive) |
+| `fleetProject` | The Fleet project (`Work/<id>`) whose tasks live in this Plane project |
+| `project` | Optional Plane project UUID. When absent, Fleet finds the Plane project whose identifier or name equals `fleetProject` (case-insensitive) |
 | `repository` | Optional single launch repository for Plane-backed tasks |
 | `statusMap` | Optional Fleet status → Plane workflow state **name**; a status not listed maps to a state with the same name |
 
@@ -50,7 +50,7 @@ The loader is `server/internal/providerconfig`.
 
 ## Refs
 
-A new Plane-backed task gets a ref from the tag of its `coreProject`
+A new Plane-backed task gets a ref from the tag of its `fleetProject`
 (`<TAG>-<number>`, counters in `_registry/counters.json`). The ref is stored as
 the work item's `external_id` with `external_source=core`. If the project has
 no tag, task creation fails with an explanation rather than creating a task
@@ -69,7 +69,7 @@ Plane owns the durable board fields. Fleet keeps execution state local.
 | Assignee | label `core:assignee:<name>` (Plane members are real accounts; Fleet workers are not) |
 | Type | label `core:type:<type>` |
 | Comments and review notes | work item comments (`author: text`) |
-| Project, workspace, repository | configured `coreProject` and `repository` |
+| Project, workspace, repository | configured `fleetProject` and `repository` |
 | Sessions, launch evaluation, logs | local `runtime.db` only, never mirrored |
 
 Workspace cards and `_registry` stay file-based. `Work/INDEX.md` is not rebuilt
@@ -112,7 +112,7 @@ Webhook: `ObserveWebhook` normalizes Plane's JSON envelopes and reloads through
 
 ## Trying it
 
-1. Create `core.config.yaml` with `type: plane` and the fields above.
+1. Create `fleet.config.yaml` with `type: plane` and the fields above.
 2. Make the Plane project's states match the Fleet statuses, or set `statusMap`.
 3. Export the token variable.
 4. Run `make serve` and check that `/api/state` lists the Plane work items.

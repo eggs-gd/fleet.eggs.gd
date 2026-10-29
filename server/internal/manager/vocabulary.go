@@ -281,7 +281,7 @@ func technologyDisplay(tag string) string {
 
 func buildVocabularyPrompt(projects, workspaces []VocabularyEntity, technologies []string) string {
 	var b strings.Builder
-	b.WriteString("Core Manager vocabulary, generated dynamically from registry and workspace state.\n")
+	b.WriteString("Fleet Manager vocabulary, generated dynamically from registry and workspace state.\n")
 	b.WriteString("Prefer the listed spellings. Use each short description to recognize synonyms and informal names.\n\n")
 
 	if len(projects) > 0 {
