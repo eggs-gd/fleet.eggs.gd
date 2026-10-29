@@ -1,0 +1,68 @@
+name: Bug report
+description: Something in Fleet does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Fleet starts in dry-run mode and starts no agents
+        until you turn live mode on, so first check **Settings → General** if a
+        task "does nothing". Remove anything private (paths, tokens, task text)
+        from what you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. fleet serve
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Fleet version
+      description: Output of `fleet version`, or the commit you built.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and architecture
+      placeholder: macOS 15, Apple Silicon
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Launch mode
+      options:
+        - dry-run
+        - live
+        - not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent involved
+      multiple: true
+      options:
+        - Claude
+        - Codex
+        - Cursor
+        - Gemini
+        - None / not applicable
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The lines around the failure, from the terminal or the session log in the dashboard.
+      render: text

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/eggs-gd/fleet.eggs.gd/discussions
+    about: Ask how something should work, or float an idea, before filing an issue.
+  - name: Security vulnerability
+    url: https://github.com/eggs-gd/fleet.eggs.gd/security/advisories/new
+    about: Report it privately. Do not open a public issue.

@@ -1,5 +1,9 @@
 # Fleet
 
+[![Go](https://github.com/eggs-gd/fleet.eggs.gd/actions/workflows/go.yml/badge.svg)](https://github.com/eggs-gd/fleet.eggs.gd/actions/workflows/go.yml)
+[![Dashboard](https://github.com/eggs-gd/fleet.eggs.gd/actions/workflows/dashboard.yml/badge.svg)](https://github.com/eggs-gd/fleet.eggs.gd/actions/workflows/dashboard.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 Fleet manages work, not artifacts. A task lives in Fleet, and the work happens in
 a **workspace**: a folder that can hold code, documents, research, or anything an
 AI agent or a person can work on. Fleet hands ready tasks to the agents you
@@ -18,7 +22,7 @@ Fleet's tools. Fleet does not host a chat of its own.
 ## What you need
 
 - macOS on Apple Silicon.
-- Go 1.27.2 or newer, and Node 22.12 or newer, to build it (there is no download yet).
+- Go 1.27.3 or newer, and Node 22.12 or newer, to build it (there is no download yet).
 - At least one supported agent installed and signed in: Claude, Codex, Cursor, or
   Gemini. Without one Fleet still runs, but it has nobody to give work to.
 
@@ -99,3 +103,14 @@ _docs/    architecture notes, specs, roadmaps
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to work on Fleet itself.
+
+## Community
+
+- Questions and ideas: [Discussions](https://github.com/eggs-gd/fleet.eggs.gd/discussions). Bugs: [Issues](https://github.com/eggs-gd/fleet.eggs.gd/issues/new/choose). See [SUPPORT.md](SUPPORT.md).
+- Security problems: [SECURITY.md](SECURITY.md), privately.
+- Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Fleet is released under the [Apache License 2.0](LICENSE). Claude, Codex, Cursor,
+Gemini and other product names belong to their owners; see [NOTICE](NOTICE).

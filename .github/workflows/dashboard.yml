@@ -9,10 +9,6 @@ on:
       - 'Makefile'
       - '.github/workflows/dashboard.yml'
   pull_request:
-    paths:
-      - 'view/**'
-      - 'Makefile'
-      - '.github/workflows/dashboard.yml'
   workflow_dispatch:
 
 permissions:
