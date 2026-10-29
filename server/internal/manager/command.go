@@ -12,14 +12,6 @@ var (
 	// CORE-57, INBOX-3).
 	refPattern      = regexp.MustCompile(`(?i)\b([A-Z][A-Z0-9]{1,5})-(\d+)\b`)
 	assigneePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
-	// Matches "задача 57", "таска 57", "task 57", "core 57". A bare number means
-	// a legacy CORE ref: tasks created since project tags exist need the full ref. Go's RE2 \b is
-	// ASCII-only word-boundary (based on [0-9A-Za-z_]), so it never matches
-	// before/after Cyrillic letters — "задача"/"таска" would silently never
-	// match with \b. \p{L}/\p{N} boundaries below are Unicode-aware; RE2 has
-	// no lookaround, so the boundary characters are consumed into the match,
-	// but callers only read the captured digit group, not the full match.
-	looseRefPattern = regexp.MustCompile(`(?i)(?:^|[^\p{L}\p{N}_])(?:задача|таска|task|core)\s*#?\s*(\d+)(?:$|[^\p{N}])`)
 	priorityPattern = regexp.MustCompile(`(?i)\b(?:priority|prio|p)\s*[:=]?\s*([1-5])\b|\bP([1-5])\b`)
 )
 
@@ -204,9 +196,6 @@ func parseCancel(lower, original string) (*Intent, *Failure) {
 func extractRef(text string) string {
 	if match := refPattern.FindStringSubmatch(text); len(match) == 3 {
 		return strings.ToUpper(match[1]) + "-" + match[2]
-	}
-	if match := looseRefPattern.FindStringSubmatch(text); len(match) == 2 {
-		return "CORE-" + match[1]
 	}
 	return ""
 }
