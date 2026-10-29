@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
@@ -53,7 +54,15 @@ func patchAppConfig(w http.ResponseWriter, r *http.Request, cfg Config) {
 		http.Error(w, "dataRoot is required", http.StatusBadRequest)
 		return
 	}
-	resolved, err := appconfig.ExpandHome(req.DataRoot)
+	// ExpandHome makes a relative path absolute against the server's working
+	// directory, which is right for a command-line flag but would move the
+	// data to wherever the server happens to run when it arrives over HTTP.
+	raw := strings.TrimSpace(req.DataRoot)
+	if !filepath.IsAbs(raw) && raw != "~" && !strings.HasPrefix(raw, "~/") {
+		http.Error(w, "dataRoot must be an absolute path, or start with ~/", http.StatusBadRequest)
+		return
+	}
+	resolved, err := appconfig.ExpandHome(raw)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
