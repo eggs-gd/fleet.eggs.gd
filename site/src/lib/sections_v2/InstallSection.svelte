@@ -1,6 +1,6 @@
 <script lang="ts">
-  import DownloadButton from '$lib/download/DownloadButton.svelte';
-  import { Section, SectionText, SectionTitle, Stack } from '$lib/layout';
+  import DownloadButton from '#lib/download/DownloadButton.svelte';
+  import { Section, SectionText, SectionTitle, Stack } from '#lib/layout/index.ts';
 </script>
 
 <Section class="v2-install" id="install" aria-labelledby="install-title">
