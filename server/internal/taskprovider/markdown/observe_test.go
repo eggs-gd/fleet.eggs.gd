@@ -52,8 +52,8 @@ updated_at: 2026-08-03T23:10:00+03:00
 	if event.After.Ref != "CORE-103" || event.After.Status != taskflow.StatusTodo {
 		t.Fatalf("After = %#v", event.After)
 	}
-	if event.Kind != taskflow.TaskEventUpserted {
-		t.Fatalf("Kind = %q, want %q", event.Kind, taskflow.TaskEventUpserted)
+	if event.StatusChanged() {
+		t.Fatalf("a first observation must not report a status change")
 	}
 
 	// TaskService.Get must accept the event TaskID (opaque locator).
@@ -85,22 +85,8 @@ func TestTaskEventForPopulatesBeforeAfterSource(t *testing.T) {
 	if event.After.Status != taskflow.StatusDoing {
 		t.Fatalf("After.Status = %q", event.After.Status)
 	}
-	if !event.StatusChanged() || event.Kind != taskflow.TaskEventStatusChanged {
-		t.Fatalf("expected status_changed, got Kind=%q StatusChanged=%v", event.Kind, event.StatusChanged())
-	}
-}
-
-func TestClassifyTaskEventKindStatusChanged(t *testing.T) {
-	current := tasklifecycle.Task{Status: "todo"}
-	if got := ClassifyTaskEventKind("todo", true, current); got != taskflow.TaskEventUpserted {
-		t.Fatalf("same status: kind = %q, want upserted", got)
-	}
-	current.Status = "doing"
-	if got := ClassifyTaskEventKind("todo", true, current); got != taskflow.TaskEventStatusChanged {
-		t.Fatalf("status change: kind = %q, want status_changed", got)
-	}
-	if got := ClassifyTaskEventKind("", false, current); got != taskflow.TaskEventUpserted {
-		t.Fatalf("new task: kind = %q, want upserted", got)
+	if !event.StatusChanged() {
+		t.Fatalf("expected a status change from todo to doing")
 	}
 }
 

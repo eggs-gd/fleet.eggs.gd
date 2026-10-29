@@ -89,12 +89,10 @@ func NewMarkdown(root, runtimeRoot string, board *taskprovider.Board) *markdown.
 			}
 			changes := taskProjectionChangeSummary(before, task, hadBefore)
 			emitTaskEvent(runtimeRoot, "fleet_projected", task, "Task file projected into runtime state", map[string]any{
-				"stage":      "project",
-				"kind":       "task",
-				"event_kind": observed.Event.Kind,
-				"task_event": observed.Event.Kind,
-				"source":     string(observed.Event.Source),
-				"changes":    changes,
+				"stage":   "project",
+				"kind":    "task",
+				"source":  string(observed.Event.Source),
+				"changes": changes,
 			})
 			_ = audit.AppendEvent(runtimeRoot, audit.Event{
 				Type:    "index_rebuilt",

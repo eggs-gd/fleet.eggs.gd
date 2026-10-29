@@ -63,14 +63,14 @@ func TestNewTaskEventDerivesBeforeAfterSourceAndKind(t *testing.T) {
 	if event.Before != nil {
 		t.Fatalf("Before = %#v", event.Before)
 	}
-	if event.After.Ref != "CORE-111" || event.Kind != TaskEventUpserted {
+	if event.After.Ref != "CORE-111" || event.StatusChanged() || event.IsDeleted() {
 		t.Fatalf("event = %#v", event)
 	}
 
 	before := &Task{Locator: after.Locator, Status: StatusTodo}
 	after.Status = StatusDoing
 	changed := NewTaskEvent(after.Locator, before, after, TaskEventSourcePlanePoll)
-	if !changed.StatusChanged() || changed.Kind != TaskEventStatusChanged {
+	if !changed.StatusChanged() || changed.IsDeleted() {
 		t.Fatalf("changed = %#v", changed)
 	}
 	if changed.Source != TaskEventSourcePlanePoll {
@@ -78,7 +78,7 @@ func TestNewTaskEventDerivesBeforeAfterSourceAndKind(t *testing.T) {
 	}
 
 	deleted := NewTaskEvent(after.Locator, before, Task{}, TaskEventSourceMarkdownFS)
-	if !deleted.IsDeleted() || deleted.Kind != TaskEventDeleted {
+	if !deleted.IsDeleted() {
 		t.Fatalf("deleted = %#v", deleted)
 	}
 }

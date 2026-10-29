@@ -188,18 +188,6 @@ const (
 	TaskEventSourceTaskService  TaskEventSource = "task_service"
 )
 
-// TaskEventKind is a migration-era classification. Contour 2 eligibility must
-// be derived from Before/After (see IsDeleted / StatusChanged), not Kind alone.
-// Kept until Contour 2 fully migrates off Kind (CORE-111 / CORE-112).
-type TaskEventKind string
-
-const (
-	TaskEventUpserted          TaskEventKind = "upserted"
-	TaskEventDeleted           TaskEventKind = "deleted"
-	TaskEventStatusChanged     TaskEventKind = "status_changed"
-	TaskEventRelaunchRequested TaskEventKind = "relaunch_requested"
-)
-
 // TaskEvent is a normalized "change already observed" signal for Contour 2.
 // Markdown FS and Plane poll/webhook both publish into one TaskEvent channel.
 // Execution consumes TaskEvent; it must not consume filesystem paths or Plane
@@ -209,11 +197,9 @@ type TaskEvent struct {
 	Before *Task // nil when the task did not previously exist
 	After  Task  // zero/tombstone After means delete (see IsDeleted)
 	Source TaskEventSource
-	// Kind is filled for migration compatibility. Prefer Before/After.
-	Kind TaskEventKind
 }
 
-// NewTaskEvent builds a normalized change event with derived Kind.
+// NewTaskEvent builds a normalized change event.
 func NewTaskEvent(taskID string, before *Task, after Task, source TaskEventSource) TaskEvent {
 	taskID = strings.TrimSpace(taskID)
 	if taskID == "" {
@@ -227,27 +213,12 @@ func NewTaskEvent(taskID string, before *Task, after Task, source TaskEventSourc
 		Before: before,
 		After:  after,
 		Source: source,
-		Kind:   DeriveTaskEventKind(before, after),
 	}
-}
-
-// DeriveTaskEventKind classifies a Before/After delta for migration-era Kind.
-func DeriveTaskEventKind(before *Task, after Task) TaskEventKind {
-	if isTaskTombstone(after) {
-		return TaskEventDeleted
-	}
-	if before != nil && before.Status != "" && before.Status != after.Status {
-		return TaskEventStatusChanged
-	}
-	return TaskEventUpserted
 }
 
 // IsDeleted reports whether Contour 2 should skip this event as a deletion.
 func (e TaskEvent) IsDeleted() bool {
-	if e.Kind == TaskEventDeleted {
-		return true
-	}
-	return isTaskTombstone(e.After) && e.Before != nil
+	return isTaskTombstone(e.After)
 }
 
 // StatusChanged reports whether After.Status differs from Before.Status.

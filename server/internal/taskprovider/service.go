@@ -15,7 +15,6 @@ type (
 	ExecutionResult = taskflow.ExecutionResult
 	TaskEvent       = taskflow.TaskEvent
 	TaskEventSource = taskflow.TaskEventSource
-	TaskEventKind   = taskflow.TaskEventKind
 )
 
 type flowProvider interface {
