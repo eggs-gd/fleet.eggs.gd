@@ -24,20 +24,6 @@ func TestOpenKeepsTheDatabaseOwnerOnly(t *testing.T) {
 	}
 }
 
-func TestOpenTightensADatabaseAnOlderVersionLeftReadable(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("file modes are not meaningful on Windows")
-	}
-	root := t.TempDir()
-	if err := os.WriteFile(Path(root), nil, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Open(root); err != nil {
-		t.Fatal(err)
-	}
-	assertMode(t, Path(root), 0o600)
-}
-
 func assertMode(t *testing.T, path string, want os.FileMode) {
 	t.Helper()
 	info, err := os.Stat(path)

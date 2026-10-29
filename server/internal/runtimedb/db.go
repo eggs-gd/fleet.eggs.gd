@@ -108,37 +108,17 @@ func Open(root string) (*sql.DB, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate runtime schema: %w", err)
 	}
-	for _, suffix := range []string{"-wal", "-shm"} {
-		if err := tightenIfPresent(Path(root) + suffix); err != nil {
-			_ = db.Close()
-			return nil, err
-		}
-	}
 	cache.Store(root, db)
 	return db, nil
 }
 
-// ensurePrivateFile creates path with mode 0600 when it is missing and
-// tightens it when it exists.
+// ensurePrivateFile creates path with mode 0600 when it is missing.
 func ensurePrivateFile(path string) error {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return fmt.Errorf("create runtime db: %w", err)
 	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	return os.Chmod(path, 0o600)
-}
-
-func tightenIfPresent(path string) error {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	return os.Chmod(path, 0o600)
+	return f.Close()
 }
 
 // CloseAll closes every open runtime database, which checkpoints its WAL. Call
