@@ -47,3 +47,9 @@ what the Manager may and may not do). Read it before a larger change.
 
 App and your data are separate: nothing in `server/`, `view/` or `site/` may refer
 to a specific person's folders, names, or projects.
+
+## License of your contribution
+
+Fleet is licensed under the [Apache License 2.0](LICENSE). By opening a pull
+request you agree that your contribution is licensed under the same terms
+(section 5 of the license). Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).

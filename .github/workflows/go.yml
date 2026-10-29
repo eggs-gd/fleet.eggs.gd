@@ -9,10 +9,6 @@ on:
       - 'Makefile'
       - '.github/workflows/go.yml'
   pull_request:
-    paths:
-      - 'server/**'
-      - 'Makefile'
-      - '.github/workflows/go.yml'
   workflow_dispatch:
 
 permissions:
