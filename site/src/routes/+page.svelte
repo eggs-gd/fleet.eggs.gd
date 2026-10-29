@@ -6,10 +6,10 @@
     ManagerLoopSection,
     OrchestratorSection,
     WorkersSection
-  } from '$lib/sections_v2';
-  import { reopenConsent } from '$lib/analytics/consent';
-  import Seo from '$lib/seo/Seo.svelte';
-  import { HOME_DESCRIPTION, HOME_TITLE, jsonLdHome } from '$lib/seo/seo';
+  } from '#lib/sections_v2/index.ts';
+  import { reopenConsent } from '#lib/analytics/consent.ts';
+  import Seo from '#lib/seo/Seo.svelte';
+  import { HOME_DESCRIPTION, HOME_TITLE, jsonLdHome } from '#lib/seo/seo.ts';
 
   let showTop = $state(false);
 </script>

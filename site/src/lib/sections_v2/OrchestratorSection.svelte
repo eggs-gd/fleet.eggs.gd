@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Section, SectionFoot, SectionText, SectionTitle, Stack } from '$lib/layout';
+  import { Section, SectionFoot, SectionText, SectionTitle, Stack } from '#lib/layout/index.ts';
 </script>
 
 <Section class="v2-orchestrator" id="orchestrator" aria-labelledby="orchestrator-title">
