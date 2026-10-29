@@ -34,5 +34,18 @@ for work that started from text you do not trust.
 **Other users on the machine** can reach the loopback port. The token stops them
 only while they cannot read your `~/.fleet/`.
 
+## Why the code scanner's path findings are dismissed
+
+Fleet serves one local user, so the folders and programs you type into Settings (the
+Data root, scan roots, an agent's executable) are your own choice, not untrusted
+input. They are checked where they enter: an absolute path (or one starting with
+`~/`) that exists, and for an executable, a regular file you can run. The values a
+request can carry, a task path and a project id, are checked against leaving the
+Data root. The code scanner cannot see those checks, so its path-injection and
+command-injection findings on this code were reviewed one by one and dismissed with
+a reason. If you find a request that makes Fleet read or write outside the Data
+root, or run something you did not configure, that is a vulnerability: report it as
+described above.
+
 Fleet is not a sandbox, and it makes no promise about what the agents you run will
 do. See each agent's own documentation for its sandbox.
