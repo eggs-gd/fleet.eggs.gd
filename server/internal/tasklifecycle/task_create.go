@@ -10,7 +10,7 @@ import (
 )
 
 // DefaultTaskType is used when frontmatter/API omit type. "todo" is a status,
-// not a task type — legacy type:todo values normalize to this.
+// not a task type.
 const DefaultTaskType = "feature"
 
 var taskTypes = map[string]bool{
@@ -22,11 +22,10 @@ var taskTypes = map[string]bool{
 	"decision":    true,
 }
 
-// NormalizeTaskType maps empty and legacy "todo" types to DefaultTaskType.
-// Status "todo" is unrelated and must not be passed here.
+// NormalizeTaskType maps an empty type to DefaultTaskType.
 func NormalizeTaskType(taskType string) string {
 	taskType = strings.TrimSpace(taskType)
-	if taskType == "" || taskType == "todo" {
+	if taskType == "" {
 		return DefaultTaskType
 	}
 	return taskType
