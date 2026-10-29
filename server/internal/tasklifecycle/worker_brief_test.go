@@ -29,7 +29,7 @@ func TestWorkerBriefShowsPeopleCommentsNotFleetOnes(t *testing.T) {
 	brief := WorkerBrief(Task{
 		Body: "## Request\n\nDo it.\n",
 		Comments: []Comment{
-			{Author: "core", Text: "Cursor CLI-visible session is live. Chat id: abc. /Users/x/.local/bin/cursor-agent --resume abc"},
+			{Author: "fleet", Text: "Cursor CLI-visible session is live. Chat id: abc. /Users/x/.local/bin/cursor-agent --resume abc"},
 			{Author: "fleet", Text: "Execution outcome: completed. Execution ID: xyz"},
 			{Author: "owner", Text: "The date format is still wrong.\nUse ISO 8601."},
 		},
@@ -65,12 +65,12 @@ func TestWorkerBriefOfACardWithoutSections(t *testing.T) {
 }
 
 func TestSystemCommentAuthors(t *testing.T) {
-	for _, name := range []string{"fleet", "Fleet", "core", " CORE "} {
+	for _, name := range []string{"fleet", "Fleet", " FLEET "} {
 		if !IsSystemCommentAuthor(name) {
 			t.Errorf("%q should be a system author", name)
 		}
 	}
-	for _, name := range []string{"owner", "codex", "manager", ""} {
+	for _, name := range []string{"owner", "codex", "manager", "core", ""} {
 		if IsSystemCommentAuthor(name) {
 			t.Errorf("%q must not be a system author", name)
 		}
