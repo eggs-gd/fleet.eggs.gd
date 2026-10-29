@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// LegacyExecutionStatus maps an older process-level status
+// ExecutionStatusFor maps a process-level status
 // (exited/failed/cancelled/running/...) plus an optional error message onto
 // the canonical execution_status vocabulary a task finalization decision
 // switches on (succeeded/failed/timed_out/cancelled/provider_error/...).
-func LegacyExecutionStatus(status string, errorMessage string) string {
+func ExecutionStatusFor(status string, errorMessage string) string {
 	switch status {
 	case "provider_error":
 		return "provider_error"

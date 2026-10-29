@@ -18,8 +18,7 @@
 //     FinalizeSucceededExecution as a domain-level mapping helper;
 //   - task-facing provider error classification (provider_error.go).
 //
-// The daemon runtime (formerly the corechain package, now internal/execution
-// and internal/server) depends on this package; this package does not, and
+// The daemon runtime (internal/execution and internal/server) depends on this package; this package does not, and
 // must not, import those packages back.
 //
 // # What moved out in CORE-102

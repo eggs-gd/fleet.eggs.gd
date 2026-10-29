@@ -388,7 +388,7 @@ func StopBackgroundSession(claudeBinary string, backgroundID string) error {
 
 func finishBackgroundRemoteSession(opts RunnerOptions, session RuntimeSession, task tasklifecycle.Task, claudeBinary string, status string, errorMessage string) {
 	session.Status = status
-	session.ExecutionStatus = tasklifecycle.LegacyExecutionStatus(status, errorMessage)
+	session.ExecutionStatus = tasklifecycle.ExecutionStatusFor(status, errorMessage)
 	session.ErrorMessage = errorMessage
 	session.ExitedAt = time.Now().Format(time.RFC3339)
 	session.LastEvent = firstNonEmpty(session.LastEvent, "background_session_ended")

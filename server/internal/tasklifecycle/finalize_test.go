@@ -23,7 +23,7 @@ func TestWorkerResultNeedsInput(t *testing.T) {
 	}
 }
 
-func TestLegacyExecutionStatusMapsProcessStatuses(t *testing.T) {
+func TestExecutionStatusForMapsProcessStatuses(t *testing.T) {
 	cases := []struct {
 		status       string
 		errorMessage string
@@ -43,9 +43,9 @@ func TestLegacyExecutionStatusMapsProcessStatuses(t *testing.T) {
 		{"", "", "failed"},
 	}
 	for _, tc := range cases {
-		got := LegacyExecutionStatus(tc.status, tc.errorMessage)
+		got := ExecutionStatusFor(tc.status, tc.errorMessage)
 		if got != tc.want {
-			t.Fatalf("LegacyExecutionStatus(%q, %q) = %q, want %q", tc.status, tc.errorMessage, got, tc.want)
+			t.Fatalf("ExecutionStatusFor(%q, %q) = %q, want %q", tc.status, tc.errorMessage, got, tc.want)
 		}
 	}
 }

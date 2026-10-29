@@ -22,7 +22,7 @@ func (s *Service) FinalizeTaskForExecution(session *RuntimeSession, task Task) {
 		return
 	}
 
-	status := firstNonEmpty(session.ExecutionStatus, tasklifecycle.LegacyExecutionStatus(session.Status, session.ErrorMessage))
+	status := firstNonEmpty(session.ExecutionStatus, tasklifecycle.ExecutionStatusFor(session.Status, session.ErrorMessage))
 
 	if session.Result != nil && status != "cancelled" {
 		if session.ProviderError != nil {
@@ -215,7 +215,7 @@ func (s *Service) BlockFailedLaunchTask(session RuntimeSession, task Task) {
 		}
 	}
 	outcome := taskflow.ExecutionFailed
-	switch firstNonEmpty(session.ExecutionStatus, tasklifecycle.LegacyExecutionStatus(session.Status, session.ErrorMessage)) {
+	switch firstNonEmpty(session.ExecutionStatus, tasklifecycle.ExecutionStatusFor(session.Status, session.ErrorMessage)) {
 	case "timed_out":
 		outcome = taskflow.ExecutionTimedOut
 	case "cancelled":

@@ -14,7 +14,7 @@ type SessionSummary struct {
 	RuntimeSession
 	// Role is "current" (exactly one: the newest non-superseded generation
 	// for this task), "historical" (older, not linked into the supersede
-	// chain — including active legacy duplicates), or "superseded"
+	// chain — including active duplicates), or "superseded"
 	// (explicitly replaced by a later session).
 	Role string `json:"role"`
 	// Resumable reflects whether this session's backend has a verified
