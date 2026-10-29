@@ -117,7 +117,7 @@ func (s *Service) publishNormalizedExecutionResult(session RuntimeSession, task 
 		result.ExecutionID = strings.TrimSpace(session.ClaimID)
 	}
 	if strings.TrimSpace(result.Agent) == "" {
-		result.Agent = firstNonEmpty(session.Agent, task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee)
+		result.Agent = firstNonEmpty(session.Agent, task.LaunchEvaluation.Agent, task.Assignee)
 	}
 	s.PublishExecutionResult(result)
 	if s.applyResult == nil {
@@ -136,7 +136,7 @@ func (s *Service) publishNormalizedExecutionResult(session RuntimeSession, task 
 func (s *Service) ReportExecutionResult(task Task, result taskflow.ExecutionResult) (Task, error) {
 	result.TaskID = firstNonEmpty(result.TaskID, task.RelativePath, task.Path, task.ID)
 	if strings.TrimSpace(result.Agent) == "" {
-		result.Agent = firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee)
+		result.Agent = firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee)
 	}
 	if s.applyResult == nil {
 		return Task{}, nil
@@ -234,7 +234,7 @@ func (s *Service) BlockNotReadyLaunchTask(task Task, decision LaunchLogClassific
 	}
 	comment := tasklifecycle.LaunchNotReadyComment(decision.Reason)
 	if pe := tasklifecycle.ProviderErrorFromLaunchBlocker(
-		firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 		decision.Reason,
 	); pe != nil {
 		comment = tasklifecycle.ProviderErrorComment(pe, tasklifecycle.ProviderErrorContext{

@@ -44,12 +44,11 @@ func SortTasksForPickup(tasks []Task) []Task {
 }
 
 // LaunchableCandidatesForAssignee returns, in pickup order, the tasks in
-// todo/needs_rework whose effective launch agent (launch.agent, falling back
-// to assignee) matches assignee.
+// todo/needs_rework whose assignee matches assignee.
 func LaunchableCandidatesForAssignee(tasks []Task, assignee string) []Task {
 	candidates := []Task{}
 	for _, task := range tasks {
-		agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+		agent := task.Assignee
 		if !LaunchablePickupStatus(task.Status) || agent != assignee {
 			continue
 		}

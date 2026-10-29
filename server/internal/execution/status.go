@@ -177,7 +177,7 @@ func (s *Service) requeueAfterStaleWaitCleared(task Task, before *tasklifecycle.
 		TaskPath:        task.RelativePath,
 		ProjectID:       task.ProjectID,
 		Repository:      FirstRepository(task),
-		Agent:           firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		Agent:           firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 		Status:          "released",
 		ExecutionStatus: "released",
 		ErrorMessage:    "stale launch wait cleared with no current blocker",

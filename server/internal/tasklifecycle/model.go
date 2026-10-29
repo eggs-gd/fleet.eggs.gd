@@ -115,10 +115,9 @@ type ExecutionState struct {
 	ToolWarning string `json:"tool_warning,omitempty"`
 }
 
-// Launch carries the optional launch override/safety flags a task card can
+// Launch carries the optional launch mode and safety flags a task card can
 // set in frontmatter.
 type Launch struct {
-	Agent      string `json:"agent"`
 	Mode       string `json:"mode"`
 	AutoCommit bool   `json:"auto_commit"`
 	AutoPush   bool   `json:"auto_push"`

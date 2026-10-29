@@ -25,7 +25,7 @@ const DependencySatisfiedStatus = "done"
 // it in corechain.
 func EvaluateLaunch(task *Task, coreRoot string, knownTasks []Task) {
 	task.LaunchEvaluation = LaunchEvaluation{
-		Agent: firstNonEmpty(task.Launch.Agent, task.Assignee),
+		Agent: task.Assignee,
 	}
 	requirePickupStatus(task)
 	requireAssignee(task)
@@ -76,7 +76,7 @@ func requireFleetProfile(task *Task, coreRoot string) {
 	if task.HasLaunchGateFailures() {
 		return
 	}
-	agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+	agent := task.Assignee
 	if agent == "" || agent == "unassigned" {
 		task.FailLaunchGate("fleet_profile", "agent is not set")
 		return

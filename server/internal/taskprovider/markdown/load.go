@@ -66,7 +66,6 @@ func LoadTaskFile(root string, taskFile string) (tasklifecycle.Task, error) {
 		CreatedAt:        mdfile.Scalar(fm, "created_at", ""),
 		UpdatedAt:        mdfile.Scalar(fm, "updated_at", ""),
 		Launch: tasklifecycle.Launch{
-			Agent:      mdfile.Scalar(fm, "launch.agent", ""),
 			Mode:       mdfile.Scalar(fm, "launch.mode", ""),
 			AutoCommit: mdfile.Boolean(fm, "launch.auto_commit"),
 			AutoPush:   mdfile.Boolean(fm, "launch.auto_push"),
@@ -78,7 +77,7 @@ func LoadTaskFile(root string, taskFile string) (tasklifecycle.Task, error) {
 		Path:         taskFile,
 		RelativePath: filepath.ToSlash(rel),
 		LaunchEvaluation: tasklifecycle.LaunchEvaluation{
-			Agent: firstNonEmpty(mdfile.Scalar(fm, "launch.agent", ""), mdfile.Scalar(fm, "assignee", "unassigned")),
+			Agent: mdfile.Scalar(fm, "assignee", "unassigned"),
 		},
 	}
 	task.BlockedReason = tasklifecycle.DeriveBlockedReason(task)

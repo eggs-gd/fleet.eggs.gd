@@ -30,7 +30,7 @@ export const taskUpdatedCompare = (a: Task, b: Task): number => {
 };
 
 export const taskAgent = (task?: Task | null): string =>
-  task?.execution?.agent || task?.launch?.agent || task?.assignee || '';
+  task?.execution?.agent || task?.assignee || '';
 
 export const hasProjectTasks = (tasks: Task[], workspaceId: string): boolean =>
   tasks.some((task) => task.workspace_id === workspaceId);

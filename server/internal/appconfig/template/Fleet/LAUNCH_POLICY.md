@@ -7,7 +7,7 @@ It is separate from `Fleet/ROUTING.md` on purpose:
 - routing decides who should receive a task;
 - launch policy decides whether an agent may actually start.
 
-Canonical task statuses, allowed transitions, and `assignee`/`launch.agent`
+Canonical task statuses, allowed transitions, and `assignee`
 semantics live in `../_docs/TASK_LIFECYCLE.md`. This document only defines
 launch eligibility and concurrency.
 
@@ -52,7 +52,6 @@ A task is launched automatically only when all are true:
 status: todo # or needs_rework
 assignee: claude # or codex, cursor, gemini
 launch:
-  agent: # optional explicit override; normally empty
 depends_on: [] # empty, or every listed prerequisite is status: done
 ```
 
@@ -92,7 +91,7 @@ If the selected assignee has no live-ready adapter, Fleet leaves the task in
 its pickup status and shows the `agent_live_ready` or `agent_visibility` reason
 in runtime state and logs. This is a queue condition, not a task blocker. Fleet
 does not move the task to `blocked` and does not reassign it unless the
-operator changes `assignee` or `launch.agent`.
+operator changes `assignee`.
 
 ## Session Visibility Classes
 

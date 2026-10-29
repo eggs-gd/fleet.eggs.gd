@@ -582,7 +582,7 @@ func RuntimeSessionForReleasedTask(task Task, claimID string, reason string) Run
 		TaskTitle:       task.Title,
 		ProjectID:       task.ProjectID,
 		Repository:      firstRepository(task),
-		Agent:           firstNonEmpty(task.Launch.Agent, task.Assignee),
+		Agent:           task.Assignee,
 		Status:          "released",
 		ExecutionStatus: "released",
 		ErrorMessage:    reason,

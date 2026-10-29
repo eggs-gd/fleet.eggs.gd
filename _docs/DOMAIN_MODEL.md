@@ -55,10 +55,6 @@ Precedence when routing: explicit instruction, `default_assignee` in
 `PROJECT.md`, Claude, a free backup worker. `manager_route` implements it;
 `Fleet/ROUTING.md` is the human-readable version.
 
-`launch.agent` overrides the assignee for launching only. Leave it empty
-unless the launching worker must differ from the assignee, and say why in the
-card.
-
 ## Task schema
 
 ```yaml
@@ -82,7 +78,6 @@ source_inbox: <inbox id or empty>
 created_at: <ISO-8601>
 updated_at: <ISO-8601>
 launch:
-  agent:
   mode:
   auto_commit: false
   auto_push: false

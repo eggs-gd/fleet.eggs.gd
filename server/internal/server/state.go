@@ -80,7 +80,7 @@ func emitTaskEvent(runtimeRoot string, eventType string, task tasklifecycle.Task
 		TaskRef:    task.Ref,
 		TaskID:     task.ID,
 		Path:       task.RelativePath,
-		Agent:      firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		Agent:      firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 		Repository: task.LaunchEvaluation.Repository,
 		Outcome:    task.LaunchEvaluation.Outcome,
 		Message:    message,
