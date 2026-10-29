@@ -264,16 +264,6 @@
           {/if}
         {:else}
           <p class="empty">No projects yet.</p>
-          <p class="empty">
-            Fleet finds projects by scanning folders that hold your git repositories.
-          </p>
-          <button
-            type="button"
-            class="settings-btn"
-            on:click={() => selectSettingsSection('general')}
-          >
-            Add a folder to scan
-          </button>
         {/each}
       </div>
     </div>

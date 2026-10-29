@@ -68,6 +68,13 @@ func (d *Dashboard) allowsProcessStart() bool {
 	return d != nil && !d.dryRun
 }
 
+func (d *Dashboard) launchMode() string {
+	if d.allowsProcessStart() {
+		return "live"
+	}
+	return "dry-run"
+}
+
 func (d *Dashboard) State() State {
 	if d == nil || d.store == nil {
 		return State{}
@@ -75,6 +82,7 @@ func (d *Dashboard) State() State {
 	snap := d.store.Snapshot()
 	state := State{
 		GeneratedAt:       snap.GeneratedAt,
+		LaunchMode:        d.launchMode(),
 		Root:              snap.Root,
 		Statuses:          snap.Statuses,
 		StatusTransitions: tasklifecycle.StatusTransitionMap(),
@@ -110,10 +118,7 @@ func (d *Dashboard) Bootstrap() error {
 	}
 	root := d.root
 	runtimeRoot := d.runtimeRoot
-	launchMode := "dry-run"
-	if d.allowsProcessStart() {
-		launchMode = "live"
-	}
+	launchMode := d.launchMode()
 	timeout := d.effectiveSessionTimeout().String()
 	if d.logger != nil {
 		d.logger.Info("bootstrap started", l.String("stage", "scan"), l.String("root", root), l.String("launch_mode", launchMode), l.String("session_timeout", timeout))

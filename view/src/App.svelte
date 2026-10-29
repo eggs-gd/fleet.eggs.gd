@@ -13,8 +13,11 @@
   import { dragLeft, leftWidth, rightWidth, themePref } from './stores/layout';
   import { globalNav, startLocationSync } from './stores/location';
   import {
+    closeManagerSetup,
+    finishManagerSetup,
     loadManagerSetup,
     managerProviders,
+    managerSetupFromSettings,
     managerSetupNeeded,
     skipManagerSetup
   } from './stores/managerSetup';
@@ -43,8 +46,9 @@
 {#if $managerSetupNeeded}
   <ManagerSetup
     providers={$managerProviders}
-    onDone={() => managerSetupNeeded.set(false)}
-    onSkip={skipManagerSetup}
+    onDone={finishManagerSetup}
+    onSkip={$managerSetupFromSettings ? closeManagerSetup : skipManagerSetup}
+    skipLabel={$managerSetupFromSettings ? 'Cancel' : 'Set up later'}
   />
 {/if}
 

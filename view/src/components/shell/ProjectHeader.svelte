@@ -16,6 +16,8 @@
   export let onChangeView: (viewId: string) => void = () => {};
   export let onBack: () => void = () => {};
   export let onCreateTask: () => void = () => {};
+  /** False until Fleet has a project to put a task in. */
+  export let canCreateTask = true;
   export let onRefresh: () => void = () => {};
   export let refreshing = false;
 
@@ -86,7 +88,13 @@
       </div>
     {/if}
     <div class="project-header-actions">
-      <button type="button" class="primary-action" on:click={onCreateTask}>
+      <button
+        type="button"
+        class="primary-action"
+        disabled={!canCreateTask}
+        title={canCreateTask ? '' : 'Add a folder with your projects first'}
+        on:click={onCreateTask}
+      >
         <Icon name="plus" size={15} /> New Task
       </button>
       <button

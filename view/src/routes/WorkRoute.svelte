@@ -5,6 +5,8 @@
   import RecentCompleted from '../components/board/RecentCompleted.svelte';
   import MilestoneTaskList from '../components/milestones/MilestoneTaskList.svelte';
   import RuntimeSessions from '../components/sessions/RuntimeSessions.svelte';
+  import EmptyBoard from '../components/board/EmptyBoard.svelte';
+  import DryRunBanner from '../components/shell/DryRunBanner.svelte';
   import FiltersBar from '../components/shell/FiltersBar.svelte';
   import ProjectHeader from '../components/shell/ProjectHeader.svelte';
   import SplitGutter from '../components/shell/SplitGutter.svelte';
@@ -15,9 +17,11 @@
     attentionTasks,
     closedSessions,
     data,
+    launchMode,
     orphanedTasks,
     projects,
     refreshBusy,
+    readyTodoCount,
     refreshStatus,
     requestManualRefresh,
     runtimeSessions,
@@ -41,6 +45,7 @@
     selectedProjectId,
     selectedWorkspaceId,
     selectQuickView,
+    selectSettingsSection,
     sessionsTab,
     setSessionsTab,
     setSort,
@@ -65,6 +70,10 @@
 </script>
 
 <div class="working-area">
+  {#if $launchMode === 'dry-run'}
+    <DryRunBanner readyCount={$readyTodoCount} onTurnOn={() => selectSettingsSection('general')} />
+  {/if}
+
   <RuntimeSessions
     runtimeSessions={$runtimeSessions}
     closedSessions={$closedSessions}
@@ -91,6 +100,7 @@
       onChangeView={changeView}
       onBack={selectAllProjects}
       onCreateTask={openCreateTask}
+      canCreateTask={$projects.length > 0}
       onRefresh={requestManualRefresh}
       refreshing={$refreshBusy}
     />
@@ -127,6 +137,8 @@
           projects={$projects}
           repositories={$data?.registry?.repositories || []}
         />
+      {:else if !$projects.length}
+        <EmptyBoard />
       {:else}
         <MilestoneTaskList
           tasks={$filteredActiveTasks}

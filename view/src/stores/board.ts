@@ -35,6 +35,16 @@ export const projects = derived(data, ($data) => ($data?.projects ?? []) as Proj
 export const tasks = derived(data, ($data) => ($data?.tasks ?? []) as Task[]);
 export const people = derived(data, ($data) => ($data?.people ?? []) as string[]);
 export const statuses = derived(data, ($data) => ($data?.statuses ?? []) as string[]);
+/** "dry-run" plans launches only; "live" starts agents. Empty until the first snapshot. */
+export const launchMode = derived(data, ($data) => ($data?.launch_mode ?? '') as string);
+/** `todo` tasks that would start now if Fleet were live. */
+export const readyTodoCount = derived(
+  tasks,
+  ($tasks) =>
+    $tasks.filter(
+      (task) => task.status === 'todo' && task.launch_evaluation?.outcome === 'launchable'
+    ).length
+);
 export const orphanedTasks = derived(data, ($data) => ($data?.orphaned_tasks ?? []) as Session[]);
 export const runtimeSessions = derived(data, ($data) =>
   (($data?.runtime_sessions ?? []) as Session[]).filter(sessionIsActive)

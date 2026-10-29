@@ -10,7 +10,9 @@ import (
 
 // State is the /api/state JSON payload: board projection + execution status.
 type State struct {
-	GeneratedAt       string                     `json:"generated_at"`
+	GeneratedAt string `json:"generated_at"`
+	// LaunchMode is "dry-run" (agents are planned, never started) or "live".
+	LaunchMode        string                     `json:"launch_mode"`
 	Root              string                     `json:"root"`
 	Statuses          []string                   `json:"statuses"`
 	StatusTransitions map[string][]string        `json:"status_transitions"`
