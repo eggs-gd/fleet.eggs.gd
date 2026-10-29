@@ -59,7 +59,10 @@ CREATE TABLE IF NOT EXISTS extra_files (
 );
 `
 
-var cache sync.Map // runtime root -> *sql.DB
+var (
+	cache  sync.Map   // runtime root -> *sql.DB
+	dbOpen sync.Mutex // one first-time open at a time, so two callers never race on the same file
+)
 
 // Path is the sqlite file for a runtime root (~/.fleet in production).
 func Path(root string) string {
@@ -71,6 +74,11 @@ func Open(root string) (*sql.DB, error) {
 	if root == "" {
 		return nil, fmt.Errorf("runtime root is empty")
 	}
+	if v, ok := cache.Load(root); ok {
+		return v.(*sql.DB), nil
+	}
+	dbOpen.Lock()
+	defer dbOpen.Unlock()
 	if v, ok := cache.Load(root); ok {
 		return v.(*sql.DB), nil
 	}
@@ -89,14 +97,16 @@ func Open(root string) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
+	// busy_timeout first: switching to WAL takes a lock, and without a timeout
+	// a second first-time opener fails at once with SQLITE_BUSY.
+	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("set busy_timeout: %w", err)
+	}
 	var mode string
 	if err := db.QueryRow("PRAGMA journal_mode=WAL").Scan(&mode); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("set wal: %w", err)
-	}
-	if _, err := db.Exec("PRAGMA busy_timeout=5000"); err != nil {
-		_ = db.Close()
-		return nil, fmt.Errorf("set busy_timeout: %w", err)
 	}
 	if _, err := db.Exec(schema); err != nil {
 		_ = db.Close()
@@ -108,11 +118,7 @@ func Open(root string) (*sql.DB, error) {
 			return nil, err
 		}
 	}
-	actual, loaded := cache.LoadOrStore(root, db)
-	if loaded {
-		_ = db.Close()
-		return actual.(*sql.DB), nil
-	}
+	cache.Store(root, db)
 	return db, nil
 }
 
