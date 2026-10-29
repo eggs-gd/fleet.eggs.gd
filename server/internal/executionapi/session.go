@@ -90,7 +90,7 @@ type RuntimeSession struct {
 	ResumeAttempted      bool                         `json:"resume_attempted,omitempty"`
 	ResumeOutcome        string                       `json:"resume_outcome,omitempty"`
 	ProviderControllable bool                         `json:"provider_controllable,omitempty"`
-	// ToolUsage is compact per-session MCP/tool evidence (CORE-120).
+	// ToolUsage is compact per-session MCP/tool evidence.
 	// Required/used/missing only — never full transcripts.
 	ToolUsage *ToolUsageEvidence `json:"tool_usage,omitempty"`
 }

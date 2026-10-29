@@ -24,9 +24,6 @@ func taskProjectionChangeSummary(before taskprovider.Task, after taskprovider.Ta
 	if before.UpdatedAt != after.UpdatedAt {
 		changes = append(changes, "updated_at="+before.UpdatedAt+"->"+after.UpdatedAt)
 	}
-	if before.Launch.Agent != after.Launch.Agent {
-		changes = append(changes, "launch.agent="+before.Launch.Agent+"->"+after.Launch.Agent)
-	}
 	if len(before.Comments) != len(after.Comments) {
 		changes = append(changes, "comments="+intString(len(before.Comments))+"->"+intString(len(after.Comments)))
 	}

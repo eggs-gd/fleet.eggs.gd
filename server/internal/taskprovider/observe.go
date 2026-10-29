@@ -16,7 +16,7 @@ type ObservedChange struct {
 //
 // Runtime wires taskprovider.NewListenerService, which polls ChangeSource when
 // the active provider exposes it. Generic chain code must not branch on
-// Provider.Type() strings or concrete adapter types (CORE-107).
+// Provider.Type() strings or concrete adapter types.
 type ChangeSource interface {
 	ObserveChanges() ([]ObservedChange, error)
 }

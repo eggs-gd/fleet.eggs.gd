@@ -17,13 +17,8 @@ func TestTaskFlowProviderCreateUpdateCommentTransition(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
-  "work_ref_prefix": "CORE",
-  "next_work_ref": 102,
-  "inbox_ref_prefix": "INBOX",
-  "next_inbox_ref": 1,
-  "life_ref_prefix": "LIFE",
-  "next_life_ref": 1,
-  "notes": []
+  "next": {"CORE": 102, "INBOX": 1},
+    "notes": []
 }
 `)
 
@@ -107,13 +102,8 @@ func TestCreateFromRequestDefaultsAndValidates(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "Work", "core-eggs-gd", "PROJECT.md"), "---\nid: core-eggs-gd\ntag: \"CORE\"\n---\n\n# Core\n")
 	writeTestFile(t, filepath.Join(root, "_registry", "counters.json"), `{
-  "work_ref_prefix": "CORE",
-  "next_work_ref": 7,
-  "inbox_ref_prefix": "INBOX",
-  "next_inbox_ref": 1,
-  "life_ref_prefix": "LIFE",
-  "next_life_ref": 1,
-  "notes": []
+  "next": {"CORE": 7, "INBOX": 1},
+    "notes": []
 }
 `)
 	provider := New(root, Hooks{})

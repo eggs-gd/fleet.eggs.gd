@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "core-view-dev",
+      "name": "fleet-view-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "view", "run", "dev"],
       "port": 5174
+    },
+    {
+      "name": "fleet-site-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "site", "run", "dev"],
+      "port": 5173
     }
   ]
 }

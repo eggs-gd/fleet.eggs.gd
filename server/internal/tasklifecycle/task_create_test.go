@@ -21,17 +21,13 @@ func TestNormalizeTaskCreateRequestDefaultsAndValidates(t *testing.T) {
 		t.Fatalf("type = %q, want feature", got.Type)
 	}
 
-	legacy, err := NormalizeTaskCreateRequest(TaskCreateRequest{
-		Title:   "Legacy type todo",
-		Request: "todo was a status, not a type",
+	if _, err := NormalizeTaskCreateRequest(TaskCreateRequest{
+		Title:   "Todo is a status",
+		Request: "todo is a status, not a type",
 		Project: "core-eggs-gd",
 		Type:    "todo",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if legacy.Type != "feature" {
-		t.Fatalf("legacy type todo = %q, want feature", legacy.Type)
+	}); err == nil {
+		t.Fatal("type todo accepted, want an unknown task type error")
 	}
 	if got.Assignee != "unassigned" {
 		t.Fatalf("assignee = %q, want unassigned", got.Assignee)

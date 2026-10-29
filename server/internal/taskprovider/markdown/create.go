@@ -149,7 +149,6 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	body.WriteString("created_at: " + stamp + "\n")
 	body.WriteString("updated_at: " + stamp + "\n")
 	body.WriteString("launch:\n")
-	body.WriteString("  agent:\n")
 	body.WriteString("  mode:\n")
 	body.WriteString("  auto_commit: false\n")
 	body.WriteString("  auto_push: false\n")

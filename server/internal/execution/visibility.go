@@ -16,10 +16,10 @@ const (
 // record does not already carry an explicit mode.
 func VisibilityModeForSession(session RuntimeSession) string {
 	if session.VisibilityMode != "" {
-		return string(executionapi.NormalizeVisibility(session.VisibilityMode))
+		return session.VisibilityMode
 	}
 	if caps := session.Capabilities; caps.OperatorVisibility != "" {
-		return string(executionapi.NormalizeVisibility(caps.OperatorVisibility))
+		return caps.OperatorVisibility
 	}
 	if session.Backend == BackendCursorVisible || session.CursorChatID != "" {
 		return string(VisibilityCLIVisible)

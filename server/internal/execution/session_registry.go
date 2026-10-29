@@ -76,8 +76,8 @@ func loadRuntimeSessionRecords(root string) ([]RuntimeSession, error) {
 // belonging to the given task (matched by path/id/ref, same identity rule as
 // sameTaskIdentity), regardless of whether it is still active. Persisted
 // session records are never deleted, so this covers sessions that already
-// finished, not just the live in-memory set. This is the basis for CORE-77
-// relaunch reuse/supersede linking: a task can be relaunched long after its
+// finished, not just the live in-memory set. This is the basis for relaunch
+// reuse/supersede linking: a task can be relaunched long after its
 // previous session ended.
 func previousSessionForTask(root string, task tasklifecycle.Task) (RuntimeSession, bool) {
 	sessions, err := loadRuntimeSessionRecords(root)

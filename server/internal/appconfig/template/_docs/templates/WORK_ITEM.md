@@ -17,7 +17,6 @@ source_inbox:
 created_at: YYYY-MM-DDTHH:MM:SS+ZZ:ZZ
 updated_at: YYYY-MM-DDTHH:MM:SS+ZZ:ZZ
 launch:
-  agent:
   mode:
   auto_commit: false
   auto_push: false

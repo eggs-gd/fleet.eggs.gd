@@ -735,7 +735,7 @@ func (hub *sessionHub) revalidateLaunchWaiting(task tasklifecycle.Task) (tasklif
 func (hub *sessionHub) currentLaunchWaitBlockerLocked(task tasklifecycle.Task, wait tasklifecycle.LaunchWait) (tasklifecycle.LaunchWait, bool) {
 	switch wait.Scope {
 	case "assignee_orphan":
-		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee)
+		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Assignee)
 		orphan, ok := hub.activeOrphanConflictLocked(assignee, runtimeSessionForTaskIdentity(task))
 		if !ok {
 			return tasklifecycle.LaunchWait{}, false
@@ -749,7 +749,7 @@ func (hub *sessionHub) currentLaunchWaitBlockerLocked(task tasklifecycle.Task, w
 			WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
 		}, true
 	case "assignee":
-		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee)
+		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Assignee)
 		for _, session := range hub.sessions {
 			if !session.IsActive() || session.Agent == "" || session.Agent != assignee {
 				continue
@@ -806,7 +806,7 @@ func runtimeSessionForTaskIdentity(task tasklifecycle.Task) RuntimeSession {
 		TaskRef:  task.Ref,
 		TaskID:   task.ID,
 		TaskPath: task.RelativePath,
-		Agent:    firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		Agent:    firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 	}
 }
 

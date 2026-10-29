@@ -4,7 +4,7 @@
 // task-facing provider errors.
 //
 // Core does not permanently own tasks; it orchestrates them. Markdown file
-// I/O lives in internal/taskprovider/markdown (CORE-102). Domain rules stay
+// I/O lives in internal/taskprovider/markdown. Domain rules stay
 // here so every provider shares identical lifecycle semantics.
 //
 // corechain (the daemon/runtime package) depends on tasklifecycle, never the
@@ -110,15 +110,14 @@ type ExecutionState struct {
 	BlockingReason string         `json:"blocking_reason,omitempty"`
 	ProviderError  *ProviderError `json:"provider_error,omitempty"`
 	// ToolWarning is a compact operator-facing note when required tools were
-	// not observed during the session (CORE-120). Full evidence lives on the
+	// not observed during the session. Full evidence lives on the
 	// runtime session, not on every task annotation.
 	ToolWarning string `json:"tool_warning,omitempty"`
 }
 
-// Launch carries the optional launch override/safety flags a task card can
+// Launch carries the optional launch mode and safety flags a task card can
 // set in frontmatter.
 type Launch struct {
-	Agent      string `json:"agent"`
 	Mode       string `json:"mode"`
 	AutoCommit bool   `json:"auto_commit"`
 	AutoPush   bool   `json:"auto_push"`
@@ -163,10 +162,8 @@ type LaunchWait struct {
 }
 
 // WorkerResult is the compact JSON payload a worker agent returns once real
-// work is done: {"outcome":"completed","summary":"...", ...}. This is the
-// CORE-97 worker outcome protocol, kept as a compatibility shape during the
-// CORE-105 migration onto taskflow.ExecutionResult. Workers report through
-// this payload; they do not mutate task lifecycle directly. Runtime converts
+// work is done: {"outcome":"completed","summary":"...", ...}. Workers report
+// through this payload; they do not mutate task lifecycle directly. Runtime converts
 // WorkerResult → ExecutionResult and Finalizer applies transitions only
 // through TaskService.ReportExecution.
 type WorkerResult struct {
@@ -179,22 +176,11 @@ type WorkerResult struct {
 	Artifacts []string `json:"artifacts,omitempty"`
 	// Tests lists checks/commands the worker ran to validate the change.
 	Tests []string `json:"tests,omitempty"`
-	// Question is the CORE-105 needs_input prompt for the operator.
+	// Question is the needs_input prompt for the operator.
 	Question string `json:"question,omitempty"`
 	// Error is optional failure detail for failed/blocked outcomes.
 	Error string `json:"error,omitempty"`
 	// Blockers lists concrete missing info/approval/access items when
-	// Outcome is "blocked" or "waiting_input" (legacy CORE-97 field;
-	// folded into Question / comment text by the Finalizer).
-	Blockers []string `json:"blockers,omitempty"`
-	// SuggestedNextStatus is an optional hint surfaced in the finalization
-	// comment for the human reviewer. It is informational only: Core's
-	// lifecycle layer, not the worker, decides the actual task status from
-	// Outcome. See Target Contract in CORE-97's task card.
-	SuggestedNextStatus string `json:"suggested_next_status,omitempty"`
-	// ReviewNotes is optional additional context for the reviewer beyond
-	// Summary.
-	ReviewNotes string `json:"review_notes,omitempty"`
 }
 
 // WorkerOutcomes is the canonical, ordered set of outcome values a worker
@@ -203,18 +189,14 @@ type WorkerResult struct {
 // object elsewhere in captured output (for example the literal example
 // payload embedded in the launch prompt itself, which some providers echo
 // back into their own transcript) can never be mistaken for a real result.
-//
-// `needs_input` is the CORE-105 name; `waiting_input` remains accepted as a
-// legacy alias and normalizes to needs_input before TaskService writes.
-var WorkerOutcomes = []string{"completed", "blocked", "needs_rework", "failed", "waiting_input", "needs_input"}
+var WorkerOutcomes = []string{"completed", "blocked", "needs_rework", "failed", "needs_input"}
 
 var workerOutcomeSet = map[string]bool{
-	"completed":     true,
-	"blocked":       true,
-	"needs_rework":  true,
-	"failed":        true,
-	"waiting_input": true,
-	"needs_input":   true,
+	"completed":    true,
+	"blocked":      true,
+	"needs_rework": true,
+	"failed":       true,
+	"needs_input":  true,
 }
 
 // IsValidWorkerOutcome reports whether outcome is one of WorkerOutcomes.
@@ -229,12 +211,7 @@ func WorkerResultNeedsInput(result *WorkerResult) bool {
 	if result == nil {
 		return false
 	}
-	switch strings.TrimSpace(result.Outcome) {
-	case "needs_input", "waiting_input":
-		return true
-	default:
-		return false
-	}
+	return strings.TrimSpace(result.Outcome) == "needs_input"
 }
 
 func (task *Task) Pass(step string) {

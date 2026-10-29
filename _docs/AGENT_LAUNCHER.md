@@ -151,8 +151,7 @@ Three separate questions decide whether a task starts, and each has one name:
 
 Automatic launch needs a ready adapter and a class other than `headless` or
 `unknown`. A headless session is refused because nobody would notice it stalling.
-There is no per-task override. The old `core_visible` name is read as
-`fleet_visible`, and `launch.mode: allow_core_visible` in an old card is ignored.
+There is no per-task override.
 
 Every adapter states its own capabilities and its session-reuse rule
 (`Capabilities()` and `SessionReuse()` on `executionapi.Agent`). Settings →

@@ -6,18 +6,12 @@ import (
 )
 
 // SystemCommentAuthor is the author Fleet gives its own comments on a card.
-// Cards written before the rename carry "core".
 const SystemCommentAuthor = "fleet"
 
 // IsSystemCommentAuthor reports whether a comment was written by Fleet itself
 // (launch notes, session details, outcomes) rather than by a person or agent.
 func IsSystemCommentAuthor(author string) bool {
-	switch strings.ToLower(strings.TrimSpace(author)) {
-	case SystemCommentAuthor, "core":
-		return true
-	default:
-		return false
-	}
+	return strings.ToLower(strings.TrimSpace(author)) == SystemCommentAuthor
 }
 
 // Card sections that are for people or for Fleet, not for the worker.

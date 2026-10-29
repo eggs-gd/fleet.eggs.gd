@@ -144,15 +144,7 @@ func TestMergeOverlayClearsEmptyAgent(t *testing.T) {
 	}
 }
 
-func TestParseOverlayReadsLegacyScanRootAndList(t *testing.T) {
-	legacy, err := ParseOverlay([]byte("scanRoot: /one\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(legacy.ScanRoots) != 1 || legacy.ScanRoots[0] != "/one" {
-		t.Fatalf("legacy = %#v", legacy.ScanRoots)
-	}
-
+func TestParseOverlayReadsTheScanRootList(t *testing.T) {
 	listed, err := ParseOverlay([]byte("scanRoots:\n  - /a\n  - /b\n  - /a\n"))
 	if err != nil {
 		t.Fatal(err)
@@ -168,6 +160,9 @@ func TestParseOverlayReadsLegacyScanRootAndList(t *testing.T) {
 
 	if _, err := ParseOverlay([]byte("nope: 1\n")); err == nil {
 		t.Fatal("unknown key must fail")
+	}
+	if _, err := ParseOverlay([]byte("scanRoot: /one\n")); err == nil {
+		t.Fatal("the old singular scanRoot key must fail")
 	}
 }
 

@@ -1,4 +1,4 @@
-// Package markdown is the real Markdown/file-backed TaskProvider (CORE-102).
+// Package markdown is the real Markdown/file-backed TaskProvider.
 //
 // It owns every filesystem-coupled concern for task cards:
 //
@@ -13,12 +13,12 @@
 // Domain rules (status transitions, create input normalization, Core-wide
 // CORE-N ref counters, blocked-reason derivation, launch gates, finalization)
 // stay in tasklifecycle and are called from this package. Callers that need
-// the application contract use taskflow.TaskProvider; the legacy
-// taskprovider.Provider surface remains for Runtime until CORE-104/105/107.
+// the application contract use taskflow.TaskProvider; the
+// taskprovider.Provider surface serves Runtime.
 //
 // fswalker must not parse or create tasks. It only detects filesystem
 // changes; this package reloads the affected card and emits a normalized
-// TaskEvent{Before,After,Source} via ObserveFileChange (CORE-103 / CORE-111).
+// TaskEvent{Before,After,Source} via ObserveFileChange.
 // Generic execution consumes TaskEvent and loads through TaskService — not
 // filesystem paths.
 package markdown

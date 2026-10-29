@@ -8,7 +8,7 @@ import (
 )
 
 // ObserveFileChange reloads a task card after a filesystem change and returns
-// a normalized TaskEvent for Contour 2 (CORE-103 / CORE-111).
+// a normalized TaskEvent for Contour 2.
 //
 // FsWalker detects the path; this method owns the Markdown reload and event
 // shape. Generic launcher code must not take filesystem paths as input.
@@ -23,7 +23,6 @@ func (p *Provider) ObserveFileChange(path string) (taskflow.TaskEvent, tasklifec
 
 // TaskEventFor builds a normalized TaskEvent from a loaded Markdown task.
 // TaskID is the opaque locator (relative path) used with TaskService.Get.
-// Kind is derived from Before/After for migration compatibility.
 func TaskEventFor(before *tasklifecycle.Task, after tasklifecycle.Task, source taskflow.TaskEventSource) taskflow.TaskEvent {
 	if source == "" {
 		source = taskflow.TaskEventSourceMarkdownFS
@@ -34,16 +33,6 @@ func TaskEventFor(before *tasklifecycle.Task, after tasklifecycle.Task, source t
 		beforeFlow = &b
 	}
 	return taskflow.NewTaskEvent(taskEventID(after), beforeFlow, toFlowTask(after), source)
-}
-
-// ClassifyTaskEventKind picks the minimal TaskEventKind for an observed
-// Markdown upsert. Prefer TaskEvent.StatusChanged / DeriveTaskEventKind;
-// kept for call sites that still pass raw statuses during migration.
-func ClassifyTaskEventKind(previousStatus string, hadPrevious bool, current tasklifecycle.Task) taskflow.TaskEventKind {
-	if hadPrevious && previousStatus != "" && previousStatus != current.Status {
-		return taskflow.TaskEventStatusChanged
-	}
-	return taskflow.TaskEventUpserted
 }
 
 func taskEventID(task tasklifecycle.Task) string {

@@ -75,7 +75,7 @@ func (s *Service) LaunchPendingTasks(ctx context.Context) {
 		if !tasklifecycle.LaunchablePickupStatus(task.Status) {
 			continue
 		}
-		agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+		agent := task.Assignee
 		if agent == "" {
 			s.logLaunchSkipped(task, "bootstrap", "missing assignee")
 			continue
@@ -128,7 +128,7 @@ func (s *Service) launchNextForAssignee(ctx context.Context, assignee string) {
 // EvaluateAndStartCandidate validates/plans a task and starts it when launchable.
 func (s *Service) EvaluateAndStartCandidate(ctx context.Context, candidate Task, released *RuntimeSession) bool {
 	task := candidate
-	agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+	agent := task.Assignee
 	if !providers.AgentEnabled(agent) {
 		s.logLaunchSkipped(task, "disabled", "agent is disabled in Settings; live sessions are not stopped")
 		return false
@@ -175,7 +175,7 @@ func (s *Service) EvaluateAndStartCandidate(ctx context.Context, candidate Task,
 }
 
 // RequeueDependentsOf starts launch evaluation for pickup tasks that list
-// completed as a depends_on prerequisite (CORE-148).
+// completed as a depends_on prerequisite.
 func (s *Service) RequeueDependentsOf(ctx context.Context, completed Task) {
 	if s == nil || !s.cfg.AllowsProcessStart() {
 		return
@@ -193,7 +193,7 @@ func (s *Service) RequeueDependentsOf(ctx context.Context, completed Task) {
 	}
 	assignees := map[string]struct{}{}
 	for _, dependent := range dependents {
-		agent := firstNonEmpty(dependent.Launch.Agent, dependent.Assignee)
+		agent := dependent.Assignee
 		if agent == "" {
 			continue
 		}
@@ -322,7 +322,7 @@ func (s *Service) RequeueCandidatesForReleasedSlot(ended RuntimeSession) []Task 
 }
 
 func TaskMatchesReleasedSlot(task Task, ended RuntimeSession) bool {
-	agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+	agent := task.Assignee
 	if ended.Agent != "" && agent == ended.Agent {
 		return true
 	}
@@ -382,7 +382,7 @@ func TaskLabels(tasks []Task) []string {
 
 func SessionConflictResource(scope string, task Task) string {
 	if scope == "assignee" || scope == "assignee_orphan" {
-		return firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee)
+		return firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee)
 	}
 	if scope == "repository" {
 		return firstRepository(task)

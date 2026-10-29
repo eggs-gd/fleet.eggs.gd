@@ -52,36 +52,14 @@ func TestEnsureCountersCreatesFromExistingRefsOfEveryPrefix(t *testing.T) {
 	}
 }
 
-func TestEnsureCountersMigratesTheLegacyLayout(t *testing.T) {
+func TestAllocateNextRefStartsUnknownPrefixesAboveTheTree(t *testing.T) {
 	root := t.TempDir()
 	writeTree(t, root, map[string]string{
-		"_registry/counters.json": `{"work_ref_prefix":"CORE","next_work_ref":3,"inbox_ref_prefix":"INBOX","next_inbox_ref":5,"life_ref_prefix":"LIFE","next_life_ref":1}`,
-		"Work/acme/tasks/a.md":    "---\nref: CORE-10\n---\n",
-	})
-	if changed, err := EnsureCounters(root); err != nil || !changed {
-		t.Fatalf("changed=%v err=%v", changed, err)
-	}
-	raw := readCountersFile(t, root)
-	for _, want := range []string{`"CORE": 11`, `"INBOX": 5`} {
-		if !strings.Contains(raw, want) {
-			t.Errorf("counters lack %s:\n%s", want, raw)
-		}
-	}
-	for _, gone := range []string{"next_work_ref", "next_life_ref", "LIFE"} {
-		if strings.Contains(raw, gone) {
-			t.Errorf("legacy field %s survived:\n%s", gone, raw)
-		}
-	}
-}
-
-func TestAllocateNextRefReadsLegacyFilesAndStartsUnknownPrefixesAboveTheTree(t *testing.T) {
-	root := t.TempDir()
-	writeTree(t, root, map[string]string{
-		"_registry/counters.json": `{"work_ref_prefix":"CORE","next_work_ref":102}`,
+		"_registry/counters.json": `{"next":{"CORE":102}}`,
 		"Work/acme/tasks/a.md":    "---\nref: NEWP-6\n---\n",
 	})
 	if ref, err := AllocateNextRef(root, "CORE"); err != nil || ref != "CORE-102" {
-		t.Fatalf("legacy = %q, %v", ref, err)
+		t.Fatalf("known prefix = %q, %v", ref, err)
 	}
 	if ref, err := AllocateNextRef(root, "NEWP"); err != nil || ref != "NEWP-7" {
 		t.Fatalf("unknown prefix = %q, %v", ref, err)
@@ -93,7 +71,7 @@ func TestAllocateNextRefReadsLegacyFilesAndStartsUnknownPrefixesAboveTheTree(t *
 		t.Fatal("invalid prefix accepted")
 	}
 	raw := readCountersFile(t, root)
-	if !strings.Contains(raw, `"CORE": 103`) || strings.Contains(raw, "next_work_ref") {
+	if !strings.Contains(raw, `"CORE": 103`) {
 		t.Fatalf("counters = %s", raw)
 	}
 }

@@ -9,7 +9,7 @@ import (
 )
 
 // DependencySatisfiedStatus is the only durable status that unblocks a
-// depends_on gate. Conservative default (CORE-148): prerequisites must be
+// depends_on gate. Conservative default: prerequisites must be
 // fully accepted (`done`), not merely awaiting review.
 const DependencySatisfiedStatus = "done"
 
@@ -25,7 +25,7 @@ const DependencySatisfiedStatus = "done"
 // it in corechain.
 func EvaluateLaunch(task *Task, coreRoot string, knownTasks []Task) {
 	task.LaunchEvaluation = LaunchEvaluation{
-		Agent: firstNonEmpty(task.Launch.Agent, task.Assignee),
+		Agent: task.Assignee,
 	}
 	requirePickupStatus(task)
 	requireAssignee(task)
@@ -76,7 +76,7 @@ func requireFleetProfile(task *Task, coreRoot string) {
 	if task.HasLaunchGateFailures() {
 		return
 	}
-	agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+	agent := task.Assignee
 	if agent == "" || agent == "unassigned" {
 		task.FailLaunchGate("fleet_profile", "agent is not set")
 		return

@@ -1,17 +1,15 @@
-// Package taskprovider defines the migration-era Provider surface Core still
-// uses for bootstrap List/Load and optional ChangeSource polling.
+// Package taskprovider defines the Provider surface Fleet uses for bootstrap
+// List/Load, claims and optional ChangeSource polling.
 //
-// The target application contract is taskflow.TaskProvider + TaskService
+// The application contract is taskflow.TaskProvider + TaskService
 // (_docs/ARCHITECTURE.md). Markdown and Plane both implement:
 //
-//   - taskprovider.Provider for Runtime bootstrap/claim legacy paths;
+//   - taskprovider.Provider for Runtime bootstrap and claim paths;
 //   - Provider.Flow() as taskflow.TaskProvider for TaskService;
 //   - Plane also implements ChangeSource so the listener polls via
-//     taskprovider.NewListenerService without Type() string branches (CORE-107).
+//     taskprovider.NewListenerService without Type() string branches.
 //
 // Manager, dashboard, launcher, and finalizer writes go through TaskService.
-// flowadapter remains only for legacy Provider implementations that lack a
-// native Flow view.
 //
 // A locator (the string argument to Load/Claim, and TaskPatch.Path/
 // TaskCreate.Path) is an opaque, provider-scoped identifier for one task.
@@ -28,8 +26,8 @@ type (
 	TaskCreateRequest = tasklifecycle.TaskCreateRequest
 )
 
-// Provider is the sole contract Core orchestration uses today to read and
-// mutate tasks. Prefer taskflow.TaskService for new write paths (CORE-101+).
+// Provider is the contract Fleet orchestration uses to read and claim tasks.
+// Write paths go through taskflow.TaskService.
 type Provider interface {
 	Type() string
 	List() ([]Task, error)

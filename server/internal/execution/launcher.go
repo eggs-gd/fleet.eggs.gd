@@ -28,7 +28,7 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 		return task, nil
 	}
 
-	agent := firstNonEmpty(task.Launch.Agent, task.Assignee)
+	agent := task.Assignee
 	if agent == "" || agent == "unassigned" {
 		task.FailLaunchGate("command", "agent is not set")
 		task.ResolveLaunchEvaluation()
@@ -46,7 +46,7 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 		return task, nil
 	}
 
-	visibility := executionapi.NormalizeVisibility(firstNonEmpty(plan.VisibilityClass, string(VisibilityUnknown)))
+	visibility := executionapi.VisibilityClass(firstNonEmpty(plan.VisibilityClass, string(VisibilityUnknown)))
 	if visibility == "" {
 		visibility = VisibilityUnknown
 	}

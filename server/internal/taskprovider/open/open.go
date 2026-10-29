@@ -27,7 +27,7 @@ type OpenOptions struct {
 }
 
 // Wiring carries factory-time capabilities so composition never branches on
-// Provider.Type() strings (CORE-107).
+// Provider.Type() strings.
 type Wiring struct {
 	PollInterval time.Duration
 }
@@ -89,12 +89,10 @@ func NewMarkdown(root, runtimeRoot string, board *taskprovider.Board) *markdown.
 			}
 			changes := taskProjectionChangeSummary(before, task, hadBefore)
 			emitTaskEvent(runtimeRoot, "fleet_projected", task, "Task file projected into runtime state", map[string]any{
-				"stage":      "project",
-				"kind":       "task",
-				"event_kind": observed.Event.Kind,
-				"task_event": observed.Event.Kind,
-				"source":     string(observed.Event.Source),
-				"changes":    changes,
+				"stage":   "project",
+				"kind":    "task",
+				"source":  string(observed.Event.Source),
+				"changes": changes,
 			})
 			_ = audit.AppendEvent(runtimeRoot, audit.Event{
 				Type:    "index_rebuilt",
@@ -131,7 +129,7 @@ func emitTaskEvent(runtimeRoot string, eventType string, task taskprovider.Task,
 		TaskRef:    task.Ref,
 		TaskID:     task.ID,
 		Path:       task.RelativePath,
-		Agent:      firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		Agent:      firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 		Repository: task.LaunchEvaluation.Repository,
 		Outcome:    task.LaunchEvaluation.Outcome,
 		Message:    message,

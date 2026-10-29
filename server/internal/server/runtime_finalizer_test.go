@@ -40,12 +40,6 @@ func TestRuntimeFinalizerReportExecutionOutcomePaths(t *testing.T) {
 			wantCommentSub: "waiting on operator input",
 		},
 		{
-			name:           "waiting_input_legacy",
-			result:         &tasklifecycle.WorkerResult{Outcome: "waiting_input", Summary: "need approval", Blockers: []string{"missing sign-off"}},
-			wantStatus:     "blocked",
-			wantCommentSub: "waiting on operator input",
-		},
-		{
 			name:           "needs_rework",
 			result:         &tasklifecycle.WorkerResult{Outcome: "needs_rework", Summary: "partial"},
 			wantStatus:     "needs_rework",
@@ -193,28 +187,23 @@ repositories:
 	t.Fatalf("status = %q, want needs_review after TaskService claim + Contour 3 finalizer", loaded.Status)
 }
 
-func TestExecutionResultFromWorkerMapsLegacyFields(t *testing.T) {
+func TestExecutionResultFromWorkerMapsTheWorkerFields(t *testing.T) {
 	task := tasklifecycle.Task{RelativePath: "Work/x/tasks/y.md", Path: "/tmp/y.md"}
 	got := execution.ExecutionResultFromWorker(task, &tasklifecycle.WorkerResult{
-		Outcome:             "waiting_input",
-		Summary:             "need help",
-		Blockers:            []string{"access"},
-		ReviewNotes:         "ping Alex",
-		SuggestedNextStatus: "todo",
-		Artifacts:           []string{"a.go"},
-		Tests:               []string{"go test"},
+		Outcome:   "needs_input",
+		Summary:   "need help",
+		Question:  "which account?",
+		Artifacts: []string{"a.go"},
+		Tests:     []string{"go test"},
 	}, "sessions/a.log")
 	if got.Outcome != taskflow.ExecutionNeedsInput {
 		t.Fatalf("outcome = %q", got.Outcome)
 	}
-	if got.Question != "access" {
+	if got.Question != "which account?" {
 		t.Fatalf("question = %q", got.Question)
 	}
-	if !strings.Contains(got.Summary, "ping Alex") || !strings.Contains(got.Summary, "Worker-suggested next status") {
+	if !strings.Contains(got.Summary, "need help") || !strings.Contains(got.Summary, "Session log:") {
 		t.Fatalf("summary = %q", got.Summary)
-	}
-	if !strings.Contains(got.Summary, "Session log:") {
-		t.Fatalf("summary missing session log: %q", got.Summary)
 	}
 }
 

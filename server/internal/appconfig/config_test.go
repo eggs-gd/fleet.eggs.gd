@@ -95,12 +95,9 @@ func TestEnsureRuntimeRootMakesTheHomeOwnerOnly(t *testing.T) {
 	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	old := filepath.Join(home, ".fleet")
-	if err := os.MkdirAll(old, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	want := filepath.Join(home, ".fleet")
 	root, err := EnsureRuntimeRoot()
-	if err != nil || root != old {
+	if err != nil || root != want {
 		t.Fatalf("root = %q, %v", root, err)
 	}
 	info, err := os.Stat(root)

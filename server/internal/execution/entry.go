@@ -29,7 +29,7 @@ func NewEntry(service taskflow.TaskService, lookup Lookup, in <-chan taskflow.Ta
 }
 
 // NewEntryWithHooks is NewEntry plus optional post-change hooks used by the
-// execution host (CORE-148 dependent wake).
+// execution host (dependent wake).
 func NewEntryWithHooks(service taskflow.TaskService, lookup Lookup, onDependencySatisfied func(Task), in <-chan taskflow.TaskEvent, out chan<- *Task) chain.Processor {
 	return chain.NewDecorator(in, out, &Entry{
 		Service:               service,

@@ -74,8 +74,8 @@ updated_at: 2026-08-03T23:10:00+03:00
 	if event.After.Ref != "CORE-103" || event.After.Status != taskflow.StatusTodo {
 		t.Fatalf("After = %#v", event.After)
 	}
-	if event.Kind != taskflow.TaskEventUpserted {
-		t.Fatalf("TaskEvent.Kind = %q, want upserted", event.Kind)
+	if event.StatusChanged() {
+		t.Fatalf("a first observation must not report a status change")
 	}
 
 	writeTestFile(t, taskPath, `---

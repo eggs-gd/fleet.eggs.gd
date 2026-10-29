@@ -13,7 +13,7 @@ import (
 
 func TestWatchScansWhenRepositoriesChange(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, OverlayFileName), []byte("scanRoot: /proj\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, OverlayFileName), []byte("scanRoots:\n  - /proj\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var scans int
@@ -47,7 +47,7 @@ func TestWatchScansWhenRepositoriesChange(t *testing.T) {
 
 func TestWatchRetriesAfterFailedScan(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, OverlayFileName), []byte("scanRoot: /proj\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, OverlayFileName), []byte("scanRoots:\n  - /proj\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	fail := true

@@ -178,7 +178,6 @@ func pollFingerprint(task tasklifecycle.Task) string {
 		task.Status,
 		strconv.Itoa(task.Priority),
 		task.Assignee,
-		task.Launch.Agent,
 		task.Launch.Mode,
 		task.UpdatedAt,
 		strings.Join(task.DependsOn, ","),

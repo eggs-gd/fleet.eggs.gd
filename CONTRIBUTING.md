@@ -9,7 +9,7 @@ make check       # go vet, the Go tests, and the dashboard tests
 ```
 
 You need Go 1.27.3 or newer (the `go` line in `server/go.mod` fetches the toolchain
-for you) and Node 22.12 or newer. `make help` lists every target.
+for you) and Node 22.12 or newer (22.17 for the landing page in `site/`). `make help` lists every target.
 
 `make serve` builds and runs `bin/fleet serve`. It uses the Data root saved in
 `~/.fleet/app.json`, which is `~/.fleet/workspace` on a first run. To work against

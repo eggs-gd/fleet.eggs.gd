@@ -159,7 +159,7 @@ func HandleCodexSessionControl(client *CodexClient, session *RuntimeSession, con
 func finishCodexAppServerSession(opts RunnerOptions, session RuntimeSession, task tasklifecycle.Task, status string, errorMessage string) {
 	session.Status = status
 	if session.ExecutionStatus == "" {
-		session.ExecutionStatus = tasklifecycle.LegacyExecutionStatus(status, errorMessage)
+		session.ExecutionStatus = tasklifecycle.ExecutionStatusFor(status, errorMessage)
 	}
 	if status == "failed" && session.ProviderError == nil {
 		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "codex app-server", errors.New(errorMessage), readSessionLog(opts.RuntimeRoot, session.LogPath))

@@ -33,11 +33,6 @@ func TestParseFastPathCommands(t *testing.T) {
 			want:  &Intent{Kind: KindBoardCommand, BoardAction: BoardShowTask, Ref: "CORE-57"},
 		},
 		{
-			name:  "show loose Ukrainian ref",
-			input: "show задача 57",
-			want:  &Intent{Kind: KindBoardCommand, BoardAction: BoardShowTask, Ref: "CORE-57"},
-		},
-		{
 			name:  "move status",
 			input: "move CORE-57 to todo",
 			want:  &Intent{Kind: KindStatusChange, Ref: "CORE-57", Status: "todo"},
@@ -593,4 +588,15 @@ func TestTaskManagementOmitsExecutionMethods(t *testing.T) {
 	// Contour 1 isolation (Claim / ReportExecution unavailable).
 	var s Service
 	_ = s.Tasks
+}
+
+func TestExtractRefNeedsTheFullRef(t *testing.T) {
+	for _, text := range []string{"show задача 57", "show task 57", "core 57", "#57"} {
+		if got := extractRef(text); got != "" {
+			t.Errorf("extractRef(%q) = %q, a bare number is not a ref", text, got)
+		}
+	}
+	if got := extractRef("show flet-12 please"); got != "FLET-12" {
+		t.Errorf("full ref = %q, want FLET-12", got)
+	}
 }

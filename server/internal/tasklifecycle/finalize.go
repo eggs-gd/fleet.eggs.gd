@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// LegacyExecutionStatus maps an older process-level status
+// ExecutionStatusFor maps a process-level status
 // (exited/failed/cancelled/running/...) plus an optional error message onto
 // the canonical execution_status vocabulary a task finalization decision
 // switches on (succeeded/failed/timed_out/cancelled/provider_error/...).
-func LegacyExecutionStatus(status string, errorMessage string) string {
+func ExecutionStatusFor(status string, errorMessage string) string {
 	switch status {
 	case "provider_error":
 		return "provider_error"
@@ -39,12 +39,11 @@ func LegacyExecutionStatus(status string, errorMessage string) string {
 // "completed" outcome (a worker that exited cleanly without ever reporting a
 // result payload).
 //
-// CORE-105: daemon finalization now prefers taskflow.ExecutionResult +
+// Daemon finalization prefers taskflow.ExecutionResult +
 // TaskService.ReportExecution. This helper remains for domain-level mapping
 // tests and any callers that still need the status/comment pair without a
 // TaskService handle. Workers report Outcome; they never pick the task
-// status themselves, and SuggestedNextStatus (if present) is folded into the
-// comment as a hint for the human reviewer, not applied directly.
+// status themselves.
 func FinalizeSucceededExecution(result *WorkerResult, logPath string) (status string, comment string) {
 	if result == nil {
 		result = &WorkerResult{Outcome: "completed", Summary: "Agent execution completed successfully."}
@@ -58,7 +57,7 @@ func FinalizeSucceededExecution(result *WorkerResult, logPath string) (status st
 		return "needs_rework", composeFinalizationComment("Agent execution reported the work needs rework before it is done.", result, logPath)
 	case "failed":
 		return "blocked", composeFinalizationComment("Agent execution reported failure.", result, logPath)
-	case "waiting_input", "needs_input":
+	case "needs_input":
 		return "blocked", composeFinalizationComment("Agent execution reported it is waiting on operator input.", result, logPath)
 	default:
 		comment = "Agent execution succeeded but returned invalid result outcome `" + strings.TrimSpace(result.Outcome) + "`.\n\nSession log: `" + logPath + "`"
@@ -73,23 +72,6 @@ func composeFinalizationComment(headline string, result *WorkerResult, logPath s
 	}
 	if result.Question != "" {
 		comment += "\n\nQuestion: " + result.Question
-	}
-	if len(result.Blockers) > 0 {
-		comment += "\n\nBlockers:"
-		for _, blocker := range result.Blockers {
-			blocker = strings.TrimSpace(blocker)
-			if blocker == "" {
-				continue
-			}
-			comment += "\n- " + blocker
-		}
-	}
-	if result.ReviewNotes != "" {
-		comment += "\n\nReview notes: " + result.ReviewNotes
-	}
-	if result.SuggestedNextStatus != "" {
-		comment += "\n\nWorker-suggested next status: `" + strings.TrimSpace(result.SuggestedNextStatus) +
-			"` (informational only; Core's lifecycle layer decides the actual transition)."
 	}
 	if len(result.Artifacts) > 0 {
 		comment += "\n\nArtifacts:"

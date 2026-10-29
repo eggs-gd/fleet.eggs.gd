@@ -13,14 +13,9 @@ import (
 
 // RebuildWorkIndex regenerates Work/INDEX.md from Markdown task cards and
 // workspace PROJECT.md files. This is Markdown-provider derived state.
-// Before rendering, it migrates legacy type: todo frontmatter to feature.
 func RebuildWorkIndex(root string) error {
 	root, err := filepath.Abs(root)
 	if err != nil {
-		return err
-	}
-
-	if err := migrateLegacyTodoTaskTypes(root); err != nil {
 		return err
 	}
 

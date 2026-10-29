@@ -90,8 +90,8 @@ func TestPollingListenerReemitsOnStatusChange(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("expected re-emission after a status change, got %d emissions", len(events))
 	}
-	if events[0].Kind != taskflow.TaskEventUpserted {
-		t.Fatalf("first kind = %q, want upserted", events[0].Kind)
+	if events[0].StatusChanged() {
+		t.Fatalf("first event reports a status change: %#v", events[0])
 	}
 	if events[0].Source != taskflow.TaskEventSourcePlanePoll {
 		t.Fatalf("first Source = %q, want plane_poll", events[0].Source)
@@ -102,8 +102,8 @@ func TestPollingListenerReemitsOnStatusChange(t *testing.T) {
 	if events[0].After.Status != taskflow.StatusTodo {
 		t.Fatalf("first After.Status = %q", events[0].After.Status)
 	}
-	if events[1].Kind != taskflow.TaskEventStatusChanged {
-		t.Fatalf("second kind = %q, want status_changed", events[1].Kind)
+	if !events[1].StatusChanged() {
+		t.Fatalf("second event should report a status change: %#v", events[1])
 	}
 	if events[1].Before == nil || events[1].Before.Status != taskflow.StatusTodo {
 		t.Fatalf("second Before = %#v, want todo", events[1].Before)

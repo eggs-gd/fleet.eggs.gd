@@ -152,12 +152,7 @@
       </div>
       <div>
         <span>Agent</span>
-        <strong
-          >{launchEvaluation(task).agent ||
-            task.launch?.agent ||
-            task.assignee ||
-            'unassigned'}</strong
-        >
+        <strong>{launchEvaluation(task).agent || task.assignee || 'unassigned'}</strong>
       </div>
       <label>
         <span>Assignee</span>

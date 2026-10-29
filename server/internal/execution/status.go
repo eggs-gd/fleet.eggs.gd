@@ -14,7 +14,7 @@ type SessionSummary struct {
 	RuntimeSession
 	// Role is "current" (exactly one: the newest non-superseded generation
 	// for this task), "historical" (older, not linked into the supersede
-	// chain — including active legacy duplicates), or "superseded"
+	// chain — including active duplicates), or "superseded"
 	// (explicitly replaced by a later session).
 	Role string `json:"role"`
 	// Resumable reflects whether this session's backend has a verified
@@ -177,7 +177,7 @@ func (s *Service) requeueAfterStaleWaitCleared(task Task, before *tasklifecycle.
 		TaskPath:        task.RelativePath,
 		ProjectID:       task.ProjectID,
 		Repository:      FirstRepository(task),
-		Agent:           firstNonEmpty(task.LaunchEvaluation.Agent, task.Launch.Agent, task.Assignee),
+		Agent:           firstNonEmpty(task.LaunchEvaluation.Agent, task.Assignee),
 		Status:          "released",
 		ExecutionStatus: "released",
 		ErrorMessage:    "stale launch wait cleared with no current blocker",

@@ -235,7 +235,7 @@ func (s *Service) applyAgentProjectSessionReuse(session *RuntimeSession, task Ta
 	ApplyAgentProjectSessionReuse(s.cfg.RuntimeRoot, session, task, s.emitTaskEvent)
 }
 
-// ApplySessionReuseAt implements CORE-77 relaunch reuse without requiring a Service.
+// ApplySessionReuseAt implements relaunch reuse without requiring a Service.
 func ApplySessionReuseAt(root string, session *RuntimeSession, task Task, emit func(eventType string, task Task, message string, details map[string]any)) {
 	if session == nil {
 		return
@@ -582,7 +582,7 @@ func RuntimeSessionForReleasedTask(task Task, claimID string, reason string) Run
 		TaskTitle:       task.Title,
 		ProjectID:       task.ProjectID,
 		Repository:      firstRepository(task),
-		Agent:           firstNonEmpty(task.Launch.Agent, task.Assignee),
+		Agent:           task.Assignee,
 		Status:          "released",
 		ExecutionStatus: "released",
 		ErrorMessage:    reason,

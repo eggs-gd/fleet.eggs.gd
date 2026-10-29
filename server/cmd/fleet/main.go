@@ -14,7 +14,6 @@ import (
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/appconfig"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/projectscan"
-	"github.com/eggs-gd/fleet.eggs.gd/internal/runtimedb"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/server"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider/markdown"
@@ -142,9 +141,6 @@ func serve(args []string) {
 	runtimeRoot, err := appconfig.EnsureRuntimeRoot()
 	if err != nil {
 		log.Fatal(err)
-	}
-	if err := runtimedb.ImportLegacy(runtimeRoot); err != nil {
-		log.Fatalf("import runtime data: %v", err)
 	}
 
 	dashboard, dashboardSource, err := resolveDashboard(*backofficeDir)

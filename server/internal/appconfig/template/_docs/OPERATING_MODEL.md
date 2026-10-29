@@ -217,22 +217,20 @@ the worker should mark it `blocked` and write the missing question into the task
 ## Launch Policy
 
 Automatic launch is driven by task lifecycle and assignment. Default launch
-frontmatter keeps only adapter-specific overrides and safety flags:
+frontmatter keeps only the runtime mode and safety flags:
 
 ```yaml
 launch:
-  agent:
   mode:
   auto_commit: false
   auto_push: false
   auto_pr: false
 ```
 
-If a task needs a specific runtime mode or worker override, Manager may set:
+If a task needs a specific runtime mode, Manager may set:
 
 ```yaml
 launch:
-  agent: claude
   mode: default
   auto_commit: false
   auto_push: false

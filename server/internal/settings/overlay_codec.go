@@ -139,11 +139,6 @@ func ParseOverlay(data []byte) (Overlay, error) {
 				if raw != "" {
 					out.ScanRoots = append(out.ScanRoots, unquoteYAML(raw))
 				}
-			case "scanRoot":
-				section = ""
-				if raw != "" {
-					out.ScanRoots = append(out.ScanRoots, unquoteYAML(raw))
-				}
 			case "agents":
 				section = "agents"
 			case "manager":

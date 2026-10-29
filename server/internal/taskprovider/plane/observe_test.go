@@ -31,8 +31,8 @@ func TestObservePollDedupesAndClassifiesStatusChange(t *testing.T) {
 	if len(first) != 1 {
 		t.Fatalf("first poll = %d changes, want 1", len(first))
 	}
-	if first[0].Event.Kind != taskflow.TaskEventUpserted {
-		t.Fatalf("kind = %q, want upserted", first[0].Event.Kind)
+	if first[0].Event.StatusChanged() {
+		t.Fatalf("a first observation must not report a status change")
 	}
 	if first[0].Event.Source != taskflow.TaskEventSourcePlanePoll {
 		t.Fatalf("Source = %q, want plane_poll", first[0].Event.Source)
@@ -65,8 +65,8 @@ func TestObservePollDedupesAndClassifiesStatusChange(t *testing.T) {
 	if len(third) != 1 {
 		t.Fatalf("status-change poll = %d changes, want 1", len(third))
 	}
-	if third[0].Event.Kind != taskflow.TaskEventStatusChanged {
-		t.Fatalf("kind = %q, want status_changed", third[0].Event.Kind)
+	if !third[0].Event.StatusChanged() {
+		t.Fatalf("expected a status change")
 	}
 	if third[0].Event.Before == nil || third[0].Event.Before.Status != taskflow.StatusTodo {
 		t.Fatalf("Before = %#v, want todo", third[0].Event.Before)
@@ -111,8 +111,8 @@ func TestObserveWebhookReloadsWorkItem(t *testing.T) {
 		if observed.Event.TaskID != created.RelativePath {
 			t.Fatalf("TaskID = %q, want %q", observed.Event.TaskID, created.RelativePath)
 		}
-		if observed.Event.Kind != taskflow.TaskEventUpserted {
-			t.Fatalf("kind = %q", observed.Event.Kind)
+		if observed.Event.StatusChanged() {
+			t.Fatalf("a webhook for a new task must not report a status change")
 		}
 		if observed.Event.Source != taskflow.TaskEventSourcePlaneWebhook {
 			t.Fatalf("Source = %q, want plane_webhook", observed.Event.Source)

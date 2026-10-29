@@ -1,4 +1,4 @@
-// Package boundary notes (CORE-94 … CORE-102)
+// Package boundary notes
 //
 // # What lives here today
 //
@@ -14,15 +14,14 @@
 //   - patch/create request types (patch.go);
 //   - launch validation gates (validate.go);
 //   - execution-outcome-to-task-status finalization decisions (finalize.go);
-//     daemon runtime prefers taskflow.ReportExecution (CORE-105) and keeps
+//     daemon runtime prefers taskflow.ReportExecution and keeps
 //     FinalizeSucceededExecution as a domain-level mapping helper;
 //   - task-facing provider error classification (provider_error.go).
 //
-// The daemon runtime (formerly the corechain package, now internal/execution
-// and internal/server) depends on this package; this package does not, and
+// The daemon runtime (internal/execution and internal/server) depends on this package; this package does not, and
 // must not, import those packages back.
 //
-// # What moved out in CORE-102
+// # What moved out
 //
 // Markdown file I/O — path resolution, frontmatter parse/serialize, task card
 // create/mutate/claim, comment section editing, IsTaskFile — now lives in

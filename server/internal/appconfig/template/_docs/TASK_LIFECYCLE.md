@@ -40,15 +40,7 @@ that file to your own name if you prefer. Nothing in the app hardcodes a
 person's name. `owner` is only the author label the app puts on comments made
 on the person's behalf.
 
-`launch.agent` is deprecated for normal tasks. Leave it empty unless there
-is a documented real use case where the launch process must start a
-different worker than the canonical assignee.
-
-Effective launch worker:
-
-1. If `launch.agent` is non-empty, use it only as an explicit override and
-   make the reason visible in the task card.
-2. Otherwise use `assignee`.
+The launch process starts the worker named in `assignee`.
 
 Assignment precedence:
 
@@ -92,7 +84,6 @@ source_inbox: <inbox-id or empty>
 created_at: <ISO-8601>
 updated_at: <ISO-8601>
 launch:
-  agent:
   mode:
   auto_commit: false
   auto_push: false
@@ -124,7 +115,6 @@ tag: "FLET"
 - Numbers count per tag in `_registry/counters.json` and are never reused. A
   task keeps its ref if the project's tag changes later. Only new tasks use the
   new tag.
-- A ref written before its project had a tag (for example `CORE-12`) stays valid.
 - `INBOX-<number>` is the global Inbox ref space.
 
 ### Task dependencies (`depends_on`)

@@ -1,8 +1,7 @@
 package projectscan
 
 // Technology vocabulary shared by repository detection and workspace cards.
-// Names match the former scripts/sniff_projects.py catalog so existing
-// _registry/repositories.json stays readable by the board.
+// Names match the catalog in _registry/repositories.json, which the board reads.
 
 type techSpec struct {
 	category string

@@ -9,7 +9,7 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskprovider"
 )
 
-// Compile-time check: Markdown satisfies the legacy Runtime provider surface.
+// Compile-time check: Markdown satisfies the Runtime provider surface.
 // taskflow.TaskProvider is exposed via Flow() because List() signatures differ
 // between the two contracts (Go has no method overloading).
 var _ taskprovider.Provider = (*Provider)(nil)

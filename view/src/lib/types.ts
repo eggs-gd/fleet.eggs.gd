@@ -58,7 +58,6 @@ export interface Task {
   workspace_id?: string;
   assignee?: string;
   execution?: ExecutionState;
-  launch?: { agent?: string };
   body?: string;
   launch_evaluation?: LaunchEvaluation;
   comments?: TaskComment[];

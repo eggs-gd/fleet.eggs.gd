@@ -85,9 +85,7 @@ Use one of these task types in Work item frontmatter:
 | `maintenance` | Cleanup, dependency, _registry, docs, housekeeping. |
 | `decision` | Record or prepare a durable project/process decision. |
 
-`todo` is a task **status** (ready for pickup), not a type. Legacy
-`type: todo` cards are rewritten to `type: feature` during Work index
-regeneration.
+`todo` is a task **status** (ready for pickup), not a type.
 
 ## Agent Fit Matrix
 
