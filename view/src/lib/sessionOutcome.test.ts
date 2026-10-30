@@ -118,7 +118,7 @@ test('labels follow the tone, the status and the worker outcome', () => {
   assert.equal(label('succeeded', 'failed'), 'Failed');
   assert.equal(label('released'), 'Released');
   assert.equal(label('succeeded'), 'Succeeded');
-  assert.equal(label('waiting_input'), 'Waiting input');
+  assert.equal(label('waiting_input'), 'HITL');
   assert.equal(label('orphaned'), 'Orphaned');
   assert.equal(sessionOutcomeLabel({}, 'live'), 'Running');
   assert.equal(sessionOutcomeLabel({}), 'Closed');
