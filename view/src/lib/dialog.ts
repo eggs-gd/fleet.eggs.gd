@@ -7,13 +7,13 @@ export function focusDialog(node: HTMLElement, onDismiss: () => void) {
     event.preventDefault();
     onDismiss();
   };
-  window.addEventListener('keydown', onKey);
+  globalThis.addEventListener('keydown', onKey);
   return {
     update(next: () => void) {
       onDismiss = next;
     },
     destroy() {
-      window.removeEventListener('keydown', onKey);
+      globalThis.removeEventListener('keydown', onKey);
     }
   };
 }

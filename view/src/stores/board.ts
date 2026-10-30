@@ -73,11 +73,11 @@ export const onStateLoaded = (listener: (state: AnyRecord) => void) => {
 };
 
 let inFlight = false;
-let busyTimer: number | null = null;
+let busyTimer: ReturnType<typeof setTimeout> | null = null;
 
 function clearBusyTimer() {
   if (busyTimer == null) return;
-  window.clearTimeout(busyTimer);
+  clearTimeout(busyTimer);
   busyTimer = null;
 }
 
@@ -89,7 +89,7 @@ export async function loadData({ manual = false } = {}) {
     refreshBusy.set(true);
   } else {
     // Fast auto-polls stay visually quiet so the top menu does not flash every 5s.
-    busyTimer = window.setTimeout(() => {
+    busyTimer = setTimeout(() => {
       refreshBusy.set(true);
       busyTimer = null;
     }, REFRESH_BUSY_DELAY_MS);
@@ -122,14 +122,14 @@ export const requestManualRefresh = () => loadData({ manual: true });
 
 /** Polls the server at the operator's chosen interval; returns the stop function. */
 export function startPolling(): () => void {
-  let timer: number | null = null;
+  let timer: ReturnType<typeof setInterval> | null = null;
   const stopInterval = refreshMs.subscribe((ms) => {
-    if (timer != null) window.clearInterval(timer);
-    timer = window.setInterval(() => loadData(), ms);
+    if (timer != null) clearInterval(timer);
+    timer = setInterval(() => loadData(), ms);
   });
   return () => {
     stopInterval();
-    if (timer != null) window.clearInterval(timer);
+    if (timer != null) clearInterval(timer);
     clearBusyTimer();
   };
 }

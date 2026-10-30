@@ -1,3 +1,4 @@
+import { asText } from './text.ts';
 import { taskProjectId } from './taskDisplay.ts';
 import type { Project, Task, Workspace } from './types.ts';
 
@@ -15,15 +16,12 @@ const byRelevance = (
 };
 
 export const projectHue = (id: unknown): number =>
-  [...String(id || '')].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) % 360, 0);
+  [...asText(id)].reduce((hash, ch) => (hash * 33 + (ch.codePointAt(0) ?? 0)) % 360, 0);
 
 export const projectColor = (id: unknown): string => `hsl(${projectHue(id)} 62% 46%)`;
 
 export const projectInitial = (title: unknown, id: unknown): string =>
-  String(title || id || '?')
-    .trim()
-    .slice(0, 1)
-    .toUpperCase() || '?';
+  (asText(title) || asText(id) || '?').trim().slice(0, 1).toUpperCase() || '?';
 
 export const projectOpenCount = (tasks: Task[] | null | undefined, projectId: string): number =>
   (tasks ?? []).filter((task) => taskProjectId(task) === projectId && task.status !== 'archived')

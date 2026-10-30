@@ -1,3 +1,4 @@
+import { asText } from './text.ts';
 import { orphanKey, sessionKey } from './dashboardState.ts';
 import type { Session } from './types.ts';
 
@@ -33,34 +34,41 @@ export const sessionOutcomeTone = (session?: Session | null, kind: string = 'clo
 };
 
 const titleCase = (value: unknown): string =>
-  String(value || '')
-    .replace(/_/g, ' ')
+  asText(value)
+    .replaceAll('_', ' ')
     .replace(/^\w/, (ch) => ch.toUpperCase());
 
+const HITL_LABELS = new Map([
+  ['needs_rework', 'Needs rework'],
+  ['blocked', 'Blocked']
+]);
+
+const FAIL_LABELS = new Map([
+  ['provider_error', 'Provider error'],
+  ['timed_out', 'Timed out'],
+  ['dead', 'Dead'],
+  ['terminal', 'Terminal']
+]);
+
 export const sessionOutcomeLabel = (session?: Session | null, kind: string = 'closed'): string => {
-  const tone = sessionOutcomeTone(session, kind);
   const status = sessionStatus(session);
   const outcome = sessionWorkerOutcome(session);
-  if (tone === 'orphan') return 'Orphaned';
-  if (tone === 'hitl') {
-    if (outcome === 'needs_rework') return 'Needs rework';
-    if (outcome === 'blocked') return 'Blocked';
-    return 'HITL';
+  switch (sessionOutcomeTone(session, kind)) {
+    case 'orphan':
+      return 'Orphaned';
+    case 'hitl':
+      return HITL_LABELS.get(outcome) ?? 'HITL';
+    case 'fail':
+      return (
+        FAIL_LABELS.get(status) ?? (outcome === 'failed' ? 'Failed' : titleCase(status) || 'Failed')
+      );
+    case 'success':
+      return status === 'released' ? 'Released' : 'Succeeded';
+    case 'live':
+      return titleCase(status) || 'Running';
+    default:
+      return titleCase(status) || 'Closed';
   }
-  if (tone === 'fail') {
-    if (status === 'provider_error') return 'Provider error';
-    if (status === 'timed_out') return 'Timed out';
-    if (status === 'dead') return 'Dead';
-    if (status === 'terminal') return 'Terminal';
-    if (outcome === 'failed') return 'Failed';
-    return titleCase(status) || 'Failed';
-  }
-  if (tone === 'success') {
-    if (status === 'released') return 'Released';
-    return 'Succeeded';
-  }
-  if (tone === 'live') return titleCase(status) || 'Running';
-  return titleCase(status) || 'Closed';
 };
 
 export const elapsedClockPrecise = (

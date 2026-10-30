@@ -220,7 +220,8 @@ export interface AgentCapabilityFlags {
 }
 
 export interface AgentSessionReuse {
-  level?: 'verified' | 'unverified' | 'unsupported' | string;
+  /** Usually 'verified', 'unverified' or 'unsupported'; the server may add more. */
+  level?: string;
   can_attempt?: boolean;
   reason?: string;
 }

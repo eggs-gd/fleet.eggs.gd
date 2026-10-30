@@ -2,6 +2,7 @@
 // The server owns the facts (`capabilities`, `session_reuse` on each agent).
 // This file only names them for a person.
 
+import { asText } from './text.ts';
 import type { Agent } from './types.ts';
 
 const FLAG_ROWS: [string, string][] = [
@@ -27,7 +28,8 @@ const flagText = (value: unknown): 'yes' | 'no' | 'unknown' => {
   return 'unknown';
 };
 
-const tone = (text: string): string => (text === 'yes' ? 'ok' : text === 'no' ? 'muted' : 'warn');
+const TONES: Record<string, string> = { yes: 'ok', no: 'muted' };
+const tone = (text: string): string => TONES[text] ?? 'warn';
 
 export interface CapabilityRow {
   key: string;
@@ -67,4 +69,4 @@ export function launchesAutomatically(agent?: Agent | null): boolean {
 }
 
 // Server notes quote commands in backticks. The settings page shows plain text.
-export const plainText = (text: unknown): string => String(text || '').replaceAll('`', '');
+export const plainText = (text: unknown): string => asText(text).replaceAll('`', '');

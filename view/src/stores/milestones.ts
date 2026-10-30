@@ -97,8 +97,9 @@ export async function removeMilestone(group: MilestoneTaskGroup) {
   const count = get(tasks).filter(
     (task) => task.workspace_id === cardId && task.milestone === group.milestoneId
   ).length;
-  const detail = count ? ` ${count} task${count === 1 ? '' : 's'} will move to Unscheduled.` : '';
-  if (!window.confirm(`Delete milestone "${group.milestoneTitle}"?${detail}`)) return;
+  const noun = count === 1 ? 'task' : 'tasks';
+  const detail = count ? ` ${count} ${noun} will move to Unscheduled.` : '';
+  if (!globalThis.confirm(`Delete milestone "${group.milestoneTitle}"?${detail}`)) return;
   try {
     await deleteMilestone(cardId, group.milestoneId);
     await requestManualRefresh();

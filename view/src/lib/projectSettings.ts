@@ -117,6 +117,9 @@ export const projectSettingsInspect = (
     (parentId && projects.find((entry) => entry.id === parentId)) ||
     (parentId && workspaces.find((entry) => entry.id === parentId)) ||
     null;
+  let parentRef: { id: string; title: string } | null = null;
+  if (parent) parentRef = { id: parent.id, title: parent.title || parent.id };
+  else if (parentId) parentRef = { id: parentId, title: parentId };
 
   const seen = new Set<string>();
   const rows: RepositoryInspectRow[] = [];
@@ -143,11 +146,7 @@ export const projectSettingsInspect = (
       workspace && workspace.id !== item.id
         ? { id: workspace.id, title: workspace.title || workspace.id }
         : null,
-    parent: parent
-      ? { id: parent.id, title: parent.title || parent.id }
-      : parentId
-        ? { id: parentId, title: parentId }
-        : null,
+    parent: parentRef,
     nested: childProjects(projects, item.id).map((entry) => ({
       id: entry.id,
       title: entry.title || entry.id
