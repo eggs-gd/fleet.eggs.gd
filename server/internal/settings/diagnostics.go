@@ -7,6 +7,12 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
 )
 
+const labelMCP = "MCP integrations"
+
+const labelStorage = "Task storage"
+
+const labelRegistry = "Project registry"
+
 func inspectDiagnostics(projects Projects, agents Agents, manager Manager, integrations Integrations, sessions SessionCounts) Diagnostics {
 	_ = manager
 	health := []HealthItem{
@@ -33,25 +39,25 @@ func inspectDiagnostics(projects Projects, agents Agents, manager Manager, integ
 func registryHealth(projects Projects) HealthItem {
 	for _, root := range projects.Roots {
 		if root.Kind == "registry_scan" && !root.Reachable {
-			return HealthItem{ID: "registry", Label: "Project registry", Status: "warn", Detail: "scan root unreachable: " + root.Path}
+			return HealthItem{ID: "registry", Label: labelRegistry, Status: "warn", Detail: "scan root unreachable: " + root.Path}
 		}
 	}
 	if len(projects.Roots) == 0 {
-		return HealthItem{ID: "registry", Label: "Project registry", Status: "warn", Detail: "no roots"}
+		return HealthItem{ID: "registry", Label: labelRegistry, Status: "warn", Detail: "no roots"}
 	}
-	return HealthItem{ID: "registry", Label: "Project registry", Status: "ok"}
+	return HealthItem{ID: "registry", Label: labelRegistry, Status: "ok"}
 }
 
 func storageHealth(projects Projects) HealthItem {
 	for _, path := range projects.DataPaths {
 		if path.Name == "Tasks" && !path.Exists {
-			return HealthItem{ID: "storage", Label: "Task storage", Status: "error", Detail: path.Path + " missing"}
+			return HealthItem{ID: "storage", Label: labelStorage, Status: "error", Detail: path.Path + " missing"}
 		}
 		if path.Name == "Tasks" && !path.Writable {
-			return HealthItem{ID: "storage", Label: "Task storage", Status: "warn", Detail: path.Path + " not writable"}
+			return HealthItem{ID: "storage", Label: labelStorage, Status: "warn", Detail: path.Path + " not writable"}
 		}
 	}
-	return HealthItem{ID: "storage", Label: "Task storage", Status: "ok", Detail: projects.TaskBackend.Active}
+	return HealthItem{ID: "storage", Label: labelStorage, Status: "ok", Detail: projects.TaskBackend.Active}
 }
 
 func agentHealth(agents Agents) HealthItem {
@@ -78,12 +84,12 @@ func mcpHealth(integrations Integrations) HealthItem {
 		}
 	}
 	if missing > 0 {
-		return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "warn", Detail: fmt.Sprintf("%d configured server(s) not detected", missing)}
+		return HealthItem{ID: "mcp", Label: labelMCP, Status: "warn", Detail: fmt.Sprintf("%d configured server(s) not detected", missing)}
 	}
 	if len(integrations.MCP) == 0 {
-		return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "ok", Detail: "no .mcp.json servers"}
+		return HealthItem{ID: "mcp", Label: labelMCP, Status: "ok", Detail: "no .mcp.json servers"}
 	}
-	return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "ok"}
+	return HealthItem{ID: "mcp", Label: labelMCP, Status: "ok"}
 }
 
 func sessionHealth(sessions SessionCounts) HealthItem {

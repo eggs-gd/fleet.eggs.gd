@@ -84,7 +84,9 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 	return task, nil
 }
 
-func (launcher *AgentLauncher) Stop() {}
+func (launcher *AgentLauncher) Stop() {
+	// Nothing to release.
+}
 
 func agentTaskContext(task Task) TaskContext {
 	return TaskContext{

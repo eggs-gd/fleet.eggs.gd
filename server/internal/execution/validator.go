@@ -29,4 +29,6 @@ func (validator *Validator) knownTasks() []Task {
 	return validator.KnownTasks()
 }
 
-func (validator *Validator) Stop() {}
+func (validator *Validator) Stop() {
+	// Nothing to release.
+}

@@ -74,7 +74,9 @@ func (service *listenerService) Decorate(event taskflow.TaskEvent) (taskflow.Tas
 	return event, nil
 }
 
-func (service *listenerService) Stop() {}
+func (service *listenerService) Stop() {
+	// Nothing to release.
+}
 
 func (p *Provider) applyObservedChange(observed ObservedTaskChange) error {
 	if err := RebuildWorkIndex(p.root); err != nil {

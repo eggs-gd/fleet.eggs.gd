@@ -118,13 +118,13 @@ func (s *Service) ShowBoard(ctx context.Context, q BoardQuery) Response {
 	return Response{OK: true, Result: &Result{Action: "board", Detail: out}}
 }
 
-func excerpt(text string, max int) string {
+func excerpt(text string, limit int) string {
 	text = strings.Join(strings.Fields(text), " ")
 	runes := []rune(text)
-	if len(runes) <= max {
+	if len(runes) <= limit {
 		return text
 	}
-	return string(runes[:max]) + "…"
+	return string(runes[:limit]) + "…"
 }
 
 // Task returns one card, its dependencies, blockers, session, and activity tail.
@@ -141,8 +141,8 @@ func (s *Service) Task(ctx context.Context, ref string) Response {
 		refs = append(refs, task.Ref)
 		byRef[strings.ToUpper(task.Ref)] = task
 		if strings.EqualFold(task.Ref, ref) {
-			copy := task
-			found = &copy
+			match := task
+			found = &match
 		}
 	}
 	if found == nil {

@@ -46,14 +46,14 @@ func SelectRequirementProfiles(input RequirementInput) []string {
 		".go", "server/", "go test", "gopls", "go.mod", "go sum",
 	)
 	svelteSignals := containsAny(text,
-		".svelte", "view/", "sveltekit", "svelte-autofixer", "styles.css",
+		".svelte", "view/", "sveltekit", ToolSvelteAutofixer, "styles.css",
 	)
 	archSignals := taskType == "research" || containsAny(text,
 		"refactor", "architecture", "module boundary", "module boundaries",
 		"design pattern", "split corechain", "ownership boundary",
 	)
 	mcpSignals := svelteSignals || containsAny(text,
-		"mcp", "list-sections", "get-documentation", "documentation tool", "svelte mcp",
+		"mcp", ToolListSections, ToolGetDocumentation, "documentation tool", "svelte mcp",
 	)
 
 	// Only default to Go inside the Core tree. Non-Go target
@@ -133,11 +133,11 @@ func NormalizeToolName(name string) string {
 		return ToolGoDiagnostics
 	case "go_vulncheck", "govulncheck", "go-vulncheck":
 		return ToolGoVulncheck
-	case "svelte-autofixer", "svelte_autofixer", "svelteautofixer":
+	case ToolSvelteAutofixer, "svelte_autofixer", "svelteautofixer":
 		return ToolSvelteAutofixer
-	case "list-sections", "list_sections", "listsections":
+	case ToolListSections, "list_sections", "listsections":
 		return ToolListSections
-	case "get-documentation", "get_documentation", "getdocumentation":
+	case ToolGetDocumentation, "get_documentation", "getdocumentation":
 		return ToolGetDocumentation
 	case "find_patterns", "find-patterns", "findpatterns":
 		return ToolFindPatterns

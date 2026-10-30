@@ -72,7 +72,9 @@ func filterThreadsByCwd(threads []execution.ManagerThread, cwd string) []executi
 func openManagerRelayLog(runtimeRoot string) (io.Writer, func()) {
 	log, err := runtimedb.OpenRelay(runtimeRoot)
 	if err != nil {
-		return io.Discard, func() {}
+		return io.Discard, func() {
+			// No log was opened, so there is nothing to close.
+		}
 	}
 	return log, func() { _ = log.Close() }
 }

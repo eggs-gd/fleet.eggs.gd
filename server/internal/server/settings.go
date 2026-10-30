@@ -25,12 +25,12 @@ func registerSettingsRoutes(mux *http.ServeMux, rt *settingsRuntime) {
 		case http.MethodPatch:
 			rt.patch(w, r)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 		}
 	})
 	mux.HandleFunc("/api/settings/recheck", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)
@@ -43,7 +43,7 @@ func registerSettingsRoutes(mux *http.ServeMux, rt *settingsRuntime) {
 	})
 	mux.HandleFunc("/api/settings/rescan", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)

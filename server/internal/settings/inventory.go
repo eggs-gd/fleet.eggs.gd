@@ -1,5 +1,7 @@
 package settings
 
+const browserOnly = "remembered in this browser"
+
 func inventoryCatalog() []InventoryEntry {
 	return []InventoryEntry{
 		entry("version", "cmd/fleet/main.go version, set by the build (-ldflags)", false, false, true, "general", false),
@@ -7,9 +9,9 @@ func inventoryCatalog() []InventoryEntry {
 		entry("data root", "~/.fleet/app.json dataRoot; General moves the directory", true, true, true, "general", true),
 		entry("dry-run", "fleet serve --live, --dry-run", false, true, true, "general", false),
 		entry("session timeout", OverlayFileName+" sessionTimeout; explicit fleet serve --session-timeout overrides the file", true, true, true, "general", true),
-		entry("theme", "remembered in this browser", true, false, true, "general", true),
-		entry("auto-refresh interval", "remembered in this browser", true, false, true, "general", true),
-		entry("split widths / accordion / scroll", "remembered in this browser", true, false, true, "general", true),
+		entry("theme", browserOnly, true, false, true, "general", true),
+		entry("auto-refresh interval", browserOnly, true, false, true, "general", true),
+		entry("split widths / accordion / scroll", browserOnly, true, false, true, "general", true),
 		entry("project scan roots", OverlayFileName+" scanRoots; serve watches them and rewrites _registry when repositories change", true, false, true, "general", true),
 		entry("task storage type", "markdown", false, true, true, "general", false),
 		entry("agent executables", OverlayFileName+" agents.*.executable; env FLEET_CODEX_BINARY wins when set", true, false, true, "agents", true),

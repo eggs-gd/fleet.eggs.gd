@@ -346,17 +346,17 @@ func writeEntityLine(b *strings.Builder, entity VocabularyEntity) {
 	b.WriteByte('\n')
 }
 
-func truncateRunes(value string, max int) string {
+func truncateRunes(value string, limit int) string {
 	value = strings.TrimSpace(value)
-	if max <= 0 || value == "" {
+	if limit <= 0 || value == "" {
 		return value
 	}
-	if utf8.RuneCountInString(value) <= max {
+	if utf8.RuneCountInString(value) <= limit {
 		return value
 	}
 	runes := []rune(value)
-	trimmed := strings.TrimSpace(string(runes[:max]))
-	if cut := strings.LastIndexAny(trimmed, " .,;"); cut > max/2 {
+	trimmed := strings.TrimSpace(string(runes[:limit]))
+	if cut := strings.LastIndexAny(trimmed, " .,;"); cut > limit/2 {
 		trimmed = strings.TrimRight(trimmed[:cut], " .,;")
 	}
 	return trimmed + "…"

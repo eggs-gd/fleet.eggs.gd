@@ -80,7 +80,9 @@ func (entry *Entry) Decorate(event taskflow.TaskEvent) (*Task, error) {
 	return &task, nil
 }
 
-func (entry *Entry) Stop() {}
+func (entry *Entry) Stop() {
+	// Nothing to release.
+}
 
 // TaskFromFlow maps a taskflow.Task into the lifecycle projection used by
 // Validator / AgentLauncher.

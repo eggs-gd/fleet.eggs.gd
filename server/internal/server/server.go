@@ -21,6 +21,10 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 )
 
+const msgMethodNotAllowed = "method not allowed"
+
+const headerContentType = "Content-Type"
+
 type Config struct {
 	Addr           string
 	CoreRoot       string
@@ -187,7 +191,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 	runtimeRoot := cfg.RuntimeRoot
 	mux.HandleFunc("/api/manager/schema", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		schema, err := manager.SchemaObject()
@@ -199,21 +203,21 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 	})
 	mux.HandleFunc("/api/manager/vocabulary", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		writeJSON(w, service.Vocabulary())
 	})
 	mux.HandleFunc("/api/manager/binding", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		writeJSON(w, managerBindingStatus(coreRoot))
 	})
 	mux.HandleFunc("/api/manager/threads", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		agent := strings.TrimSpace(r.URL.Query().Get("agent"))
@@ -233,7 +237,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 	})
 	mux.HandleFunc("/api/manager/text", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		var req manager.TextRequest
@@ -245,7 +249,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 	})
 	mux.HandleFunc("/api/manager/command", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		var req manager.CommandRequest
@@ -257,7 +261,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 	})
 	mux.HandleFunc("/api/manager/audio", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		if err := r.ParseMultipartForm(16 << 20); err != nil {
@@ -275,7 +279,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		contentType := header.Header.Get("Content-Type")
+		contentType := header.Header.Get(headerContentType)
 		if contentType == "" {
 			contentType = "application/octet-stream"
 		}
@@ -299,13 +303,13 @@ func writeManagerResponse(w http.ResponseWriter, response manager.Response) {
 			}
 		}
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headerContentType, "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headerContentType, "application/json")
 	_ = json.NewEncoder(w).Encode(value)
 }
 

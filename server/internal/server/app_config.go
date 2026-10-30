@@ -28,7 +28,7 @@ func registerAppConfigRoutes(mux *http.ServeMux, cfg Config) {
 		case http.MethodPatch:
 			patchAppConfig(w, r, cfg)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 		}
 	})
 }

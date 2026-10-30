@@ -68,7 +68,9 @@ func (walker *FsWalker) Start(chout chan<- FileEvent, ctx context.Context) {
 }
 
 func (walker *FsWalker) Decorate(event FileEvent) (FileEvent, error) { return event, nil }
-func (walker *FsWalker) Stop()                                       {}
+func (walker *FsWalker) Stop() {
+	// Nothing to release.
+}
 
 func (walker *FsWalker) scan(chout chan<- FileEvent, ctx context.Context) {
 	walker.scanDir(filepath.Join(walker.root, "Work"), chout, ctx)

@@ -13,6 +13,10 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/managerskills"
 )
 
+const codexDir = ".codex"
+
+const codexConfigFile = "config.toml"
+
 // CodexTrustWarning is the one sentence shown when Fleet trusts a data root
 // for Codex. Trust covers hooks and exec policy, not only MCP.
 const CodexTrustWarning = "Trusting this folder also allows Codex hooks and exec policy, not only the manager MCP server."
@@ -72,7 +76,7 @@ func EnsureManagerMCP(root, agent, addr, token string) (FleetMCPStatus, error) {
 	if err := writeClaudeManagerMCP(filepath.Join(abs, ".mcp.json"), url); err != nil {
 		return FleetMCPStatus{}, err
 	}
-	if err := writeCodexManagerMCP(filepath.Join(abs, ".codex", "config.toml"), url); err != nil {
+	if err := writeCodexManagerMCP(filepath.Join(abs, codexDir, codexConfigFile), url); err != nil {
 		return FleetMCPStatus{}, err
 	}
 	if err := writeGeminiManagerMCP(filepath.Join(abs, ".agents", "mcp_config.json"), url); err != nil {
@@ -103,7 +107,7 @@ func InspectManagerMCP(root, agent, addr, token string) FleetMCPStatus {
 		status.Path = filepath.Join(abs, ".mcp.json")
 		status.URL = claudeManagerURL(status.Path)
 	case "codex":
-		status.Path = filepath.Join(abs, ".codex", "config.toml")
+		status.Path = filepath.Join(abs, codexDir, codexConfigFile)
 		status.URL = codexManagerURL(status.Path)
 		trusted := codexProjectTrusted(abs)
 		status.Trusted = &trusted
@@ -202,7 +206,7 @@ func trustCodexProject(absRoot string) error {
 	if err != nil {
 		return fmt.Errorf("codex trust: %w", err)
 	}
-	path := filepath.Join(home, ".codex", "config.toml")
+	path := filepath.Join(home, codexDir, codexConfigFile)
 	var existing string
 	if data, err := os.ReadFile(path); err == nil {
 		existing = string(data)
@@ -278,7 +282,7 @@ func codexProjectTrusted(absRoot string) bool {
 	if err != nil {
 		return false
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml"))
+	data, err := os.ReadFile(filepath.Join(home, codexDir, codexConfigFile))
 	if err != nil {
 		return false
 	}

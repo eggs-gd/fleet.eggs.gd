@@ -13,6 +13,10 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
+const methodTurnStart = "turn/start"
+
+const methodTurnInterrupt = "turn/interrupt"
+
 func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task tasklifecycle.Task, opts RunnerOptions) {
 	logFile, err := runtimedb.OpenLog(opts.RuntimeRoot, session.LogPath, true)
 	if err != nil {
@@ -82,7 +86,7 @@ func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task 
 	}
 	if err := driveCodexTurn(sessionCtx, cancel, client, messages, controls, &session, task, idleTimeout, opts); err != nil {
 		if session.CodexThreadID != "" && session.CodexTurnID != "" {
-			_, _ = client.request("turn/interrupt", map[string]any{
+			_, _ = client.request(methodTurnInterrupt, map[string]any{
 				"threadId": session.CodexThreadID,
 				"turnId":   session.CodexTurnID,
 			})
@@ -121,14 +125,14 @@ func HandleCodexSessionControl(client *CodexClient, session *RuntimeSession, con
 		if session.CodexThreadID == "" || session.CodexTurnID == "" {
 			return errors.New("codex interrupt requires a known thread id and turn id")
 		}
-		_, err := client.request("turn/interrupt", map[string]any{"threadId": session.CodexThreadID, "turnId": session.CodexTurnID})
+		_, err := client.request(methodTurnInterrupt, map[string]any{"threadId": session.CodexThreadID, "turnId": session.CodexTurnID})
 		session.LastEvent = "operator_interrupt"
 		session.ExecutionStatus = "running"
 		session.BlockingReason = ""
 		return err
 	case "cancel":
 		if session.CodexThreadID != "" && session.CodexTurnID != "" {
-			_, _ = client.request("turn/interrupt", map[string]any{"threadId": session.CodexThreadID, "turnId": session.CodexTurnID})
+			_, _ = client.request(methodTurnInterrupt, map[string]any{"threadId": session.CodexThreadID, "turnId": session.CodexTurnID})
 		}
 		session.LastEvent = "operator_cancel"
 		session.ExecutionStatus = "cancelled"
@@ -142,7 +146,7 @@ func HandleCodexSessionControl(client *CodexClient, session *RuntimeSession, con
 		if input == "" {
 			return errors.New("codex input/continue requires non-empty input")
 		}
-		id, err := client.request("turn/start", codexTurnStartParams(session.CodexThreadID, input))
+		id, err := client.request(methodTurnStart, codexTurnStartParams(session.CodexThreadID, input))
 		if err != nil {
 			return err
 		}
@@ -220,7 +224,7 @@ func driveCodexTurn(ctx context.Context, cancel context.CancelFunc, client *Code
 	session.ExecutionStatus = "running"
 	session.LastEvent = firstNonEmpty(session.LastEvent, "thread_ready")
 	upsertSession(opts, *session)
-	id, err = client.request("turn/start", codexTurnStartParams(threadID, task.LaunchEvaluation.Prompt))
+	id, err = client.request(methodTurnStart, codexTurnStartParams(threadID, task.LaunchEvaluation.Prompt))
 	if err != nil {
 		return err
 	}
@@ -230,7 +234,7 @@ func driveCodexTurn(ctx context.Context, cancel context.CancelFunc, client *Code
 	}
 	if turnID := CodexTurnID(response.Result); turnID != "" {
 		session.CodexTurnID = turnID
-		session.LastEvent = "turn/start"
+		session.LastEvent = methodTurnStart
 		upsertSession(opts, *session)
 	}
 	timer := time.NewTimer(idleTimeout)

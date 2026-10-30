@@ -81,7 +81,9 @@ func (listener *pollingListener) Decorate(event TaskEvent) (TaskEvent, error) {
 	return event, nil
 }
 
-func (listener *pollingListener) Stop() {}
+func (listener *pollingListener) Stop() {
+	// Nothing to release.
+}
 
 func (listener *pollingListener) poll(chout chan<- TaskEvent, ctx context.Context) {
 	if listener.source != nil {

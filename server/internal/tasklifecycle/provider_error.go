@@ -148,11 +148,7 @@ func classifyProviderText(provider string, operation string, text string) *Provi
 		"logged out", "log in again", "login again", "re-authenticate",
 		"reauthenticate", "session expired", "token expired", "expired credentials",
 		"credentials expired", "oauth", "auth error", "authentication_error",
-		"401 unauthorized", "http 401"):
-		return providerError(provider, "auth_required", operation,
-			providerDisplayName(provider)+" login required. Sign in to "+providerDisplayName(provider)+" on the daemon host, then retry this task.",
-			text)
-	case containsAny(lower, "permission denied"):
+		"401 unauthorized", "http 401", "permission denied"):
 		return providerError(provider, "auth_required", operation,
 			providerDisplayName(provider)+" login required. Sign in to "+providerDisplayName(provider)+" on the daemon host, then retry this task.",
 			text)

@@ -80,7 +80,9 @@ func (f *Finalizer) Decorate(result taskflow.ExecutionResult) (taskflow.Executio
 	return result, chain.ErrSkippedItem
 }
 
-func (f *Finalizer) Stop() {}
+func (f *Finalizer) Stop() {
+	// Nothing to release.
+}
 
 // Apply writes one ExecutionResult through TaskService.
 func (f *Finalizer) Apply(result taskflow.ExecutionResult) (Task, error) {

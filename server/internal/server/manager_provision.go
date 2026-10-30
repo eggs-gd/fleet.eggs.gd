@@ -13,6 +13,8 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 )
 
+const msgSessionRootNotData = "session root is not the data root"
+
 // managerSessionTimeout bounds how long the person waits for a provider to start
 // the Manager session. A provider that wants a sign-in waits for a person, so
 // a long timeout only makes the dialog hang.
@@ -23,7 +25,7 @@ type managerSessionStarter func(ctx context.Context, agent, workingDir string) (
 func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
 	mux.HandleFunc("/api/manager/setup", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		needed := managerSetupNeeded(cfg.CoreRoot, cfg.DataRootCreated)
@@ -35,7 +37,7 @@ func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
 	})
 	mux.HandleFunc("/api/manager/session", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {
@@ -58,7 +60,7 @@ func registerManagerProvisionRoutes(mux *http.ServeMux, cfg Config) {
 	})
 	mux.HandleFunc("/api/manager/adopt", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		var req struct {
@@ -143,14 +145,14 @@ func adoptManagerSession(ctx context.Context, cfg Config, agent, threadID string
 		}
 		cwd := strings.TrimSpace(thread.Cwd)
 		if cwd == "" {
-			return ManagerBindingStatus{}, "", errString("session root is not the data root")
+			return ManagerBindingStatus{}, "", errString(msgSessionRootNotData)
 		}
 		abs, absErr := filepath.Abs(cwd)
 		if absErr != nil {
 			abs = cwd
 		}
 		if abs != root {
-			return ManagerBindingStatus{}, "", errString("session root is not the data root")
+			return ManagerBindingStatus{}, "", errString(msgSessionRootNotData)
 		}
 		if err := saveManagerIdentity(root, agent, threadID, root); err != nil {
 			return ManagerBindingStatus{}, "", err
@@ -161,7 +163,7 @@ func adoptManagerSession(ctx context.Context, cfg Config, agent, threadID string
 		}
 		return managerBindingStatus(root), warning, nil
 	}
-	return ManagerBindingStatus{}, "", errString("session root is not the data root")
+	return ManagerBindingStatus{}, "", errString(msgSessionRootNotData)
 }
 
 func allowedManagerWorkspace(coreRoot, requested string) (string, error) {

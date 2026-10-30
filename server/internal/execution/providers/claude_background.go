@@ -18,6 +18,8 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
+const claudeLogsOp = "claude logs"
+
 var backgroundSessionIDPattern = regexp.MustCompile(`backgrounded · (\S+) ·`)
 
 // backgroundRemotePollInterval and backgroundRemoteControlReadyTimeout back
@@ -180,7 +182,7 @@ func RunBackgroundRemoteSession(ctx context.Context, session RuntimeSession, tas
 		if !urlAnnounced {
 			url, logErr := ExtractRemoteControlURL(claudeBinary, backgroundID)
 			if logErr != nil {
-				pe := classifyProviderError(opts, session.Agent, session.Backend, "claude logs", logErr, "")
+				pe := classifyProviderError(opts, session.Agent, session.Backend, claudeLogsOp, logErr, "")
 				if pe != nil && pe.Kind == "control_socket_unavailable" {
 					session.ProviderError = pe
 					finishBackgroundRemoteSession(opts, session, task, claudeBinary, "failed", pe.Reason)
@@ -299,7 +301,7 @@ func RunBackgroundRemoteSession(ctx context.Context, session RuntimeSession, tas
 			if excerpt := truncateForSessionLog(transcript, 1200); excerpt != "" {
 				appendSessionLogLine(logFile, "[core] claude logs excerpt while waiting for remote-control URL:\n%s\n", excerpt)
 			}
-			if pe := classifyProviderError(opts, session.Agent, session.Backend, "claude logs", nil, transcript); pe != nil {
+			if pe := classifyProviderError(opts, session.Agent, session.Backend, claudeLogsOp, nil, transcript); pe != nil {
 				session.ProviderError = pe
 				session.LastEvent = pe.Kind
 				session.BlockingReason = pe.Reason
@@ -310,7 +312,7 @@ func RunBackgroundRemoteSession(ctx context.Context, session RuntimeSession, tas
 			}
 			reason := fmt.Sprintf("Claude background session %s never published a remote-control URL within %s (app-visible registration failed). Nothing will appear on Claude desktop/mobile until the provider publishes Continue-here/session URL. Check Claude Desktop login, `claude agents --json`, and `claude logs %s`.", backgroundID, readyTimeout, backgroundID)
 			appendSessionLogLine(logFile, "[core] %s\n", reason)
-			session.ProviderError = tasklifecycle.NewProviderError(session.Agent, "remote_control_unavailable", "claude logs", reason, truncateForSessionLog(transcript, 360))
+			session.ProviderError = tasklifecycle.NewProviderError(session.Agent, "remote_control_unavailable", claudeLogsOp, reason, truncateForSessionLog(transcript, 360))
 			session.LastEvent = "remote_control_unavailable"
 			session.BlockingReason = reason
 			_ = StopBackgroundSession(claudeBinary, backgroundID)
@@ -405,10 +407,10 @@ func finishBackgroundRemoteSession(opts RunnerOptions, session RuntimeSession, t
 			}
 		}
 		if session.ProviderError == nil {
-			session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "claude logs", fetchErr, transcript)
+			session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, claudeLogsOp, fetchErr, transcript)
 		}
 	} else if fetchErr != nil && session.ProviderError == nil {
-		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "claude logs", fetchErr, "")
+		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, claudeLogsOp, fetchErr, "")
 	}
 	if session.Result == nil {
 		if result := tasklifecycle.ParseWorkerResult(readSessionLog(opts.RuntimeRoot, session.LogPath)); result != nil {

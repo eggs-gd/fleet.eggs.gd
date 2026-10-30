@@ -9,6 +9,8 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 )
 
+const msgNoTaskService = "task service is not configured"
+
 // TaskSummary is a storage-agnostic task view for Manager responses.
 type TaskSummary struct {
 	Ref          string   `json:"ref"`
@@ -71,7 +73,7 @@ func summaryFromFlow(task taskflow.Task) TaskSummary {
 // createViaService creates a task through Contour 1 TaskManagement.
 func createViaService(ctx context.Context, tasks TaskManagement, input taskflow.CreateTask, priority *int) (TaskSummary, error) {
 	if tasks == nil {
-		return TaskSummary{}, Failure{Code: FailureProviderError, Message: "task service is not configured"}
+		return TaskSummary{}, Failure{Code: FailureProviderError, Message: msgNoTaskService}
 	}
 	if priority != nil {
 		input.Priority = *priority
@@ -85,7 +87,7 @@ func createViaService(ctx context.Context, tasks TaskManagement, input taskflow.
 
 func patchViaService(ctx context.Context, tasks TaskManagement, ref string, patch taskflow.PatchInput) (TaskSummary, error) {
 	if tasks == nil {
-		return TaskSummary{}, Failure{Code: FailureProviderError, Message: "task service is not configured"}
+		return TaskSummary{}, Failure{Code: FailureProviderError, Message: msgNoTaskService}
 	}
 	id, err := resolveTaskID(ctx, tasks, ref)
 	if err != nil {
@@ -122,7 +124,7 @@ func findByRef(ctx context.Context, tasks TaskManagement, ref string) (TaskSumma
 		return TaskSummary{}, Failure{Code: FailureNotFound, Message: "task ref is required"}
 	}
 	if tasks == nil {
-		return TaskSummary{}, Failure{Code: FailureProviderError, Message: "task service is not configured"}
+		return TaskSummary{}, Failure{Code: FailureProviderError, Message: msgNoTaskService}
 	}
 	listed, err := tasks.List(ctx, taskflow.TaskFilter{Ref: ref})
 	if err != nil {
@@ -138,7 +140,7 @@ func findByRef(ctx context.Context, tasks TaskManagement, ref string) (TaskSumma
 
 func listViaService(ctx context.Context, tasks TaskManagement, project, status, ref string) ([]TaskSummary, error) {
 	if tasks == nil {
-		return nil, Failure{Code: FailureProviderError, Message: "task service is not configured"}
+		return nil, Failure{Code: FailureProviderError, Message: msgNoTaskService}
 	}
 	listed, err := tasks.List(ctx, taskflow.TaskFilter{
 		Project: project,

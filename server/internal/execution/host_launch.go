@@ -16,6 +16,8 @@ import (
 	l "github.com/eggs-gd/fleet.eggs.gd/lib/logger"
 )
 
+const stageSessionGate = "session-gate"
+
 func (s *Service) StartLaunchCandidate(ctx context.Context, candidate Task) {
 	s.startLaunchCandidate(ctx, candidate)
 }
@@ -36,7 +38,7 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 			s.board.UpsertTask(candidate)
 		}
 		s.emitTaskEvent("launch_waiting", candidate, reason, map[string]any{
-			"stage":             "session-gate",
+			"stage":             stageSessionGate,
 			"conflict_claim_id": conflict.ClaimID,
 			"scope":             scope,
 			"conflict_status":   firstNonEmpty(conflict.ExecutionStatus, conflict.Status),
@@ -46,13 +48,13 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 			if conflict.IsProviderStartup() {
 				s.logger.Warn("waiting on in-progress provider startup",
 					l.String("task", taskLabel(&candidate)),
-					l.String("stage", "session-gate"),
+					l.String("stage", stageSessionGate),
 					l.String("scope", scope),
 					l.String("conflict_claim_id", conflict.ClaimID),
 					l.String("conflict_status", firstNonEmpty(conflict.ExecutionStatus, conflict.Status)),
 					l.String("reason", reason))
 			} else {
-				s.logger.Warn("waiting due to active session", l.String("task", taskLabel(&candidate)), l.String("stage", "session-gate"), l.String("reason", reason))
+				s.logger.Warn("waiting due to active session", l.String("task", taskLabel(&candidate)), l.String("stage", stageSessionGate), l.String("reason", reason))
 			}
 		}
 		return
@@ -62,7 +64,7 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 		s.board.UpsertTask(candidate)
 	}
 	s.emitTaskEvent("runtime_slot_reserved", candidate, "Launch slot reserved before provider start", map[string]any{
-		"stage":      "session-gate",
+		"stage":      stageSessionGate,
 		"claim_id":   session.ClaimID,
 		"agent":      session.Agent,
 		"project_id": session.ProjectID,
