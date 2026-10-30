@@ -36,31 +36,13 @@ func RunGeminiHeadlessSession(ctx context.Context, session RuntimeSession, task 
 		return
 	}
 	binary := session.Command[0]
-	baseArgs := append([]string{}, session.Command[1:]...)
-
 	projectID := strings.TrimSpace(session.GeminiProjectID)
 	if projectID == "" {
 		projectID = findGeminiProjectID(session.WorkingDir)
 	}
 	conversationID := strings.TrimSpace(session.GeminiConversationID)
 
-	var args []string
-	if projectID != "" {
-		args = append([]string{"--project", projectID}, baseArgs...)
-	} else {
-		// First launch in this directory: register it as an antigravity
-		// project as part of the real turn (not a separate throwaway call)
-		// so AGENTS.md/GEMINI.md and .agents/mcp_config.json load. The
-		// created project id is discovered afterward from
-		// ~/.gemini/config/projects/*.json — `agy` does not print it.
-		args = append([]string{"--new-project"}, baseArgs...)
-	}
-	if conversationID != "" {
-		args = append(args, "--conversation", conversationID)
-		session.ResumeAttempted = true
-		session.ResumeOutcome = "attempting"
-	}
-	command := append([]string{binary}, args...)
+	command := geminiCommand(&session, projectID, conversationID)
 	session.Command = command
 	session.Capabilities = ProviderCapabilityFlags(session.Agent, session.Backend)
 	session.StartedAt = time.Now().Format(time.RFC3339)
@@ -99,36 +81,77 @@ func RunGeminiHeadlessSession(ctx context.Context, session RuntimeSession, task 
 	if event.ConversationID != "" {
 		session.GeminiConversationID = event.ConversationID
 	}
-	if projectID == "" {
-		if discovered := findGeminiProjectID(session.WorkingDir); discovered != "" {
-			session.GeminiProjectID = discovered
-			appendSessionLogLine(logFile, "\n[core] registered antigravity project id=%s for cwd=%s\n", discovered, session.WorkingDir)
-		} else {
-			appendSessionLogLine(logFile, "\n[core] could not discover an antigravity project id for cwd=%s after --new-project\n", session.WorkingDir)
-		}
+	recordGeminiProject(logFile, &session, binary, projectID)
+	settleGeminiStatus(opts, &session, err, runCtx.Err(), event)
+	if session.Status == "failed" && session.ErrorMessage != "" {
+		appendSessionLogLine(logFile, "\n[core] gemini session failed: %s\n", session.ErrorMessage)
+	}
+	adoptGeminiResult(opts, &session, event)
+
+	completeProviderSession(opts, session, task, firstNonEmpty(session.ErrorMessage, "Gemini headless agent process exited"), map[string]any{
+		"process_id":      session.ProcessID,
+		"project_id":      session.GeminiProjectID,
+		"conversation_id": session.GeminiConversationID,
+		"exit_code":       session.ExitCode,
+	})
+}
+
+// geminiCommand is the `agy` argv for this turn.
+func geminiCommand(session *RuntimeSession, projectID string, conversationID string) []string {
+	baseArgs := session.Command[1:]
+	var args []string
+	if projectID != "" {
+		args = append([]string{"--project", projectID}, baseArgs...)
 	} else {
+		// First launch in this directory: register it as an antigravity
+		// project as part of the real turn (not a separate throwaway call)
+		// so AGENTS.md/GEMINI.md and .agents/mcp_config.json load. The
+		// created project id is discovered afterward from
+		// ~/.gemini/config/projects/*.json — `agy` does not print it.
+		args = append([]string{"--new-project"}, baseArgs...)
+	}
+	if conversationID != "" {
+		args = append(args, "--conversation", conversationID)
+		session.ResumeAttempted = true
+		session.ResumeOutcome = "attempting"
+	}
+	return append([]string{session.Command[0]}, args...)
+}
+
+// recordGeminiProject keeps the antigravity project id on the session (looking
+// it up after a --new-project launch) and the command to resume it by hand.
+func recordGeminiProject(logFile io.Writer, session *RuntimeSession, binary string, projectID string) {
+	if projectID != "" {
 		session.GeminiProjectID = projectID
+	} else if discovered := findGeminiProjectID(session.WorkingDir); discovered != "" {
+		session.GeminiProjectID = discovered
+		appendSessionLogLine(logFile, "\n[core] registered antigravity project id=%s for cwd=%s\n", discovered, session.WorkingDir)
+	} else {
+		appendSessionLogLine(logFile, "\n[core] could not discover an antigravity project id for cwd=%s after --new-project\n", session.WorkingDir)
 	}
 	if session.GeminiProjectID != "" && session.GeminiConversationID != "" {
 		session.OperatorCommand = GeminiOperatorCommand(binary, session.GeminiProjectID, session.GeminiConversationID)
 		appendSessionLogLine(logFile, "\n[core] operator resume command: %s\n", session.OperatorCommand)
 	}
+}
 
+// settleGeminiStatus turns how the process ended into the session status.
+func settleGeminiStatus(opts RunnerOptions, session *RuntimeSession, waitErr error, runErr error, event geminiResultEvent) {
 	session.Status = "exited"
 	switch {
-	case err != nil:
+	case waitErr != nil:
 		session.Status = "failed"
 		session.ExecutionStatus = "failed"
-		session.ErrorMessage = err.Error()
+		session.ErrorMessage = waitErr.Error()
 		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if errors.As(waitErr, &exitErr) {
 			session.ExitCode = exitErr.ExitCode()
 		}
-		if runCtx.Err() != nil {
+		if runErr != nil {
 			session.ExecutionStatus = "cancelled"
-			session.ErrorMessage = runCtx.Err().Error()
+			session.ErrorMessage = runErr.Error()
 		}
-		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "agy output", err, readSessionLog(opts.RuntimeRoot, session.LogPath))
+		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "agy output", waitErr, readSessionLog(opts.RuntimeRoot, session.LogPath))
 		if session.ProviderError != nil {
 			session.ExecutionStatus = "provider_error"
 		}
@@ -148,40 +171,28 @@ func RunGeminiHeadlessSession(ctx context.Context, session RuntimeSession, task 
 		session.ExecutionStatus = "failed"
 		session.ErrorMessage = firstNonEmpty(event.ErrorText, "agy turn ended with status "+event.Status)
 	}
-	if session.Status == "failed" && session.ErrorMessage != "" {
-		appendSessionLogLine(logFile, "\n[core] gemini session failed: %s\n", session.ErrorMessage)
-	}
+}
 
-	if session.Result == nil && event.Response != "" {
-		refreshSessionToolUsageFromText(&session, event.Response)
+// adoptGeminiResult takes the worker result (or the plain reply) from the
+// final response and pauses the session when the worker asked for input.
+func adoptGeminiResult(opts RunnerOptions, session *RuntimeSession, event geminiResultEvent) {
+	switch {
+	case session.Result != nil:
+		refreshSessionToolUsageFromText(session, readSessionLog(opts.RuntimeRoot, session.LogPath))
+	case event.Response != "":
+		refreshSessionToolUsageFromText(session, event.Response)
 		if result := tasklifecycle.ParseWorkerResult(event.Response); result != nil {
-			session.Result = result
-			session.LastEvent = "worker_result_reported"
-			if summary := strings.TrimSpace(result.Summary); summary != "" {
-				session.LastMessage = summary
-			}
+			adoptWorkerResult(session, result)
 		} else if session.LastMessage == "" {
 			session.LastMessage = event.Response
 		}
-	} else if session.Result != nil {
-		refreshSessionToolUsageFromText(&session, readSessionLog(opts.RuntimeRoot, session.LogPath))
 	}
-	if session.Result != nil && session.ExecutionStatus != "cancelled" && session.ProviderError == nil {
-		if tasklifecycle.WorkerResultNeedsInput(session.Result) {
-			session.ExecutionStatus = "waiting_input"
-			session.Status = "waiting_input"
-			session.ExitedAt = ""
-		} else if session.ExecutionStatus == "succeeded" {
-			session.ExecutionStatus = "succeeded"
-		}
+	if session.Result != nil && session.ExecutionStatus != "cancelled" && session.ProviderError == nil &&
+		tasklifecycle.WorkerResultNeedsInput(session.Result) {
+		session.ExecutionStatus = "waiting_input"
+		session.Status = "waiting_input"
+		session.ExitedAt = ""
 	}
-
-	completeProviderSession(opts, session, task, firstNonEmpty(session.ErrorMessage, "Gemini headless agent process exited"), map[string]any{
-		"process_id":      session.ProcessID,
-		"project_id":      session.GeminiProjectID,
-		"conversation_id": session.GeminiConversationID,
-		"exit_code":       session.ExitCode,
-	})
 }
 
 // geminiResultEvent is the terminal event of an `agy --output-format
