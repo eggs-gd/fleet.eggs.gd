@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -389,6 +390,19 @@ func (s *Service) resolveRepository(repo, project string) (string, *Failure) {
 	if s.Board != nil {
 		view = s.Board.Board()
 	}
+	matches := uniqueFold(repositoryMatches(view, repo, project))
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	if len(matches) > 1 {
+		return "", &Failure{Code: FailureAmbiguousRepository, Message: fmt.Sprintf("repository %q matches %v", repo, matches)}
+	}
+	return repo, nil
+}
+
+// repositoryMatches lists the known repository paths and names that match repo,
+// looking only inside project when one is given.
+func repositoryMatches(view BoardView, repo string, project string) []string {
 	var matches []string
 	consider := func(candidate string) {
 		candidate = strings.TrimSpace(candidate)
@@ -419,59 +433,50 @@ func (s *Service) resolveRepository(repo, project string) (string, *Failure) {
 		consider(r.RelativePath)
 		consider(r.Name)
 	}
-	matches = uniqueFold(matches)
-	if len(matches) == 1 {
-		return matches[0], nil
-	}
-	if len(matches) > 1 {
-		return "", &Failure{Code: FailureAmbiguousRepository, Message: fmt.Sprintf("repository %q matches %v", repo, matches)}
-	}
-	return repo, nil
+	return matches
+}
+
+// intentRequirement is what a non-task intent kind needs: the check on the
+// intent, and the error to give when it fails.
+type intentRequirement struct {
+	met     func(Intent) bool
+	message string
+}
+
+var intentRequirements = map[string]intentRequirement{
+	KindStatusChange:   {func(i Intent) bool { return i.Ref != "" && i.Status != "" }, "status_change requires ref and status"},
+	KindComment:        {func(i Intent) bool { return i.Ref != "" && strings.TrimSpace(i.Comment) != "" }, "comment requires ref and comment"},
+	KindBoardCommand:   {func(i Intent) bool { return i.BoardAction != "" }, "board_command requires board_action"},
+	KindAssigneeChange: {func(i Intent) bool { return i.Ref != "" && i.Assignee != "" }, "assignee_change requires ref and assignee"},
+	KindPriorityChange: {func(i Intent) bool { return i.Ref != "" && i.Priority != nil }, "priority_change requires ref and priority"},
+	KindCancel:         {func(i Intent) bool { return i.Ref != "" }, "cancel requires ref"},
+	KindQuestion:       {func(i Intent) bool { return i.Ref != "" || strings.TrimSpace(i.Query) != "" }, "question requires ref or query"},
 }
 
 // ValidateIntent checks required fields for a structured intent.
 func ValidateIntent(intent Intent) error {
-	switch intent.Kind {
-	case KindTask:
-		if strings.TrimSpace(intent.Project) == "" {
-			return fmt.Errorf("task intent requires project")
-		}
-		if strings.TrimSpace(intent.Title) == "" {
-			return fmt.Errorf("task intent requires title")
-		}
-		if strings.TrimSpace(intent.Description) == "" {
-			return fmt.Errorf("task intent requires description")
-		}
-	case KindStatusChange:
-		if intent.Ref == "" || intent.Status == "" {
-			return fmt.Errorf("status_change requires ref and status")
-		}
-	case KindComment:
-		if intent.Ref == "" || strings.TrimSpace(intent.Comment) == "" {
-			return fmt.Errorf("comment requires ref and comment")
-		}
-	case KindBoardCommand:
-		if intent.BoardAction == "" {
-			return fmt.Errorf("board_command requires board_action")
-		}
-	case KindAssigneeChange:
-		if intent.Ref == "" || intent.Assignee == "" {
-			return fmt.Errorf("assignee_change requires ref and assignee")
-		}
-	case KindPriorityChange:
-		if intent.Ref == "" || intent.Priority == nil {
-			return fmt.Errorf("priority_change requires ref and priority")
-		}
-	case KindCancel:
-		if intent.Ref == "" {
-			return fmt.Errorf("cancel requires ref")
-		}
-	case KindQuestion:
-		if intent.Ref == "" && strings.TrimSpace(intent.Query) == "" {
-			return fmt.Errorf("question requires ref or query")
-		}
-	default:
+	if intent.Kind == KindTask {
+		return validateTaskIntent(intent)
+	}
+	need, ok := intentRequirements[intent.Kind]
+	if !ok {
 		return fmt.Errorf("unknown kind %q", intent.Kind)
+	}
+	if !need.met(intent) {
+		return errors.New(need.message)
+	}
+	return nil
+}
+
+func validateTaskIntent(intent Intent) error {
+	if strings.TrimSpace(intent.Project) == "" {
+		return fmt.Errorf("task intent requires project")
+	}
+	if strings.TrimSpace(intent.Title) == "" {
+		return fmt.Errorf("task intent requires title")
+	}
+	if strings.TrimSpace(intent.Description) == "" {
+		return fmt.Errorf("task intent requires description")
 	}
 	return nil
 }
