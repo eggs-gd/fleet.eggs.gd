@@ -78,7 +78,10 @@ type codexAppServer struct {
 }
 
 // startCodexAppServer spawns the app-server. The process is torn down by
-// close, which the caller defers.
+// close, which the caller defers. With a timeout, close kills the process at
+// the deadline or when it returns; with none (timeout <= 0) the process is
+// left to exit on its own once its stdin is closed, so work it has started
+// (a created thread) is not cut off.
 func startCodexAppServer(ctx context.Context, workingDir string, timeout time.Duration, logFile io.Writer, refusal string) (*codexAppServer, error) {
 	if logFile == nil {
 		logFile = io.Discard
@@ -88,7 +91,10 @@ func startCodexAppServer(ctx context.Context, workingDir string, timeout time.Du
 		return nil, fmt.Errorf("resolve codex binary: %w", err)
 	}
 
-	runCtx, cancel := context.WithTimeout(ctx, timeout)
+	runCtx, cancel := ctx, context.CancelFunc(func() {})
+	if timeout > 0 {
+		runCtx, cancel = context.WithTimeout(ctx, timeout)
+	}
 	cmd := exec.CommandContext(runCtx, codexBinary, "app-server", "--stdio")
 	cmd.Dir = workingDir
 	stdin, err := cmd.StdinPipe()
@@ -119,7 +125,11 @@ func startCodexAppServer(ctx context.Context, workingDir string, timeout time.Du
 		client:   NewCodexClient(stdin, logFile),
 		messages: messages,
 		stop: func() {
-			cancel()
+			if timeout > 0 {
+				cancel()
+			} else {
+				_ = stdin.Close()
+			}
 			_ = cmd.Wait()
 		},
 		timedOut: "codex timed out",

@@ -163,19 +163,11 @@ func extractKnownToolsFromText(text string, source, status string, at time.Time)
 		}
 	}
 
-	for _, match := range callMcpToolPattern.FindAllStringSubmatch(text, -1) {
-		if len(match) > 1 {
-			record(match[1], match[0])
-		}
-	}
-	for _, match := range toolUseNamePattern.FindAllStringSubmatch(text, -1) {
-		if len(match) > 1 {
-			record(match[1], match[0])
-		}
-	}
-	for _, match := range jsonToolFieldPattern.FindAllStringSubmatch(text, -1) {
-		if len(match) > 1 && knownToolSet[NormalizeToolName(match[1])] {
-			record(match[1], match[0])
+	for _, pattern := range []*regexp.Regexp{callMcpToolPattern, toolUseNamePattern, jsonToolFieldPattern} {
+		for _, match := range pattern.FindAllStringSubmatch(text, -1) {
+			if len(match) > 1 {
+				record(match[1], match[0])
+			}
 		}
 	}
 
