@@ -77,6 +77,11 @@ type codexAppServer struct {
 	replyText  string
 }
 
+// noCancel stands in for a cancel function when the context has no deadline.
+func noCancel() {
+	// Nothing to cancel.
+}
+
 // startCodexAppServer spawns the app-server. The process is torn down by
 // close, which the caller defers. With a timeout, close kills the process at
 // the deadline or when it returns; with none (timeout <= 0) the process is
@@ -91,7 +96,7 @@ func startCodexAppServer(ctx context.Context, workingDir string, timeout time.Du
 		return nil, fmt.Errorf("resolve codex binary: %w", err)
 	}
 
-	runCtx, cancel := ctx, context.CancelFunc(func() {})
+	runCtx, cancel := ctx, context.CancelFunc(noCancel)
 	if timeout > 0 {
 		runCtx, cancel = context.WithTimeout(ctx, timeout)
 	}

@@ -404,34 +404,33 @@ func (s *Service) resolveRepository(repo, project string) (string, *Failure) {
 // looking only inside project when one is given.
 func repositoryMatches(view BoardView, repo string, project string) []string {
 	var matches []string
-	consider := func(candidate string) {
+	for _, ws := range view.Workspaces {
+		if project == "" || strings.EqualFold(ws.ID, project) {
+			matches = appendRepositoryMatches(matches, repo, ws.Repositories...)
+		}
+	}
+	for _, p := range view.Projects {
+		if project == "" || strings.EqualFold(p.WorkspaceID, project) || strings.EqualFold(p.ID, project) {
+			matches = appendRepositoryMatches(matches, repo, p.Repositories...)
+		}
+	}
+	for _, r := range view.Registry.Repositories {
+		matches = appendRepositoryMatches(matches, repo, r.RelativePath, r.Name)
+	}
+	return matches
+}
+
+// appendRepositoryMatches adds the candidates that equal repo, have repo as
+// their base name, or contain it.
+func appendRepositoryMatches(matches []string, repo string, candidates ...string) []string {
+	for _, candidate := range candidates {
 		candidate = strings.TrimSpace(candidate)
 		if candidate == "" {
-			return
+			continue
 		}
 		if strings.EqualFold(candidate, repo) || strings.EqualFold(repoBaseName(candidate), repo) || strings.Contains(strings.ToLower(candidate), strings.ToLower(repo)) {
 			matches = append(matches, candidate)
 		}
-	}
-	for _, ws := range view.Workspaces {
-		if project != "" && !strings.EqualFold(ws.ID, project) {
-			continue
-		}
-		for _, path := range ws.Repositories {
-			consider(path)
-		}
-	}
-	for _, p := range view.Projects {
-		if project != "" && !strings.EqualFold(p.WorkspaceID, project) && !strings.EqualFold(p.ID, project) {
-			continue
-		}
-		for _, path := range p.Repositories {
-			consider(path)
-		}
-	}
-	for _, r := range view.Registry.Repositories {
-		consider(r.RelativePath)
-		consider(r.Name)
 	}
 	return matches
 }

@@ -446,54 +446,35 @@ func transitionComment(meta TransitionMeta) string {
 
 func formatExecutionComment(result ExecutionResult) string {
 	var b strings.Builder
-	b.WriteString("Execution outcome: `")
-	b.WriteString(string(result.Outcome))
-	b.WriteString("`")
-	if agent := strings.TrimSpace(result.Agent); agent != "" {
-		b.WriteString("\nAgent: `")
-		b.WriteString(agent)
-		b.WriteString("`")
-	}
-	if execID := strings.TrimSpace(result.ExecutionID); execID != "" {
-		b.WriteString("\nExecution ID: `")
-		b.WriteString(execID)
-		b.WriteString("`")
-	}
-	if summary := strings.TrimSpace(result.Summary); summary != "" {
-		b.WriteString("\n\n")
-		b.WriteString(summary)
-	}
-	if question := strings.TrimSpace(result.Question); question != "" {
-		b.WriteString("\n\nQuestion: ")
-		b.WriteString(question)
-	}
-	if errText := strings.TrimSpace(result.Error); errText != "" {
-		b.WriteString("\n\nError: ")
-		b.WriteString(errText)
-	}
-	if len(result.Artifacts) > 0 {
-		b.WriteString("\n\nArtifacts:")
-		for _, artifact := range result.Artifacts {
-			artifact = strings.TrimSpace(artifact)
-			if artifact == "" {
-				continue
-			}
-			b.WriteString("\n- `")
-			b.WriteString(artifact)
-			b.WriteString("`")
-		}
-	}
-	if len(result.Tests) > 0 {
-		b.WriteString("\n\nTests:")
-		for _, test := range result.Tests {
-			test = strings.TrimSpace(test)
-			if test == "" {
-				continue
-			}
-			b.WriteString("\n- `")
-			b.WriteString(test)
-			b.WriteString("`")
-		}
-	}
+	b.WriteString("Execution outcome: `" + string(result.Outcome) + "`")
+	writeTrimmed(&b, "\nAgent: `", result.Agent, "`")
+	writeTrimmed(&b, "\nExecution ID: `", result.ExecutionID, "`")
+	writeTrimmed(&b, "\n\n", result.Summary, "")
+	writeTrimmed(&b, "\n\nQuestion: ", result.Question, "")
+	writeTrimmed(&b, "\n\nError: ", result.Error, "")
+	writeBulletList(&b, "Artifacts", result.Artifacts)
+	writeBulletList(&b, "Tests", result.Tests)
 	return b.String()
+}
+
+// writeTrimmed writes prefix, the trimmed text and suffix, or nothing when the
+// text is blank.
+func writeTrimmed(b *strings.Builder, prefix string, text string, suffix string) {
+	if text = strings.TrimSpace(text); text != "" {
+		b.WriteString(prefix + text + suffix)
+	}
+}
+
+// writeBulletList writes a titled list of code-quoted items; a title with no
+// items is not written.
+func writeBulletList(b *strings.Builder, title string, items []string) {
+	if len(items) == 0 {
+		return
+	}
+	b.WriteString("\n\n" + title + ":")
+	for _, item := range items {
+		if item = strings.TrimSpace(item); item != "" {
+			b.WriteString("\n- `" + item + "`")
+		}
+	}
 }

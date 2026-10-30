@@ -142,24 +142,31 @@ func loadWorkspaceRepos(registryDir string) ([]workspaceRepo, error) {
 		if !ok {
 			effective, ok = byPath[repo.RelativePath]
 		}
-		merged := repo
 		if ok {
-			if effective.Effective != nil {
-				merged.Effective = effective.Effective
-			}
-			if effective.Summary != "" {
-				merged.Summary = effective.Summary
-			}
-			if effective.Branch != "" {
-				merged.Branch = effective.Branch
-			}
-			if effective.Remote != "" {
-				merged.Remote = effective.Remote
-			}
+			repo = withEffectiveFields(repo, effective)
 		}
-		out = append(out, merged.model())
+		out = append(out, repo.model())
 	}
 	return out, nil
+}
+
+// withEffectiveFields takes the effective profile and the non-empty summary,
+// branch and remote of the effective row over the raw one.
+func withEffectiveFields(repo workspaceRepoJSON, effective workspaceRepoJSON) workspaceRepoJSON {
+	if effective.Effective != nil {
+		repo.Effective = effective.Effective
+	}
+	repo.Summary = firstNonBlank(effective.Summary, repo.Summary)
+	repo.Branch = firstNonBlank(effective.Branch, repo.Branch)
+	repo.Remote = firstNonBlank(effective.Remote, repo.Remote)
+	return repo
+}
+
+func firstNonBlank(preferred string, fallback string) string {
+	if preferred != "" {
+		return preferred
+	}
+	return fallback
 }
 
 type workspaceRepoJSON struct {
