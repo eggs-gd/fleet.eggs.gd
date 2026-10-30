@@ -499,3 +499,4 @@ The dashboard in `view/` is small — don't bring in React-world enterprise patt
 - [ ] go_diagnostics and go_vulncheck run clean on touched files?
 - [ ] svelte-autofixer run clean on touched Svelte files?
 - [ ] Any new file duplicating existing logic? → merge instead
+- [ ] If `SONAR_HOST_URL` and `SONAR_TOKEN` are set: `make sonar` passes before the commit. Read what it flags with `sonar list issues --format table`. If they are not set, skip this; it is a maintainer-machine check, not a requirement.

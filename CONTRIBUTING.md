@@ -24,6 +24,24 @@ LIVE := 1
 For the dashboard alone, `npm run dev` in `view/` proxies to a running
 `bin/fleet serve` and reads the token from `~/.fleet/launch-token`.
 
+## SonarQube (optional)
+
+A maintainer can run the SonarQube analysis locally. You need the
+[SonarScanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner)
+(`brew install sonar-scanner`), a SonarQube server and a user token for it. The
+server address and the token stay in your environment, never in the repository:
+
+```bash
+export SONAR_HOST_URL=http://your-server:9000
+export SONAR_TOKEN=<a SonarQube user token>
+make sonar       # Go tests with coverage, then the analysis; fails when the quality gate is red
+```
+
+`.githooks/pre-commit` runs the same check, plus a secrets scan of the staged
+files when the SonarQube CLI (`brew install sonarqube-cli`) is installed. It does
+nothing unless both variables are set. Turn it on with
+`git config core.hooksPath .githooks`; skip it once with `git commit --no-verify`.
+
 ## How the code is laid out
 
 - `server/internal/server`: HTTP routes and the composition root.

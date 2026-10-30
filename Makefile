@@ -19,7 +19,7 @@ LIVE ?=
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
 LDFLAGS := $(if $(VERSION),-X main.version=$(VERSION),)
 
-.PHONY: help setup ui build test vet check serve scan rebuild-index version fmt site clean
+.PHONY: help setup ui build test vet check sonar serve scan rebuild-index version fmt site clean
 
 help:
 	@printf '%s\n' 'Fleet entry points:'
@@ -30,6 +30,7 @@ help:
 	@printf '%s\n' '  make test          Run the Go tests'
 	@printf '%s\n' '  make vet           Run go vet'
 	@printf '%s\n' '  make check         Run vet, the Go tests, and the dashboard tests'
+	@printf '%s\n' '  make sonar         Run the Go tests with coverage, then the SonarQube analysis and its quality gate'
 	@printf '%s\n' '  make scan          Scan PROJECTS_ROOTS and refresh the registry'
 	@printf '%s\n' '  make rebuild-index Rebuild Work/INDEX.md from the task files'
 	@printf '%s\n' '  make site          Typecheck and build the static landing'
@@ -66,6 +67,14 @@ vet:
 
 check: vet test
 	cd "$(VIEW_DIR)" && npm run check && npm run test:ui-state && npm run test:technology-display && npm run format:check
+
+# Needs sonar-scanner on PATH and SONAR_HOST_URL and SONAR_TOKEN in the
+# environment (for a local server, `export SONAR_HOST_URL := ...` in Makefile.local).
+sonar:
+	@test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
+		printf '%s\n' 'Set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) first.'; exit 1; }
+	cd "$(SERVER_DIR)" && go test -coverprofile=coverage.out ./...
+	sonar-scanner -Dsonar.qualitygate.wait=true
 
 serve: build
 	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \

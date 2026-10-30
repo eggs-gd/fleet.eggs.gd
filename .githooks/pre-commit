@@ -1,0 +1,23 @@
+#!/bin/sh
+# Optional pre-commit check: a secrets scan of the staged files and the
+# SonarQube analysis with its quality gate. Turn it on in this checkout with
+#   git config core.hooksPath .githooks
+# It does nothing unless SONAR_HOST_URL and SONAR_TOKEN are set, so a
+# contributor without a SonarQube server is never blocked. Skip once with
+# `git commit --no-verify`.
+
+[ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ] || exit 0
+
+if command -v sonar >/dev/null 2>&1; then
+	sonar hook git-pre-commit || exit 1
+fi
+
+if ! command -v sonar-scanner >/dev/null 2>&1; then
+	echo "pre-commit: sonar-scanner is not installed, skipping the analysis" >&2
+	exit 0
+fi
+
+# Only code the analysis covers; a docs-only commit does not need it.
+git diff --cached --name-only | grep -qE '^(server|view/src|site/src)/' || exit 0
+
+exec make sonar
