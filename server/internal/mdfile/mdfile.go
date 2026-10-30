@@ -47,39 +47,41 @@ func ParseFrontmatter(text string) (Frontmatter, string) {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "  ") && currentKey != "" && !strings.HasPrefix(line, "  - ") {
-			key, value, ok := strings.Cut(strings.TrimSpace(line), ":")
-			if !ok {
-				continue
-			}
-			key = strings.TrimSpace(key)
-			value = strings.TrimSpace(value)
-			if value == "" {
-				fm[currentKey+"."+key] = ""
-				continue
-			}
-			fm[currentKey+"."+key] = ParseScalar(value)
-			continue
-		}
-		if strings.HasPrefix(line, "  - ") && currentKey != "" {
-			values, _ := fm[currentKey].([]string)
-			fm[currentKey] = append(values, ParseScalar(strings.TrimPrefix(line, "  - ")))
-			continue
-		}
-		key, value, ok := strings.Cut(line, ":")
-		if !ok {
-			continue
-		}
-		key = strings.TrimSpace(key)
-		value = strings.TrimSpace(value)
-		currentKey = key
-		if value == "" {
-			fm[key] = []string{}
-			continue
-		}
-		fm[key] = ParseScalar(value)
+		currentKey = parseFrontmatterLine(fm, currentKey, line)
 	}
 	return fm, body
+}
+
+// parseFrontmatterLine reads one non-blank frontmatter line into fm and returns
+// the top-level key that following indented lines belong to.
+func parseFrontmatterLine(fm Frontmatter, currentKey string, line string) string {
+	switch {
+	case currentKey != "" && strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "  - "):
+		if key, value, ok := strings.Cut(strings.TrimSpace(line), ":"); ok {
+			value = strings.TrimSpace(value)
+			if value != "" {
+				value = ParseScalar(value)
+			}
+			fm[currentKey+"."+strings.TrimSpace(key)] = value
+		}
+		return currentKey
+	case currentKey != "" && strings.HasPrefix(line, "  - "):
+		values, _ := fm[currentKey].([]string)
+		fm[currentKey] = append(values, ParseScalar(strings.TrimPrefix(line, "  - ")))
+		return currentKey
+	}
+	key, value, ok := strings.Cut(line, ":")
+	if !ok {
+		return currentKey
+	}
+	key = strings.TrimSpace(key)
+	value = strings.TrimSpace(value)
+	if value == "" {
+		fm[key] = []string{}
+	} else {
+		fm[key] = ParseScalar(value)
+	}
+	return key
 }
 
 // ParseScalar unquotes a YAML-ish scalar value.

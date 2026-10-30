@@ -144,39 +144,52 @@ func ParseWorkerResult(text string) *WorkerResult {
 // independently validate parsed content the way ParseWorkerResult does.
 func jsonObjectCandidates(text string) []string {
 	var candidates []string
-	depth := 0
-	start := -1
-	inString := false
-	escaped := false
+	scan := braceScanner{start: -1}
 	for i, r := range text {
-		if inString {
-			switch {
-			case escaped:
-				escaped = false
-			case r == '\\':
-				escaped = true
-			case r == '"':
-				inString = false
-			}
-			continue
-		}
-		switch r {
-		case '"':
-			inString = true
-		case '{':
-			if depth == 0 {
-				start = i
-			}
-			depth++
-		case '}':
-			if depth > 0 {
-				depth--
-				if depth == 0 && start >= 0 {
-					candidates = append(candidates, text[start:i+1])
-					start = -1
-				}
-			}
+		if scan.step(i, r) {
+			candidates = append(candidates, text[scan.start:i+1])
+			scan.start = -1
 		}
 	}
 	return candidates
+}
+
+// braceScanner tracks the brace depth of a text, ignoring braces inside quoted
+// strings (and escaped quotes inside those).
+type braceScanner struct {
+	depth    int
+	start    int
+	inString bool
+	escaped  bool
+}
+
+// step reads one rune at byte offset i and reports whether it closed a
+// top-level {...} object that began at scan.start.
+func (b *braceScanner) step(i int, r rune) bool {
+	if b.inString {
+		switch {
+		case b.escaped:
+			b.escaped = false
+		case r == '\\':
+			b.escaped = true
+		case r == '"':
+			b.inString = false
+		}
+		return false
+	}
+	switch r {
+	case '"':
+		b.inString = true
+	case '{':
+		if b.depth == 0 {
+			b.start = i
+		}
+		b.depth++
+	case '}':
+		if b.depth > 0 {
+			b.depth--
+			return b.depth == 0 && b.start >= 0
+		}
+	}
+	return false
 }
