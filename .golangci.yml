@@ -13,8 +13,16 @@ linters:
         - (*os.File).Close
         - os.Remove
         - os.RemoveAll
+        # Read-only cursor; the loop's rows.Err() carries any failure.
+        - (*database/sql.Rows).Close
+        # Fail returns its error argument so a caller can `return m.Fail(...)`.
+        - (*github.com/eggs-gd/fleet.eggs.gd/internal/health.Monitor).Fail
   exclusions:
     rules:
       - path: _test\.go
         linters: [errcheck]
         text: "\\.Close` is not checked"
+issues:
+  # Report everything; the default caps hide repeats of the same finding.
+  max-issues-per-linter: 0
+  max-same-issues: 0

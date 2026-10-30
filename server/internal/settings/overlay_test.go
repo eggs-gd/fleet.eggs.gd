@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -184,7 +185,7 @@ func TestScannerBusy(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-started
-	if err := scanner.Start([]string{"/tmp"}, "/tmp/_registry"); err != ErrScanBusy {
+	if err := scanner.Start([]string{"/tmp"}, "/tmp/_registry"); !errors.Is(err, ErrScanBusy) {
 		t.Fatalf("err = %v", err)
 	}
 	close(block)

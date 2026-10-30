@@ -81,11 +81,11 @@ func (walker *FsWalker) scan(chout chan<- FileEvent, ctx context.Context) {
 func (walker *FsWalker) scanDir(root string, chout chan<- FileEvent, ctx context.Context) {
 	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !walker.isWatchedFile(path) {
-			return nil
+			return nil //nolint:nilerr // an unreadable entry is skipped; the next poll retries it
 		}
 		info, err := entry.Info()
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // an unreadable entry is skipped; the next poll retries it
 		}
 		signature := fileSignature{modTime: info.ModTime(), size: info.Size()}
 		previous, seen := walker.seen[path]

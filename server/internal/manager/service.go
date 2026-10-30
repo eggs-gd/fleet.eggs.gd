@@ -485,7 +485,8 @@ func failResponse(fail Failure) Response {
 }
 
 func failureFromErr(err error) Response {
-	if fail, ok := err.(Failure); ok {
+	var fail Failure
+	if errors.As(err, &fail) {
 		return failResponse(fail)
 	}
 	return failResponse(Failure{Code: FailureProviderError, Message: err.Error()})

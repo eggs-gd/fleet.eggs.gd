@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -182,7 +183,9 @@ func serveUntilDone(ctx context.Context, srv *http.Server, l net.Listener) error
 	if err := srv.Shutdown(shutdown); err != nil {
 		return err
 	}
-	<-done
+	if err := <-done; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
 	return nil
 }
 

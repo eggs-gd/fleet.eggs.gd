@@ -83,7 +83,7 @@ func (client *CodexClient) respondError(id json.RawMessage, code int, message st
 	client.mu.Lock()
 	defer client.mu.Unlock()
 	msg := map[string]any{
-		"id":    json.RawMessage(id),
+		"id":    id,
 		"error": map[string]any{"code": code, "message": message},
 	}
 	return client.writeLocked(msg)

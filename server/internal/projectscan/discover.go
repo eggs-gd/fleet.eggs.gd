@@ -14,7 +14,7 @@ func discoverGitRepos(root string) ([]string, error) {
 	var repos []string
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil || !entry.IsDir() {
-			return nil
+			return nil //nolint:nilerr // an unreadable entry is skipped; the scan goes on
 		}
 		name := entry.Name()
 		if path != root {

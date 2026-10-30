@@ -87,11 +87,11 @@ func (s *Service) recordReleaseOnTask(task Task, session RuntimeSession, targetS
 	if task.Status != "doing" {
 		err := s.tasks.AddComment(taskflow.WithCommentAuthor(context.Background(), "owner"), locator, comment)
 		if err != nil {
-			return task, nil
+			return task, nil //nolint:nilerr // the comment is best-effort; the release already happened
 		}
 		updated, loadErr := s.ReloadTaskAfterServiceWrite(locator)
 		if loadErr != nil {
-			return task, nil
+			return task, nil //nolint:nilerr // the comment is best-effort; the release already happened
 		}
 		if s.board.UpsertTask != nil {
 			s.board.UpsertTask(updated)

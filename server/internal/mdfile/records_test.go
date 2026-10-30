@@ -1,6 +1,7 @@
 package mdfile
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -36,7 +37,7 @@ func TestListRecordsOneAndMultiple(t *testing.T) {
 }
 
 func TestListRecordsRejectsTextWithoutABlock(t *testing.T) {
-	if _, err := ListRecords("no frontmatter", "milestones"); err != ErrNoFrontmatter {
+	if _, err := ListRecords("no frontmatter", "milestones"); !errors.Is(err, ErrNoFrontmatter) {
 		t.Fatalf("err = %v", err)
 	}
 }
@@ -91,7 +92,7 @@ func TestSetRecordsEmptyList(t *testing.T) {
 }
 
 func TestSetRecordsRejectsTextWithoutABlock(t *testing.T) {
-	if _, err := SetRecords("no frontmatter", "milestones", []string{"id"}, nil); err != ErrNoFrontmatter {
+	if _, err := SetRecords("no frontmatter", "milestones", []string{"id"}, nil); !errors.Is(err, ErrNoFrontmatter) {
 		t.Fatalf("err = %v", err)
 	}
 }

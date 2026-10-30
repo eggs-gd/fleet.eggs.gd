@@ -2,6 +2,7 @@ package plane
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -389,8 +390,8 @@ func TestProvider_RateLimitedFailureMode(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected List to fail when Plane returns 429")
 	}
-	apiErr, ok := err.(*APIError)
-	if !ok {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
 		t.Fatalf("expected *plane.APIError, got %T: %v", err, err)
 	}
 	if apiErr.StatusCode != http.StatusTooManyRequests {

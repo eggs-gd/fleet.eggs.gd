@@ -25,7 +25,7 @@ func (agent Claude) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveClaudeBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
@@ -117,7 +117,7 @@ func (agent Codex) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveCodexBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
@@ -205,7 +205,7 @@ func (agent Cursor) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveCursorAgentBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
@@ -292,7 +292,7 @@ func (agent Gemini) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveGeminiBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,

@@ -23,7 +23,7 @@ func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task 
 		failLaunch(opts, session, task, err)
 		return
 	}
-	defer logFile.Close()
+	defer logFile.Close() //nolint:errcheck // the session log; a failed close has nowhere to be reported
 	if len(session.Command) == 0 {
 		failLaunch(opts, session, task, errors.New("launch command is empty"))
 		return
@@ -104,17 +104,16 @@ func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task 
 	}
 
 	_ = stdin.Close()
-	waitDone := make(chan error, 1)
-	go func() { waitDone <- cmd.Wait() }()
+	waitDone := make(chan struct{})
+	go func() {
+		_ = cmd.Wait() // the exit status was already read from the app-server's messages
+		close(waitDone)
+	}()
 	select {
 	case <-waitDone:
 	case <-time.After(5 * time.Second):
 		cancel()
 		<-waitDone
-	}
-	select {
-	case <-readDone:
-	default:
 	}
 	finishCodexAppServerSession(opts, session, task, "exited", "")
 }
@@ -311,7 +310,7 @@ func (t *codexTurn) awaitCompletion() error {
 func (t *codexTurn) handleControl(control SessionControlRequest) (bool, error) {
 	if err := HandleCodexSessionControl(t.client, t.session, control); err != nil {
 		control.Done <- err
-		return false, nil
+		return false, nil //nolint:nilerr // the control error goes back to the caller on control.Done
 	}
 	upsertSession(t.opts, *t.session)
 	control.Done <- nil

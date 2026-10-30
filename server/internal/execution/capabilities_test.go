@@ -84,10 +84,10 @@ func TestProviderCapabilityFlagsCodexFleetVisible(t *testing.T) {
 }
 
 func TestHeadlessVisibilityStillBlocksDaemonAutoLaunch(t *testing.T) {
-	if VisibilityClass(VisibilityHeadless).AllowsDaemonAutoLaunch() {
+	if VisibilityHeadless.AllowsDaemonAutoLaunch() {
 		t.Fatal("headless must remain blocked from daemon auto-launch")
 	}
-	if VisibilityClass(VisibilityUnknown).AllowsDaemonAutoLaunch() {
+	if VisibilityUnknown.AllowsDaemonAutoLaunch() {
 		t.Fatal("unknown visibility must remain blocked from daemon auto-launch")
 	}
 }

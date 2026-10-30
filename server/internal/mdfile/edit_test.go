@@ -43,7 +43,7 @@ func TestAddListItemNormalizesInlineLists(t *testing.T) {
 
 func TestFrontmatterHelpersRejectTextWithoutABlock(t *testing.T) {
 	for _, text := range []string{"# no frontmatter\n", "---\nid: a\nno end\n"} {
-		if _, err := SetScalar(text, "a", "b"); err != ErrNoFrontmatter {
+		if _, err := SetScalar(text, "a", "b"); !errors.Is(err, ErrNoFrontmatter) {
 			t.Fatalf("%q: err = %v", text, err)
 		}
 	}

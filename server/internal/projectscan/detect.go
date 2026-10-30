@@ -52,11 +52,11 @@ func detectTechnologies(repo string, children map[string]struct{}, ignoreRules [
 func collectMarkerEvidence(evidence *[]Evidence, repo string, children map[string]struct{}, ignoreRules []ignoreRule) {
 	_ = filepath.WalkDir(repo, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return nil
+			return nil //nolint:nilerr // an unreadable entry is skipped; the scan goes on
 		}
 		rel, err := filepath.Rel(repo, path)
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // an unreadable entry is skipped; the scan goes on
 		}
 		rel = filepath.ToSlash(rel)
 		if entry.IsDir() {
