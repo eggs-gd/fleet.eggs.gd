@@ -31,140 +31,198 @@ func RelayCodexManagerMessage(ctx context.Context, workingDir, threadID, prompt 
 	if strings.TrimSpace(prompt) == "" {
 		return RelayManagerResult{}, errors.New("prompt is required")
 	}
+	resolvedThreadID := strings.TrimSpace(threadID)
+	server, err := startCodexAppServer(ctx, workingDir, timeout, logFile, "Fleet manager relay does not service server-initiated requests")
+	if err != nil {
+		return RelayManagerResult{}, err
+	}
+	defer server.close()
+	server.timedOut = "manager relay timed out waiting for codex"
+	server.trackReply = true
+
+	if err := server.handshake(); err != nil {
+		return RelayManagerResult{}, err
+	}
+	if resolvedThreadID == "" {
+		return RelayManagerResult{}, errors.New("manager session is not bound")
+	}
+	if err := server.resumeThread(workingDir, resolvedThreadID); err != nil {
+		return RelayManagerResult{}, err
+	}
+	id, err := server.client.request(methodTurnStart, codexTurnStartParams(resolvedThreadID, prompt))
+	if err != nil {
+		return RelayManagerResult{}, err
+	}
+	if _, err := server.waitForID(id); err != nil {
+		return RelayManagerResult{}, err
+	}
+	reply, err := server.drainTurn()
+	return RelayManagerResult{ThreadID: resolvedThreadID, ReplyText: reply}, err
+}
+
+// codexAppServer is a short-lived `codex app-server --stdio` child and the
+// request/response plumbing around it.
+type codexAppServer struct {
+	ctx      context.Context
+	client   *CodexClient
+	messages chan CodexRPCMessage
+	stop     func()
+
+	// timedOut prefixes the error when the deadline passes while waiting.
+	timedOut string
+	// refusal answers a request the server sends us; a relay services none.
+	refusal string
+	// trackReply keeps the latest agent text seen in replyText.
+	trackReply bool
+	replyText  string
+}
+
+// startCodexAppServer spawns the app-server. The process is torn down by
+// close, which the caller defers.
+func startCodexAppServer(ctx context.Context, workingDir string, timeout time.Duration, logFile io.Writer, refusal string) (*codexAppServer, error) {
 	if logFile == nil {
 		logFile = io.Discard
 	}
 	codexBinary, err := resolveCodexBinary()
 	if err != nil {
-		return RelayManagerResult{}, fmt.Errorf("resolve codex binary: %w", err)
+		return nil, fmt.Errorf("resolve codex binary: %w", err)
 	}
 
-	relayCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(relayCtx, codexBinary, "app-server", "--stdio")
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
+	cmd := exec.CommandContext(runCtx, codexBinary, "app-server", "--stdio")
 	cmd.Dir = workingDir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return RelayManagerResult{}, fmt.Errorf("open codex stdin: %w", err)
+		cancel()
+		return nil, fmt.Errorf("open codex stdin: %w", err)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return RelayManagerResult{}, fmt.Errorf("open codex stdout: %w", err)
+		cancel()
+		return nil, fmt.Errorf("open codex stdout: %w", err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return RelayManagerResult{}, fmt.Errorf("open codex stderr: %w", err)
+		cancel()
+		return nil, fmt.Errorf("open codex stderr: %w", err)
 	}
 	if err := cmd.Start(); err != nil {
-		return RelayManagerResult{}, fmt.Errorf("start codex app-server: %w", err)
-	}
-	defer func() {
 		cancel()
-		_ = cmd.Wait()
-	}()
+		return nil, fmt.Errorf("start codex app-server: %w", err)
+	}
 
 	messages := make(chan CodexRPCMessage, 64)
 	go readCodexStdout(stdout, logFile, messages, make(chan error, 1))
 	go copyCodexStderr(stderr, logFile)
+	return &codexAppServer{
+		ctx:      runCtx,
+		client:   NewCodexClient(stdin, logFile),
+		messages: messages,
+		stop: func() {
+			cancel()
+			_ = cmd.Wait()
+		},
+		timedOut: "codex timed out",
+		refusal:  refusal,
+	}, nil
+}
 
-	client := NewCodexClient(stdin, logFile)
-	var replyText string
+func (a *codexAppServer) close() { a.stop() }
 
-	waitForID := func(id int) (CodexRPCMessage, error) {
-		for {
-			select {
-			case <-relayCtx.Done():
-				return CodexRPCMessage{}, fmt.Errorf("manager relay timed out waiting for codex: %w", relayCtx.Err())
-			case msg, ok := <-messages:
-				if !ok {
-					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
-				}
-				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Fleet manager relay does not service server-initiated requests")
-					continue
-				}
-				if text := CodexMessageFullText(msg.Params); text != "" {
-					replyText = text
-				} else if text := CodexMessageText(msg.Params); text != "" {
-					replyText = text
-				}
-				if codexMessageID(msg) == id {
-					if msg.Error != nil {
-						return CodexRPCMessage{}, errors.New(msg.Error.Message)
-					}
-					return msg, nil
-				}
-			}
-		}
-	}
-
-	id, err := client.request("initialize", codexInitializeParams())
-	if err != nil {
-		return RelayManagerResult{}, err
-	}
-	if _, err := waitForID(id); err != nil {
-		return RelayManagerResult{}, err
-	}
-	if err := client.notify("initialized", nil); err != nil {
-		return RelayManagerResult{}, err
-	}
-
-	resolvedThreadID := strings.TrimSpace(threadID)
-	if resolvedThreadID == "" {
-		return RelayManagerResult{}, errors.New("manager session is not bound")
-	}
-	resumeTarget := RuntimeSession{WorkingDir: workingDir}
-	resumeTarget.CodexThreadID = resolvedThreadID
-	id, err = client.request("thread/resume", codexThreadResumeParams(resumeTarget))
-	if err != nil {
-		return RelayManagerResult{}, err
-	}
-	response, err := waitForID(id)
-	if err != nil {
-		return RelayManagerResult{}, fmt.Errorf("bound manager session %s: %w", resolvedThreadID, err)
-	}
-	if fresh := CodexThreadID(response.Result); fresh != "" && fresh != resolvedThreadID {
-		return RelayManagerResult{}, fmt.Errorf("bound manager session %s resumed as %s", resolvedThreadID, fresh)
-	}
-
-	id, err = client.request("turn/start", codexTurnStartParams(resolvedThreadID, prompt))
-	if err != nil {
-		return RelayManagerResult{}, err
-	}
-	if _, err := waitForID(id); err != nil {
-		return RelayManagerResult{}, err
-	}
-
-	// turn/start's own response only carries the turn id; the actual reply
-	// text streams in afterwards as item/agentMessage events, terminated by
-	// a turn/completed notification (no id — waitForID would block forever
-	// waiting for a reply to a request nobody sent). Drain those directly.
+// next returns the next message that is not a server-initiated request.
+func (a *codexAppServer) next(timedOut string, closed string) (CodexRPCMessage, error) {
 	for {
 		select {
-		case <-relayCtx.Done():
-			return RelayManagerResult{}, fmt.Errorf("manager relay timed out waiting for codex turn to complete: %w", relayCtx.Err())
-		case msg, ok := <-messages:
+		case <-a.ctx.Done():
+			return CodexRPCMessage{}, fmt.Errorf("%s: %w", timedOut, a.ctx.Err())
+		case msg, ok := <-a.messages:
 			if !ok {
-				return RelayManagerResult{}, errors.New("codex app-server stdout closed before turn/completed")
+				return CodexRPCMessage{}, errors.New(closed)
 			}
 			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Fleet manager relay does not service server-initiated requests")
+				_ = a.client.respondError(msg.ID, -32601, a.refusal)
 				continue
 			}
-			if text := CodexMessageFullText(msg.Params); text != "" {
-				replyText = text
-			} else if text := CodexMessageText(msg.Params); text != "" {
-				replyText = text
+			if a.trackReply {
+				a.noteReply(msg)
 			}
-			if msg.Method == "turn/completed" {
-				status := codexTurnStatus(msg.Params)
-				if status != "" && status != "completed" {
-					return RelayManagerResult{ThreadID: resolvedThreadID, ReplyText: replyText}, fmt.Errorf("codex turn completed with status %q", status)
-				}
-				return RelayManagerResult{ThreadID: resolvedThreadID, ReplyText: replyText}, nil
-			}
+			return msg, nil
 		}
+	}
+}
+
+func (a *codexAppServer) noteReply(msg CodexRPCMessage) {
+	if text := CodexMessageFullText(msg.Params); text != "" {
+		a.replyText = text
+	} else if text := CodexMessageText(msg.Params); text != "" {
+		a.replyText = text
+	}
+}
+
+func (a *codexAppServer) waitForID(id int) (CodexRPCMessage, error) {
+	for {
+		msg, err := a.next(a.timedOut, "codex app-server stdout closed before response")
+		if err != nil {
+			return CodexRPCMessage{}, err
+		}
+		if codexMessageID(msg) != id {
+			continue
+		}
+		if msg.Error != nil {
+			return CodexRPCMessage{}, errors.New(msg.Error.Message)
+		}
+		return msg, nil
+	}
+}
+
+func (a *codexAppServer) handshake() error {
+	id, err := a.client.request("initialize", codexInitializeParams())
+	if err != nil {
+		return err
+	}
+	if _, err := a.waitForID(id); err != nil {
+		return err
+	}
+	return a.client.notify("initialized", nil)
+}
+
+// resumeThread resumes the bound thread. A busy or missing binding stays a
+// failure rather than starting a second unnamed thread.
+func (a *codexAppServer) resumeThread(workingDir string, threadID string) error {
+	resumeTarget := RuntimeSession{WorkingDir: workingDir}
+	resumeTarget.CodexThreadID = threadID
+	id, err := a.client.request("thread/resume", codexThreadResumeParams(resumeTarget))
+	if err != nil {
+		return err
+	}
+	response, err := a.waitForID(id)
+	if err != nil {
+		return fmt.Errorf("bound manager session %s: %w", threadID, err)
+	}
+	if fresh := CodexThreadID(response.Result); fresh != "" && fresh != threadID {
+		return fmt.Errorf("bound manager session %s resumed as %s", threadID, fresh)
+	}
+	return nil
+}
+
+// drainTurn reads the streamed reply after turn/start. The start response only
+// carries the turn id; the text arrives as item/agentMessage events, ended by
+// a turn/completed notification (no id — waitForID would block forever
+// waiting for a reply to a request nobody sent).
+func (a *codexAppServer) drainTurn() (string, error) {
+	for {
+		msg, err := a.next("manager relay timed out waiting for codex turn to complete", "codex app-server stdout closed before turn/completed")
+		if err != nil {
+			return "", err
+		}
+		if msg.Method != "turn/completed" {
+			continue
+		}
+		status := codexTurnStatus(msg.Params)
+		if status != "" && status != "completed" {
+			return a.replyText, fmt.Errorf("codex turn completed with status %q", status)
+		}
+		return a.replyText, nil
 	}
 }
 
@@ -184,79 +242,17 @@ type CodexThreadSummary struct {
 // > Manager can offer a picker instead of asking the operator to go find and
 // paste a raw thread UUID themselves.
 func ListCodexManagerThreads(ctx context.Context, timeout time.Duration, logFile io.Writer) ([]CodexThreadSummary, error) {
-	if logFile == nil {
-		logFile = io.Discard
-	}
-	codexBinary, err := resolveCodexBinary()
-	if err != nil {
-		return nil, fmt.Errorf("resolve codex binary: %w", err)
-	}
-
-	listCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(listCtx, codexBinary, "app-server", "--stdio")
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, fmt.Errorf("open codex stdin: %w", err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, fmt.Errorf("open codex stdout: %w", err)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, fmt.Errorf("open codex stderr: %w", err)
-	}
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("start codex app-server: %w", err)
-	}
-	defer func() {
-		cancel()
-		_ = cmd.Wait()
-	}()
-
-	messages := make(chan CodexRPCMessage, 64)
-	go readCodexStdout(stdout, logFile, messages, make(chan error, 1))
-	go copyCodexStderr(stderr, logFile)
-
-	client := NewCodexClient(stdin, logFile)
-
-	waitForID := func(id int) (CodexRPCMessage, error) {
-		for {
-			select {
-			case <-listCtx.Done():
-				return CodexRPCMessage{}, fmt.Errorf("codex thread/list timed out: %w", listCtx.Err())
-			case msg, ok := <-messages:
-				if !ok {
-					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
-				}
-				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Fleet thread listing does not service server-initiated requests")
-					continue
-				}
-				if codexMessageID(msg) == id {
-					if msg.Error != nil {
-						return CodexRPCMessage{}, errors.New(msg.Error.Message)
-					}
-					return msg, nil
-				}
-			}
-		}
-	}
-
-	id, err := client.request("initialize", codexInitializeParams())
+	server, err := startCodexAppServer(ctx, "", timeout, logFile, "Fleet thread listing does not service server-initiated requests")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := waitForID(id); err != nil {
-		return nil, err
-	}
-	if err := client.notify("initialized", nil); err != nil {
-		return nil, err
-	}
+	defer server.close()
+	server.timedOut = "codex thread/list timed out"
 
-	id, err = client.request("thread/list", map[string]any{
+	if err := server.handshake(); err != nil {
+		return nil, err
+	}
+	id, err := server.client.request("thread/list", map[string]any{
 		"limit":         50,
 		"sortKey":       "updated_at",
 		"sortDirection": "desc",
@@ -264,7 +260,7 @@ func ListCodexManagerThreads(ctx context.Context, timeout time.Duration, logFile
 	if err != nil {
 		return nil, err
 	}
-	response, err := waitForID(id)
+	response, err := server.waitForID(id)
 	if err != nil {
 		return nil, err
 	}

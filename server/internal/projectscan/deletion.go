@@ -6,42 +6,57 @@ import (
 	"strings"
 )
 
-func suggestDeletionCandidates(repositories []Repository, rules protectionRules) []DeletionCandidate {
-	candidates := map[string]*DeletionCandidate{}
-	add := func(repo Repository, reason, detail string) {
-		if protected, _ := protectedRepository(repo.RelativePath, rules); protected {
-			return
-		}
-		entry, ok := candidates[repo.ID]
-		if !ok {
-			status := runGit(repo.Path, "status", "--short")
-			gitStatus := "clean"
-			if status != "" {
-				gitStatus = "dirty"
-			}
-			entry = &DeletionCandidate{
-				RepositoryID: repo.ID,
-				Name:         repo.Name,
-				Path:         repo.Path,
-				RelativePath: repo.RelativePath,
-				Remote:       strPtr(repo.Remote),
-				Branch:       strPtr(repo.Branch),
-				Head:         strPtr(repo.Head),
-				Decision:     "review",
-				Reasons:      []string{},
-				Details:      []string{},
-				GitStatus:    gitStatus,
-			}
-			candidates[repo.ID] = entry
-		}
-		if !contains(entry.Reasons, reason) {
-			entry.Reasons = append(entry.Reasons, reason)
-		}
-		if !contains(entry.Details, detail) {
-			entry.Details = append(entry.Details, detail)
-		}
-	}
+var nameSeparator = regexp.MustCompile(`[^a-z0-9]+`)
 
+// deletionSuggester collects the reasons a repository might not be needed.
+type deletionSuggester struct {
+	rules      protectionRules
+	candidates map[string]*DeletionCandidate
+}
+
+func suggestDeletionCandidates(repositories []Repository, rules protectionRules) []DeletionCandidate {
+	d := &deletionSuggester{rules: rules, candidates: map[string]*DeletionCandidate{}}
+	d.addDuplicateCheckouts(repositories)
+	d.addPerRepositoryReasons(repositories)
+	return d.ranked()
+}
+
+func (d *deletionSuggester) add(repo Repository, reason, detail string) {
+	if protected, _ := protectedRepository(repo.RelativePath, d.rules); protected {
+		return
+	}
+	entry, ok := d.candidates[repo.ID]
+	if !ok {
+		gitStatus := "clean"
+		if runGit(repo.Path, "status", "--short") != "" {
+			gitStatus = "dirty"
+		}
+		entry = &DeletionCandidate{
+			RepositoryID: repo.ID,
+			Name:         repo.Name,
+			Path:         repo.Path,
+			RelativePath: repo.RelativePath,
+			Remote:       strPtr(repo.Remote),
+			Branch:       strPtr(repo.Branch),
+			Head:         strPtr(repo.Head),
+			Decision:     "review",
+			Reasons:      []string{},
+			Details:      []string{},
+			GitStatus:    gitStatus,
+		}
+		d.candidates[repo.ID] = entry
+	}
+	if !contains(entry.Reasons, reason) {
+		entry.Reasons = append(entry.Reasons, reason)
+	}
+	if !contains(entry.Details, detail) {
+		entry.Details = append(entry.Details, detail)
+	}
+}
+
+// addDuplicateCheckouts flags every checkout of a shared remote except the
+// shallowest one, which is the one worth keeping.
+func (d *deletionSuggester) addDuplicateCheckouts(repositories []Repository) {
 	byRemote := map[string][]Repository{}
 	for _, repo := range repositories {
 		if repo.RemoteIdentity != "" {
@@ -56,7 +71,7 @@ func suggestDeletionCandidates(repositories []Repository, rules protectionRules)
 		for i, item := range items {
 			paths[i] = item.RelativePath
 		}
-		if protectedRemoteGroup(paths, rules) {
+		if protectedRemoteGroup(paths, d.rules) {
 			continue
 		}
 		sortedItems := append([]Repository{}, items...)
@@ -70,10 +85,12 @@ func suggestDeletionCandidates(repositories []Repository, rules protectionRules)
 		})
 		keeper := sortedItems[0]
 		for _, repo := range sortedItems[1:] {
-			add(repo, "duplicate local checkout", "Shares remote with "+keeper.RelativePath+"; review whether this checkout is still needed.")
+			d.add(repo, "duplicate local checkout", "Shares remote with "+keeper.RelativePath+"; review whether this checkout is still needed.")
 		}
 	}
+}
 
+func (d *deletionSuggester) addPerRepositoryReasons(repositories []Repository) {
 	byID := map[string]Repository{}
 	for _, repo := range repositories {
 		byID[repo.ID] = repo
@@ -84,28 +101,36 @@ func suggestDeletionCandidates(repositories []Repository, rules protectionRules)
 			if parent, ok := byID[repo.ParentRepositoryID]; ok {
 				parentPath = parent.RelativePath
 			}
-			add(repo, "nested repository", "Repository is nested inside "+parentPath+"; review whether it is vendored/submodule/intentional.")
+			d.add(repo, "nested repository", "Repository is nested inside "+parentPath+"; review whether it is vendored/submodule/intentional.")
 		}
-		var hints []string
-		for _, part := range regexp.MustCompile(`[^a-z0-9]+`).Split(strings.ToLower(repo.Name), -1) {
-			if _, ok := deletionNameHints[part]; ok {
-				hints = append(hints, part)
-			}
-		}
-		sort.Strings(hints)
-		if len(hints) > 0 {
-			add(repo, "temporary name hint", "Name contains cleanup hint(s): "+strings.Join(hints, ", ")+".")
+		if hints := nameHints(repo.Name); len(hints) > 0 {
+			d.add(repo, "temporary name hint", "Name contains cleanup hint(s): "+strings.Join(hints, ", ")+".")
 		}
 		if repo.Remote == "" {
-			add(repo, "no git remote", "Repository has no origin remote.")
+			d.add(repo, "no git remote", "Repository has no origin remote.")
 		}
 		if repo.ReadmePath == "" {
-			add(repo, "no README", "Repository has no README detected at its root.")
+			d.add(repo, "no README", "Repository has no README detected at its root.")
 		}
 	}
+}
 
-	out := make([]DeletionCandidate, 0, len(candidates))
-	for _, entry := range candidates {
+// nameHints returns the words in name that mark a throwaway checkout, sorted.
+func nameHints(name string) []string {
+	var hints []string
+	for _, part := range nameSeparator.Split(strings.ToLower(name), -1) {
+		if _, ok := deletionNameHints[part]; ok {
+			hints = append(hints, part)
+		}
+	}
+	sort.Strings(hints)
+	return hints
+}
+
+// ranked is the candidates with their confidence, most confident first.
+func (d *deletionSuggester) ranked() []DeletionCandidate {
+	out := make([]DeletionCandidate, 0, len(d.candidates))
+	for _, entry := range d.candidates {
 		entry.Confidence = deletionConfidence(entry.Reasons)
 		out = append(out, *entry)
 	}
