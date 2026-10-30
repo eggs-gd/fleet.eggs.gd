@@ -8,7 +8,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test:ui-state": "node --test src/lib/dashboardState.test.ts src/lib/projectTree.test.ts src/lib/taskTags.test.ts src/lib/sessionOutcome.test.ts src/lib/statusTransitions.test.ts src/lib/theme.test.ts src/lib/settingsNav.test.ts src/lib/settingsDraft.test.ts src/lib/projectSettings.test.ts src/lib/operator.test.ts src/lib/api.test.ts src/lib/agentCapabilities.test.ts src/lib/urlState.test.ts src/lib/boardView.test.ts src/lib/taskDraft.test.ts src/lib/navigation.test.ts src/lib/scanRoots.test.ts",
+    "test:ui-state": "node --test src/lib/dashboardState.test.ts src/lib/projectTree.test.ts src/lib/taskTags.test.ts src/lib/sessionOutcome.test.ts src/lib/statusTransitions.test.ts src/lib/theme.test.ts src/lib/settingsNav.test.ts src/lib/settingsDraft.test.ts src/lib/projectSettings.test.ts src/lib/operator.test.ts src/lib/api.test.ts src/lib/agentCapabilities.test.ts src/lib/urlState.test.ts src/lib/boardView.test.ts src/lib/taskDraft.test.ts src/lib/navigation.test.ts src/lib/scanRoots.test.ts src/lib/text.test.ts src/lib/taskDisplay.test.ts",
     "test:technology-display": "node --test src/lib/technologyDisplay.test.ts",
     "format": "prettier --write src",
     "format:check": "prettier --check src",

@@ -106,3 +106,21 @@ test('resolveOpenSession follows a live session into closed after it finishes', 
   assert.equal(finished.kind, 'closed');
   assert.equal(finished.session.result!.outcome, 'completed');
 });
+
+test('labels follow the tone, the status and the worker outcome', () => {
+  const label = (execution_status: string, outcome?: string) =>
+    sessionOutcomeLabel({ execution_status, result: outcome ? { outcome } : undefined });
+  assert.equal(label('failed'), 'Failed');
+  assert.equal(label('provider_error'), 'Provider error');
+  assert.equal(label('timed_out'), 'Timed out');
+  assert.equal(label('dead'), 'Dead');
+  assert.equal(label('terminal'), 'Terminal');
+  assert.equal(label('succeeded', 'failed'), 'Failed');
+  assert.equal(label('released'), 'Released');
+  assert.equal(label('succeeded'), 'Succeeded');
+  assert.equal(label('waiting_input'), 'Waiting input');
+  assert.equal(label('orphaned'), 'Orphaned');
+  assert.equal(sessionOutcomeLabel({}, 'live'), 'Running');
+  assert.equal(sessionOutcomeLabel({}), 'Closed');
+  assert.equal(label('cancelled'), 'Cancelled');
+});
