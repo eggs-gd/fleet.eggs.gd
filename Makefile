@@ -68,12 +68,13 @@ vet:
 check: vet test
 	cd "$(VIEW_DIR)" && npm run check && npm run test:ui-state && npm run test:technology-display && npm run format:check
 
-# Needs sonar-scanner on PATH and SONAR_HOST_URL and SONAR_TOKEN in the
-# environment (for a local server, `export SONAR_HOST_URL := ...` in Makefile.local).
+# Needs sonar-scanner on PATH, and SONAR_HOST_URL and SONAR_TOKEN in the
+# environment or in a git-ignored .env file at the repository root.
 sonar:
-	@test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
-		printf '%s\n' 'Set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) first.'; exit 1; }
-	cd "$(SERVER_DIR)" && go test -coverprofile=coverage.out ./...
+	@set -a; [ ! -f .env ] || . ./.env; set +a; \
+	test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
+		printf '%s\n' 'Set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) in the environment or in .env.'; exit 1; }; \
+	(cd "$(SERVER_DIR)" && go test -coverprofile=coverage.out ./...) && \
 	sonar-scanner -Dsonar.qualitygate.wait=true
 
 serve: build

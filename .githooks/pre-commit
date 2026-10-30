@@ -2,9 +2,14 @@
 # Optional pre-commit check: a secrets scan of the staged files and the
 # SonarQube analysis with its quality gate. Turn it on in this checkout with
 #   git config core.hooksPath .githooks
-# It does nothing unless SONAR_HOST_URL and SONAR_TOKEN are set, so a
+# It does nothing unless SONAR_HOST_URL and SONAR_TOKEN are set (in the
+# environment or in a git-ignored .env at the repository root), so a
 # contributor without a SonarQube server is never blocked. Skip once with
 # `git commit --no-verify`.
+
+set -a
+[ ! -f .env ] || . ./.env
+set +a
 
 [ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ] || exit 0
 
