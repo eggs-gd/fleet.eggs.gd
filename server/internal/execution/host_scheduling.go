@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -322,27 +323,22 @@ func (s *Service) RequeueCandidatesForReleasedSlot(ended RuntimeSession) []Task 
 }
 
 func TaskMatchesReleasedSlot(task Task, ended RuntimeSession) bool {
-	agent := task.Assignee
-	if ended.Agent != "" && agent == ended.Agent {
+	if ended.Agent != "" && task.Assignee == ended.Agent {
 		return true
 	}
 	if ended.ProjectID != "" && task.ProjectID == ended.ProjectID {
 		return true
 	}
-	if ended.Repository != "" {
-		if firstRepository(task) == ended.Repository {
-			return true
-		}
-		for _, repository := range task.Repositories {
-			if repository == ended.Repository {
-				return true
-			}
-		}
+	if ended.Repository != "" && (firstRepository(task) == ended.Repository || slices.Contains(task.Repositories, ended.Repository)) {
+		return true
 	}
 	wait := task.LaunchEvaluation.Waiting
-	if wait == nil {
-		return false
-	}
+	return wait != nil && waitMatchesReleasedSlot(*wait, ended)
+}
+
+// waitMatchesReleasedSlot says whether a task's stored launch wait was on the
+// slot that just ended.
+func waitMatchesReleasedSlot(wait tasklifecycle.LaunchWait, ended RuntimeSession) bool {
 	if wait.ConflictClaimID == ended.ClaimID {
 		return true
 	}

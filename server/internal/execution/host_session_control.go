@@ -63,6 +63,66 @@ func (s *Service) ControlSession(patch SessionControlPatch) error {
 	return s.SendSessionControl(patch.ClaimID, action, patch.Input)
 }
 
+// markSessionReleased closes the session row the way the operator asked.
+func markSessionReleased(session *RuntimeSession, action string, input string, claimID string) {
+	executionStatus := operatorReleaseExecutionStatus(action)
+	now := time.Now().Format(time.RFC3339)
+	session.Status = executionStatus
+	session.ExecutionStatus = executionStatus
+	session.LastEvent = "operator_" + action
+	session.LastEventAt = now
+	session.LastStatusAt = now
+	session.ExitedAt = firstNonEmpty(session.ExitedAt, now)
+	session.BlockingReason = ""
+	session.ErrorMessage = firstNonEmpty(strings.TrimSpace(input), tasklifecycle.OperatorReleaseReason(action, claimID))
+	if action == sessionActionMarkProviderUnavailable && session.ProviderError == nil {
+		session.ProviderError = tasklifecycle.NewProviderError(firstNonEmpty(session.Agent, "unknown"), "provider_unavailable", "operator release", session.ErrorMessage, "")
+	}
+}
+
+// recordReleaseOnTask moves a doing task to the release target status with the
+// operator's comment; a task that already left doing only gets the comment.
+func (s *Service) recordReleaseOnTask(task Task, session RuntimeSession, targetStatus string, comment string) (Task, error) {
+	locator := firstNonEmpty(task.RelativePath, task.Path)
+	if task.Status != "doing" {
+		err := s.tasks.AddComment(taskflow.WithCommentAuthor(context.Background(), "owner"), locator, comment)
+		if err != nil {
+			return task, nil
+		}
+		updated, loadErr := s.ReloadTaskAfterServiceWrite(locator)
+		if loadErr != nil {
+			return task, nil
+		}
+		if s.board.UpsertTask != nil {
+			s.board.UpsertTask(updated)
+		}
+		return updated, nil
+	}
+	if !tasklifecycle.AllowedTaskStatusTransition(task.Status, targetStatus) {
+		return task, fmt.Errorf("%w: cannot move task from %q to %q", tasklifecycle.ErrTaskTransitionRejected, task.Status, targetStatus)
+	}
+	flowUpdated, err := s.tasks.Patch(context.Background(), locator, taskflow.PatchInput{
+		Status:        taskflow.Status(targetStatus),
+		Comment:       comment,
+		CommentAuthor: "owner",
+		Actor:         "owner",
+		Reason:        session.ErrorMessage,
+	})
+	if err != nil {
+		return task, err
+	}
+	updated := TaskFromFlow(flowUpdated)
+	if s.reload != nil {
+		if loaded, loadErr := s.reload(locator); loadErr == nil {
+			updated = loaded
+		}
+	}
+	if s.board.UpsertTask != nil {
+		s.board.UpsertTask(updated)
+	}
+	return updated, nil
+}
+
 func (s *Service) releaseRuntimeSession(patch SessionControlPatch) error {
 	claimID := strings.TrimSpace(patch.ClaimID)
 	if claimID == "" {
@@ -86,19 +146,7 @@ func (s *Service) releaseRuntimeSession(patch SessionControlPatch) error {
 		return fmt.Errorf("target_status must be needs_review, needs_rework, or blocked (got %q)", targetStatus)
 	}
 
-	executionStatus := operatorReleaseExecutionStatus(action)
-	now := time.Now().Format(time.RFC3339)
-	session.Status = executionStatus
-	session.ExecutionStatus = executionStatus
-	session.LastEvent = "operator_" + action
-	session.LastEventAt = now
-	session.LastStatusAt = now
-	session.ExitedAt = firstNonEmpty(session.ExitedAt, now)
-	session.BlockingReason = ""
-	session.ErrorMessage = firstNonEmpty(strings.TrimSpace(patch.Input), tasklifecycle.OperatorReleaseReason(action, claimID))
-	if action == sessionActionMarkProviderUnavailable && session.ProviderError == nil {
-		session.ProviderError = tasklifecycle.NewProviderError(firstNonEmpty(session.Agent, "unknown"), "provider_unavailable", "operator release", session.ErrorMessage, "")
-	}
+	markSessionReleased(&session, action, patch.Input, claimID)
 
 	s.unregisterSessionControl(claimID)
 	s.upsertSession(session)
@@ -106,44 +154,10 @@ func (s *Service) releaseRuntimeSession(patch SessionControlPatch) error {
 
 	task, taskOK := s.loadTaskForSession(session)
 	comment := tasklifecycle.OperatorReleaseComment(action, session.ClaimID, firstNonEmpty(session.ExecutionStatus, session.Status), session.LogPath, targetStatus)
-	if taskOK && task.Status == "doing" {
-		if !tasklifecycle.AllowedTaskStatusTransition(task.Status, targetStatus) {
-			return fmt.Errorf("%w: cannot move task from %q to %q", tasklifecycle.ErrTaskTransitionRejected, task.Status, targetStatus)
-		}
-		locator := firstNonEmpty(task.RelativePath, task.Path)
-		flowUpdated, err := s.tasks.Patch(context.Background(), locator, taskflow.PatchInput{
-			Status:        taskflow.Status(targetStatus),
-			Comment:       comment,
-			CommentAuthor: "owner",
-			Actor:         "owner",
-			Reason:        session.ErrorMessage,
-		})
-		if err != nil {
+	if taskOK {
+		var err error
+		if task, err = s.recordReleaseOnTask(task, session, targetStatus, comment); err != nil {
 			return err
-		}
-		updated := TaskFromFlow(flowUpdated)
-		if s.reload != nil {
-			if loaded, loadErr := s.reload(locator); loadErr == nil {
-				updated = loaded
-			}
-		}
-		if s.board.UpsertTask != nil {
-			s.board.UpsertTask(updated)
-		}
-		task = updated
-	} else if taskOK {
-		locator := firstNonEmpty(task.RelativePath, task.Path)
-		if err := s.tasks.AddComment(
-			taskflow.WithCommentAuthor(context.Background(), "owner"),
-			locator,
-			comment,
-		); err == nil {
-			if updated, loadErr := s.ReloadTaskAfterServiceWrite(locator); loadErr == nil {
-				if s.board.UpsertTask != nil {
-					s.board.UpsertTask(updated)
-				}
-				task = updated
-			}
 		}
 	}
 

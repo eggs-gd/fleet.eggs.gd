@@ -79,6 +79,30 @@ func (s *Service) Status() Status {
 	return s.hub.status()
 }
 
+// noteStaleWaitChanged records that a task's stored launch wait was replaced or
+// cleared, and requeues the task when nothing blocks it any more.
+func (s *Service) noteStaleWaitChanged(before *tasklifecycle.LaunchWait, updated tasklifecycle.Task) {
+	message := "replaced stale launch waiting reason with current blocker"
+	details := map[string]any{"stale_wait": before}
+	if updated.LaunchEvaluation.Waiting == nil {
+		message = "cleared stale launch waiting reason with no current blocker"
+	} else {
+		details["current_wait"] = updated.LaunchEvaluation.Waiting
+	}
+	if s.board.UpsertTask != nil {
+		s.board.UpsertTask(updated)
+	}
+	s.emitTaskEvent("launch_waiting_stale_cleared", updated, message, details)
+	if s.logger != nil {
+		s.logger.Info("stale wait cleared",
+			l.String("task", taskLabel(&updated)),
+			l.String("message", message))
+	}
+	if updated.LaunchEvaluation.Waiting == nil && s.cfg.AllowsProcessStart() {
+		s.spawn(func() { s.requeueAfterStaleWaitCleared(updated, before) })
+	}
+}
+
 // AnnotateTask revalidates a task's launch-wait reason against the current
 // session/orphan hub and sets task.Execution from the active session or
 // orphan backing it, mirroring corechain.Store's per-task projection
@@ -97,27 +121,7 @@ func (s *Service) AnnotateTask(task tasklifecycle.Task) tasklifecycle.Task {
 		var changed bool
 		updated, changed = s.hub.revalidateLaunchWaiting(task)
 		if changed {
-			message := "replaced stale launch waiting reason with current blocker"
-			details := map[string]any{"stale_wait": before}
-			if updated.LaunchEvaluation.Waiting == nil {
-				message = "cleared stale launch waiting reason with no current blocker"
-			} else {
-				details["current_wait"] = updated.LaunchEvaluation.Waiting
-			}
-			if s.board.UpsertTask != nil {
-				s.board.UpsertTask(updated)
-			}
-			s.emitTaskEvent("launch_waiting_stale_cleared", updated, message, details)
-			if s.logger != nil {
-				s.logger.Info("stale wait cleared",
-					l.String("task", taskLabel(&updated)),
-					l.String("message", message))
-			}
-			if updated.LaunchEvaluation.Waiting == nil && s.cfg.AllowsProcessStart() {
-				// The goroutine gets copies: `updated` is written again below.
-				cleared, wasWaiting := updated, before
-				s.spawn(func() { s.requeueAfterStaleWaitCleared(cleared, wasWaiting) })
-			}
+			s.noteStaleWaitChanged(before, updated)
 		}
 		updated.Execution = s.hub.executionForTask(updated)
 	}
