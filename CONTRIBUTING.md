@@ -28,7 +28,9 @@ For the dashboard alone, `npm run dev` in `view/` proxies to a running
 
 A maintainer can run the SonarQube analysis locally. You need the
 [SonarScanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner)
-(`brew install sonar-scanner`), a SonarQube server and a user token for it. The
+(`brew install sonar-scanner`), [golangci-lint](https://golangci-lint.run/) v2
+(`brew install golangci-lint`; its report is imported into SonarQube, config in
+`.golangci.yml`), a SonarQube server and a user token for it. The
 server address and the token stay out of the repository: put them in the
 environment, or in a `.env` file at the root (it is git-ignored):
 

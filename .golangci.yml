@@ -1,0 +1,20 @@
+version: "2"
+run:
+  # Paths in the report are relative to the git root, which is how Sonar looks them up.
+  relative-path-mode: gitroot
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable: [bodyclose, errorlint, gocritic, misspell, nilerr, unconvert]
+  settings:
+    errcheck:
+      # Clean-up where there is nowhere to send the error.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*os.File).Close
+        - os.Remove
+        - os.RemoveAll
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck]
+        text: "\\.Close` is not checked"
