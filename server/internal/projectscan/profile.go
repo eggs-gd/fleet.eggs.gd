@@ -175,42 +175,9 @@ func parseProjectCardOverrides(workDir string) map[string]techOverride {
 	}
 	sort.Strings(matches)
 	for _, card := range matches {
-		text := readText(card, 20000)
-		if !strings.HasPrefix(text, "---\n") {
+		projectID, repositories, override, ok := readCardOverride(card)
+		if !ok {
 			continue
-		}
-		end := strings.Index(text[4:], "\n---")
-		if end < 0 {
-			continue
-		}
-		frontmatter := text[4 : 4+end]
-		projectID := ""
-		var repositories []string
-		inRepositories := false
-		for _, line := range strings.Split(frontmatter, "\n") {
-			stripped := strings.TrimSpace(line)
-			switch {
-			case strings.HasPrefix(stripped, "id:"):
-				projectID = strings.Trim(strings.TrimSpace(strings.TrimPrefix(stripped, "id:")), `"`)
-			case stripped == "repositories:":
-				inRepositories = true
-			case inRepositories && strings.HasPrefix(stripped, "-"):
-				repositories = append(repositories, strings.Trim(strings.TrimSpace(strings.TrimPrefix(stripped, "-")), `"`))
-			case stripped != "" && !strings.HasPrefix(line, " "):
-				inRepositories = false
-			}
-		}
-		marker := "\n## Technology Overrides\n"
-		if !strings.Contains(text, marker) {
-			continue
-		}
-		section := strings.SplitN(strings.SplitN(text, marker, 2)[1], "\n## ", 2)[0]
-		override := parseOverrideSection(section)
-		if len(override.Add) == 0 && len(override.Remove) == 0 {
-			continue
-		}
-		if projectID == "" {
-			projectID = filepath.Base(filepath.Dir(card))
 		}
 		override.ProjectID = projectID
 		for _, relativePath := range repositories {
@@ -218,6 +185,56 @@ func parseProjectCardOverrides(workDir string) map[string]techOverride {
 		}
 	}
 	return overrides
+}
+
+// readCardOverride reads the Technology Overrides section of one project card,
+// with the project id and the repositories the card lists. ok is false when the
+// card has no frontmatter, no section, or an empty one.
+func readCardOverride(card string) (string, []string, techOverride, bool) {
+	text := readText(card, 20000)
+	if !strings.HasPrefix(text, "---\n") {
+		return "", nil, techOverride{}, false
+	}
+	end := strings.Index(text[4:], "\n---")
+	if end < 0 {
+		return "", nil, techOverride{}, false
+	}
+	projectID, repositories := parseCardFrontmatter(text[4 : 4+end])
+	marker := "\n## Technology Overrides\n"
+	if !strings.Contains(text, marker) {
+		return "", nil, techOverride{}, false
+	}
+	section := strings.SplitN(strings.SplitN(text, marker, 2)[1], "\n## ", 2)[0]
+	override := parseOverrideSection(section)
+	if len(override.Add) == 0 && len(override.Remove) == 0 {
+		return "", nil, techOverride{}, false
+	}
+	if projectID == "" {
+		projectID = filepath.Base(filepath.Dir(card))
+	}
+	return projectID, repositories, override, true
+}
+
+// parseCardFrontmatter picks the project id and the repositories list out of a
+// card's frontmatter.
+func parseCardFrontmatter(frontmatter string) (string, []string) {
+	projectID := ""
+	var repositories []string
+	inRepositories := false
+	for _, line := range strings.Split(frontmatter, "\n") {
+		stripped := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(stripped, "id:"):
+			projectID = strings.Trim(strings.TrimSpace(strings.TrimPrefix(stripped, "id:")), `"`)
+		case stripped == "repositories:":
+			inRepositories = true
+		case inRepositories && strings.HasPrefix(stripped, "-"):
+			repositories = append(repositories, strings.Trim(strings.TrimSpace(strings.TrimPrefix(stripped, "-")), `"`))
+		case stripped != "" && !strings.HasPrefix(line, " "):
+			inRepositories = false
+		}
+	}
+	return projectID, repositories
 }
 
 func parseOverrideSection(section string) techOverride {

@@ -60,38 +60,7 @@ func BuildWorkspaces(registryDir string) ([]Workspace, error) {
 		byID[repo.ID] = repo
 	}
 
-	var workspaceGroups []Group
-	covered := map[string]struct{}{}
-	for _, group := range groupsFile.Groups {
-		if group.Kind != "workspace_group" {
-			continue
-		}
-		workspaceGroups = append(workspaceGroups, group)
-		for _, id := range group.RepositoryIDs {
-			covered[id] = struct{}{}
-		}
-	}
-
-	var projects []Workspace
-	for _, group := range workspaceGroups {
-		var members []workspaceRepo
-		for _, id := range group.RepositoryIDs {
-			if repo, ok := byID[id]; ok {
-				members = append(members, repo)
-			}
-		}
-		projects = append(projects, Workspace{
-			ID:           group.SuggestedProjectID,
-			Title:        workspaceTitle(members),
-			Kind:         "workspace_group",
-			ReviewStatus: "draft",
-			Status:       "discovered",
-			Source:       group.Reason,
-			Repositories: members,
-			Summary:      summarizeProject(members, "workspace_group"),
-			Stack:        collectStack(members),
-		})
-	}
+	projects, covered := groupProjects(groupsFile.Groups, byID)
 	for _, repo := range repos {
 		if _, ok := covered[repo.ID]; ok {
 			continue
@@ -112,6 +81,37 @@ func BuildWorkspaces(registryDir string) ([]Workspace, error) {
 	attachRelations(projects, groupsFile.Groups, byID, rules)
 	sort.Slice(projects, func(i, j int) bool { return projects[i].ID < projects[j].ID })
 	return projects, nil
+}
+
+// groupProjects turns the workspace groups into project cards and returns the
+// set of repository ids they cover.
+func groupProjects(groups []Group, byID map[string]workspaceRepo) ([]Workspace, map[string]struct{}) {
+	var projects []Workspace
+	covered := map[string]struct{}{}
+	for _, group := range groups {
+		if group.Kind != "workspace_group" {
+			continue
+		}
+		var members []workspaceRepo
+		for _, id := range group.RepositoryIDs {
+			covered[id] = struct{}{}
+			if repo, ok := byID[id]; ok {
+				members = append(members, repo)
+			}
+		}
+		projects = append(projects, Workspace{
+			ID:           group.SuggestedProjectID,
+			Title:        workspaceTitle(members),
+			Kind:         "workspace_group",
+			ReviewStatus: "draft",
+			Status:       "discovered",
+			Source:       group.Reason,
+			Repositories: members,
+			Summary:      summarizeProject(members, "workspace_group"),
+			Stack:        collectStack(members),
+		})
+	}
+	return projects, covered
 }
 
 func loadWorkspaceRepos(registryDir string) ([]workspaceRepo, error) {
@@ -263,18 +263,7 @@ func attachRelations(projects []Workspace, groups []Group, byID map[string]works
 		if group.Kind == "workspace_group" {
 			continue
 		}
-		var paths []string
-		projectIDs := map[int]struct{}{}
-		for _, id := range group.RepositoryIDs {
-			repo, ok := byID[id]
-			if !ok {
-				continue
-			}
-			paths = append(paths, repo.RelativePath)
-			if index, ok := projectByRepo[id]; ok {
-				projectIDs[index] = struct{}{}
-			}
-		}
+		paths, projectIDs := groupMembers(group, byID, projectByRepo)
 		if len(paths) > 0 && allProtected(paths, rules) {
 			continue
 		}
@@ -288,6 +277,24 @@ func attachRelations(projects []Workspace, groups []Group, byID map[string]works
 			projects[index].Relations = append(projects[index].Relations, relation)
 		}
 	}
+}
+
+// groupMembers returns the paths of the group's known repositories and the
+// indexes of the project cards they belong to.
+func groupMembers(group Group, byID map[string]workspaceRepo, projectByRepo map[string]int) ([]string, map[int]struct{}) {
+	var paths []string
+	projectIDs := map[int]struct{}{}
+	for _, id := range group.RepositoryIDs {
+		repo, ok := byID[id]
+		if !ok {
+			continue
+		}
+		paths = append(paths, repo.RelativePath)
+		if index, ok := projectByRepo[id]; ok {
+			projectIDs[index] = struct{}{}
+		}
+	}
+	return paths, projectIDs
 }
 
 func allProtected(paths []string, rules protectionRules) bool {

@@ -152,37 +152,56 @@ func summarizeReadme(repo string) (title, summary, source, readmePath string) {
 	for _, line := range strings.Split(readText(readme, 12000), "\n") {
 		lines = append(lines, strings.TrimSpace(line))
 	}
-	title = name
+	title = readmeTitle(lines, name)
+	source = "readme"
+	summary = firstProseLine(lines)
+	if summary == "" {
+		summary = "README present for " + title + ", but no short prose summary was detected."
+		source = "readme-title"
+	}
+	return title, summary, source, readme
+}
+
+// readmeTitle is the first heading of the README, or fallback.
+func readmeTitle(lines []string, fallback string) string {
 	for _, line := range lines {
 		if strings.HasPrefix(line, "#") {
 			if cleaned := cleanMarkdown(strings.TrimSpace(strings.TrimLeft(line, "#"))); cleaned != "" {
-				title = cleaned
+				return cleaned
 			}
 			break
 		}
 	}
-	summary = ""
+	return fallback
+}
+
+// firstProseLine is the first README line that is plain prose: not in a code
+// block, not a heading, badge, list, table or HTML line.
+func firstProseLine(lines []string) string {
 	inCode := false
 	for _, line := range lines {
 		if strings.HasPrefix(line, "```") {
 			inCode = !inCode
 			continue
 		}
-		if inCode || line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "!") || strings.HasPrefix(line, "[!") {
+		if inCode || line == "" {
 			continue
 		}
-		if strings.HasPrefix(line, "-") || strings.HasPrefix(line, "*") || strings.HasPrefix(line, "|") || strings.HasPrefix(line, "<") || strings.HasPrefix(line, "[<") {
+		if hasAnyPrefix(line, "#", "!", "[!", "-", "*", "|", "<", "[<") {
 			continue
 		}
-		summary = cleanMarkdown(line)
-		break
+		return cleanMarkdown(line)
 	}
-	source = "readme"
-	if summary == "" {
-		summary = "README present for " + title + ", but no short prose summary was detected."
-		source = "readme-title"
+	return ""
+}
+
+func hasAnyPrefix(line string, prefixes ...string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(line, prefix) {
+			return true
+		}
 	}
-	return title, summary, source, readme
+	return false
 }
 
 func findReadme(repo string) string {

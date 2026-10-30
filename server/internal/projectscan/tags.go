@@ -17,18 +17,50 @@ import (
 // to fix. Cards are handled in id order so the result does not depend on the
 // order the filesystem lists them.
 func assignTags(workDir string, report CardReport) (CardReport, error) {
+	cards, err := readTagCards(workDir)
+	if err != nil {
+		return report, err
+	}
+	if cards == nil {
+		return report, nil
+	}
+	taken := map[string]bool{projecttag.Inbox: true}
+	report.Problems = append(report.Problems, existingTagProblems(cards, taken)...)
+
+	for _, c := range cards {
+		if projecttag.FromCard(c.text) != "" {
+			continue
+		}
+		if !c.hasFrontmatter {
+			report.Problems = append(report.Problems, fmt.Sprintf("project %s has no frontmatter, so it cannot get a tag; add a `---` block with `tag:` to %s", c.id, c.path))
+			continue
+		}
+		tag, err := writeNewTag(c, taken)
+		if err != nil {
+			return report, err
+		}
+		taken[tag] = true
+		report.Tagged = append(report.Tagged, c.id)
+	}
+	return report, nil
+}
+
+type tagCard struct {
+	id, path, text string
+	hasFrontmatter bool
+}
+
+// readTagCards reads every project card under workDir in id order. It returns
+// nil cards when the work directory does not exist.
+func readTagCards(workDir string) ([]tagCard, error) {
 	entries, err := os.ReadDir(workDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return report, nil
+			return nil, nil
 		}
-		return report, err
+		return nil, err
 	}
-	type card struct {
-		id, path, text string
-		hasFrontmatter bool
-	}
-	var cards []card
+	cards := []tagCard{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -39,15 +71,20 @@ func assignTags(workDir string, report CardReport) (CardReport, error) {
 			continue
 		}
 		if err != nil {
-			return report, err
+			return nil, err
 		}
 		text := string(raw)
 		_, err = mdfile.ListItems(text, "tag")
-		cards = append(cards, card{id: entry.Name(), path: path, text: text, hasFrontmatter: err == nil})
+		cards = append(cards, tagCard{id: entry.Name(), path: path, text: text, hasFrontmatter: err == nil})
 	}
 	sort.Slice(cards, func(i, j int) bool { return cards[i].id < cards[j].id })
+	return cards, nil
+}
 
-	taken := map[string]bool{projecttag.Inbox: true}
+// existingTagProblems marks the tags cards already carry as taken and reports
+// the malformed and the shared ones.
+func existingTagProblems(cards []tagCard, taken map[string]bool) []string {
+	var problems []string
 	users := map[string][]string{}
 	for _, c := range cards {
 		tag := projecttag.FromCard(c.text)
@@ -55,7 +92,7 @@ func assignTags(workDir string, report CardReport) (CardReport, error) {
 			continue
 		}
 		if !projecttag.Valid(tag) {
-			report.Problems = append(report.Problems, fmt.Sprintf("project %s has tag %q, which is not 2-6 capital letters or digits starting with a letter", c.id, tag))
+			problems = append(problems, fmt.Sprintf("project %s has tag %q, which is not 2-6 capital letters or digits starting with a letter", c.id, tag))
 			continue
 		}
 		taken[tag] = true
@@ -68,31 +105,24 @@ func assignTags(workDir string, report CardReport) (CardReport, error) {
 	sort.Strings(tags)
 	for _, tag := range tags {
 		if len(users[tag]) > 1 {
-			report.Problems = append(report.Problems, fmt.Sprintf("tag %s is used by %s; give one of them another tag", tag, strings.Join(users[tag], ", ")))
+			problems = append(problems, fmt.Sprintf("tag %s is used by %s; give one of them another tag", tag, strings.Join(users[tag], ", ")))
 		}
 	}
+	return problems
+}
 
-	for _, c := range cards {
-		if projecttag.FromCard(c.text) != "" {
-			continue
-		}
-		if !c.hasFrontmatter {
-			report.Problems = append(report.Problems, fmt.Sprintf("project %s has no frontmatter, so it cannot get a tag; add a `---` block with `tag:` to %s", c.id, c.path))
-			continue
-		}
-		tag := projecttag.Generate(c.id, taken)
-		if tag == "" {
-			return report, fmt.Errorf("no free ref tag left for project %s", c.id)
-		}
-		next, err := mdfile.SetScalar(c.text, "tag", jsonString(tag))
-		if err != nil {
-			return report, fmt.Errorf("card %s: %w", c.path, err)
-		}
-		if err := writeFileAtomic(c.path, []byte(next)); err != nil {
-			return report, err
-		}
-		taken[tag] = true
-		report.Tagged = append(report.Tagged, c.id)
+// writeNewTag generates a free tag for the card and writes it into the card.
+func writeNewTag(c tagCard, taken map[string]bool) (string, error) {
+	tag := projecttag.Generate(c.id, taken)
+	if tag == "" {
+		return "", fmt.Errorf("no free ref tag left for project %s", c.id)
 	}
-	return report, nil
+	next, err := mdfile.SetScalar(c.text, "tag", jsonString(tag))
+	if err != nil {
+		return "", fmt.Errorf("card %s: %w", c.path, err)
+	}
+	if err := writeFileAtomic(c.path, []byte(next)); err != nil {
+		return "", err
+	}
+	return tag, nil
 }
