@@ -84,7 +84,7 @@ func RunCodexAppServerSession(ctx context.Context, session RuntimeSession, task 
 		opts.Callbacks.RegisterSessionControl(session.ClaimID, controls)
 		defer opts.Callbacks.UnregisterSessionControl(session.ClaimID)
 	}
-	if err := driveCodexTurn(sessionCtx, cancel, client, messages, controls, &session, task, idleTimeout, opts); err != nil {
+	if err := (&codexTurn{ctx: sessionCtx, cancel: cancel, client: client, messages: messages, controls: controls, session: &session, task: task, idleTimeout: idleTimeout, opts: opts}).drive(); err != nil {
 		if session.CodexThreadID != "" && session.CodexTurnID != "" {
 			_, _ = client.request(methodTurnInterrupt, map[string]any{
 				"threadId": session.CodexThreadID,
@@ -177,22 +177,10 @@ func finishCodexAppServerSession(opts RunnerOptions, session RuntimeSession, tas
 	logText := readSessionLog(opts.RuntimeRoot, session.LogPath)
 	refreshSessionToolUsageFromText(&session, logText)
 	if session.Result == nil {
-		if result := tasklifecycle.ParseWorkerResult(logText); result != nil {
-			session.Result = result
-			session.LastEvent = "worker_result_reported"
-			if summary := strings.TrimSpace(result.Summary); summary != "" {
-				session.LastMessage = summary
-			}
-		}
+		adoptWorkerResult(&session, tasklifecycle.ParseWorkerResult(logText))
 	}
-	if session.Result != nil && session.ExecutionStatus != "cancelled" && session.ProviderError == nil && status != "failed" {
-		if tasklifecycle.WorkerResultNeedsInput(session.Result) {
-			session.ExecutionStatus = "waiting_input"
-			session.Status = "waiting_input"
-			session.ExitedAt = ""
-		} else {
-			session.ExecutionStatus = "succeeded"
-		}
+	if status != "failed" {
+		settleReportedResult(&session)
 	}
 	_ = runtimedb.AppendLog(opts.RuntimeRoot, session.LogPath, fmt.Sprintf("\n[core] codex app-server session ended status=%s %s\n", status, errorMessage))
 	completeProviderSession(opts, session, task, firstNonEmpty(errorMessage, "Codex app-server session ended"), map[string]any{
@@ -205,131 +193,167 @@ func finishCodexAppServerSession(opts RunnerOptions, session RuntimeSession, tas
 	})
 }
 
-func driveCodexTurn(ctx context.Context, cancel context.CancelFunc, client *CodexClient, messages <-chan CodexRPCMessage, controls <-chan SessionControlRequest, session *RuntimeSession, task tasklifecycle.Task, idleTimeout time.Duration, opts RunnerOptions) error {
-	id, err := client.request("initialize", codexInitializeParams())
+// codexTurn is one Codex turn being driven over the app-server JSON-RPC.
+type codexTurn struct {
+	ctx         context.Context
+	cancel      context.CancelFunc
+	client      *CodexClient
+	messages    <-chan CodexRPCMessage
+	controls    <-chan SessionControlRequest
+	session     *RuntimeSession
+	task        tasklifecycle.Task
+	idleTimeout time.Duration
+	opts        RunnerOptions
+}
+
+// drive initializes the app-server, starts or resumes the thread, sends the
+// task prompt and follows the turn until it completes.
+func (t *codexTurn) drive() error {
+	id, err := t.client.request("initialize", codexInitializeParams())
 	if err != nil {
 		return err
 	}
-	if _, err := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts); err != nil {
+	if _, err := t.waitForResponse(id); err != nil {
 		return err
 	}
-	if err := client.notify("initialized", nil); err != nil {
+	if err := t.client.notify("initialized", nil); err != nil {
 		return err
 	}
-	threadID, err := startOrResumeCodexThread(ctx, client, messages, session, task, idleTimeout, opts)
+	threadID, err := t.startOrResumeThread()
 	if err != nil {
 		return err
 	}
-	session.Status = "running"
-	session.ExecutionStatus = "running"
-	session.LastEvent = firstNonEmpty(session.LastEvent, "thread_ready")
-	upsertSession(opts, *session)
-	id, err = client.request(methodTurnStart, codexTurnStartParams(threadID, task.LaunchEvaluation.Prompt))
+	t.session.Status = "running"
+	t.session.ExecutionStatus = "running"
+	t.session.LastEvent = firstNonEmpty(t.session.LastEvent, "thread_ready")
+	upsertSession(t.opts, *t.session)
+	id, err = t.client.request(methodTurnStart, codexTurnStartParams(threadID, t.task.LaunchEvaluation.Prompt))
 	if err != nil {
 		return err
 	}
-	response, err := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts)
+	response, err := t.waitForResponse(id)
 	if err != nil {
 		return err
 	}
 	if turnID := CodexTurnID(response.Result); turnID != "" {
-		session.CodexTurnID = turnID
-		session.LastEvent = methodTurnStart
-		upsertSession(opts, *session)
+		t.session.CodexTurnID = turnID
+		t.session.LastEvent = methodTurnStart
+		upsertSession(t.opts, *t.session)
 	}
-	timer := time.NewTimer(idleTimeout)
+	return t.awaitCompletion()
+}
+
+// noteIdle flags the session for operator attention, notifying once per quiet spell.
+func (t *codexTurn) noteIdle(reason string, notified *bool) {
+	t.session.ExecutionStatus = "operator_attention"
+	t.session.LastEvent = "idle_operator_attention"
+	t.session.BlockingReason = reason
+	upsertSession(t.opts, *t.session)
+	if !*notified {
+		markOperatorAttention(t.opts, *t.session, t.task, reason)
+		*notified = true
+	}
+}
+
+// refuseServerRequest answers a request the app-server sent us; the launcher
+// services none, so the session waits for the operator.
+func (t *codexTurn) refuseServerRequest(msg CodexRPCMessage) bool {
+	if msg.Method == "" || len(msg.ID) == 0 {
+		return false
+	}
+	_ = t.client.respondError(msg.ID, -32601, "Fleet launcher does not service Codex server-initiated requests")
+	t.session.LastEvent = "server_request:" + msg.Method
+	t.session.ExecutionStatus = "waiting_input"
+	upsertSession(t.opts, *t.session)
+	return true
+}
+
+// awaitCompletion follows the turn until turn/completed, the operator cancels,
+// or the context ends.
+func (t *codexTurn) awaitCompletion() error {
+	timer := time.NewTimer(t.idleTimeout)
 	defer timer.Stop()
-	attentionNotified := false
+	notified := false
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-t.ctx.Done():
+			return t.ctx.Err()
 		case <-timer.C:
-			reason := fmt.Sprintf("No Codex JSON-RPC activity observed for %s. Session was not interrupted; use continue, interrupt, or cancel.", idleTimeout)
-			session.ExecutionStatus = "operator_attention"
-			session.LastEvent = "idle_operator_attention"
-			session.BlockingReason = reason
-			upsertSession(opts, *session)
-			if !attentionNotified {
-				markOperatorAttention(opts, *session, task, reason)
-				attentionNotified = true
+			t.noteIdle(fmt.Sprintf("No Codex JSON-RPC activity observed for %s. Session was not interrupted; use continue, interrupt, or cancel.", t.idleTimeout), &notified)
+			resetTimer(timer, t.idleTimeout)
+		case control := <-t.controls:
+			reset, err := t.handleControl(control)
+			if err != nil {
+				return err
 			}
-			resetTimer(timer, idleTimeout)
-		case control := <-controls:
-			if err := HandleCodexSessionControl(client, session, control); err != nil {
-				control.Done <- err
-				continue
+			if reset {
+				notified = false
+				resetTimer(timer, t.idleTimeout)
 			}
-			upsertSession(opts, *session)
-			control.Done <- nil
-			if control.Action == "cancel" {
-				session.ExecutionStatus = "cancelled"
-				upsertSession(opts, *session)
-				cancel()
-				return context.Canceled
-			}
-			attentionNotified = false
-			resetTimer(timer, idleTimeout)
-		case msg, ok := <-messages:
+		case msg, ok := <-t.messages:
 			if !ok {
 				return errors.New("codex app-server stdout closed before turn/completed")
 			}
-			attentionNotified = false
-			resetTimer(timer, idleTimeout)
-			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Fleet launcher does not service Codex server-initiated requests")
-				session.LastEvent = "server_request:" + msg.Method
-				session.ExecutionStatus = "waiting_input"
-				upsertSession(opts, *session)
+			notified = false
+			resetTimer(timer, t.idleTimeout)
+			if t.refuseServerRequest(msg) {
 				continue
 			}
-			if updateCodexSessionFromMessage(session, msg, opts) {
-				if msg.Method == "turn/completed" {
-					status := codexTurnStatus(msg.Params)
-					if status == "" || status == "completed" {
-						session.ExecutionStatus = "succeeded"
-						return nil
-					}
-					if status == "interrupted" {
-						session.ExecutionStatus = "cancelled"
-					}
-					return fmt.Errorf("codex turn completed with status %q", status)
-				}
+			if updateCodexSessionFromMessage(t.session, msg, t.opts) && msg.Method == "turn/completed" {
+				return t.completion(msg)
 			}
 		}
 	}
 }
 
-func waitForCodexResponse(ctx context.Context, messages <-chan CodexRPCMessage, id int, client *CodexClient, session *RuntimeSession, task tasklifecycle.Task, idleTimeout time.Duration, opts RunnerOptions) (CodexRPCMessage, error) {
-	timer := time.NewTimer(idleTimeout)
+// handleControl runs one operator control. reset says the idle timer should
+// restart; a non-nil error ends the turn (cancel).
+func (t *codexTurn) handleControl(control SessionControlRequest) (bool, error) {
+	if err := HandleCodexSessionControl(t.client, t.session, control); err != nil {
+		control.Done <- err
+		return false, nil
+	}
+	upsertSession(t.opts, *t.session)
+	control.Done <- nil
+	if control.Action != "cancel" {
+		return true, nil
+	}
+	t.session.ExecutionStatus = "cancelled"
+	upsertSession(t.opts, *t.session)
+	t.cancel()
+	return false, context.Canceled
+}
+
+func (t *codexTurn) completion(msg CodexRPCMessage) error {
+	status := codexTurnStatus(msg.Params)
+	if status == "" || status == "completed" {
+		t.session.ExecutionStatus = "succeeded"
+		return nil
+	}
+	if status == "interrupted" {
+		t.session.ExecutionStatus = "cancelled"
+	}
+	return fmt.Errorf("codex turn completed with status %q", status)
+}
+
+func (t *codexTurn) waitForResponse(id int) (CodexRPCMessage, error) {
+	timer := time.NewTimer(t.idleTimeout)
 	defer timer.Stop()
-	attentionNotified := false
+	notified := false
 	for {
 		select {
-		case <-ctx.Done():
-			return CodexRPCMessage{}, ctx.Err()
+		case <-t.ctx.Done():
+			return CodexRPCMessage{}, t.ctx.Err()
 		case <-timer.C:
-			reason := fmt.Sprintf("No Codex JSON-RPC response observed for %s. Session was not interrupted; operator attention may be required.", idleTimeout)
-			session.ExecutionStatus = "operator_attention"
-			session.LastEvent = "idle_operator_attention"
-			session.BlockingReason = reason
-			upsertSession(opts, *session)
-			if !attentionNotified {
-				markOperatorAttention(opts, *session, task, reason)
-				attentionNotified = true
-			}
-			resetTimer(timer, idleTimeout)
-		case msg, ok := <-messages:
+			t.noteIdle(fmt.Sprintf("No Codex JSON-RPC response observed for %s. Session was not interrupted; operator attention may be required.", t.idleTimeout), &notified)
+			resetTimer(timer, t.idleTimeout)
+		case msg, ok := <-t.messages:
 			if !ok {
 				return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
 			}
-			attentionNotified = false
-			resetTimer(timer, idleTimeout)
-			if msg.Method != "" && len(msg.ID) > 0 {
-				_ = client.respondError(msg.ID, -32601, "Fleet launcher does not service Codex server-initiated requests")
-				session.LastEvent = "server_request:" + msg.Method
-				session.ExecutionStatus = "waiting_input"
-				upsertSession(opts, *session)
+			notified = false
+			resetTimer(timer, t.idleTimeout)
+			if t.refuseServerRequest(msg) {
 				continue
 			}
 			if codexMessageID(msg) == id {
@@ -338,39 +362,28 @@ func waitForCodexResponse(ctx context.Context, messages <-chan CodexRPCMessage, 
 				}
 				return msg, nil
 			}
-			updateCodexSessionFromMessage(session, msg, opts)
+			updateCodexSessionFromMessage(t.session, msg, t.opts)
 		}
 	}
 }
 
-func startOrResumeCodexThread(ctx context.Context, client *CodexClient, messages <-chan CodexRPCMessage, session *RuntimeSession, task tasklifecycle.Task, idleTimeout time.Duration, opts RunnerOptions) (string, error) {
-	if strings.TrimSpace(session.CodexThreadID) != "" {
-		id, err := client.request("thread/resume", codexThreadResumeParams(*session))
-		if err == nil {
-			response, waitErr := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts)
-			if waitErr == nil {
-				if threadID := CodexThreadID(response.Result); threadID != "" {
-					session.CodexThreadID = threadID
-					session.ResumeOutcome = "resumed"
-					session.LastEvent = "thread/resume"
-					upsertSession(opts, *session)
-					if err := setCodexThreadName(ctx, client, messages, session, task, threadID, idleTimeout, opts); err != nil {
-						return "", err
-					}
-					return threadID, nil
-				}
-			}
+// startOrResumeThread resumes the session's thread when it has one, and starts
+// a new thread when there is none or the resume fails.
+func (t *codexTurn) startOrResumeThread() (string, error) {
+	if strings.TrimSpace(t.session.CodexThreadID) != "" {
+		if threadID, ok := t.tryResumeThread(); ok {
+			return threadID, t.nameThread(threadID)
 		}
-		session.ResumeOutcome = "fallback_new"
-		session.CodexThreadID = ""
-		upsertSession(opts, *session)
+		t.session.ResumeOutcome = "fallback_new"
+		t.session.CodexThreadID = ""
+		upsertSession(t.opts, *t.session)
 	}
 
-	id, err := client.request("thread/start", codexThreadStartParams(*session))
+	id, err := t.client.request("thread/start", codexThreadStartParams(*t.session))
 	if err != nil {
 		return "", err
 	}
-	response, err := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts)
+	response, err := t.waitForResponse(id)
 	if err != nil {
 		return "", err
 	}
@@ -378,29 +391,46 @@ func startOrResumeCodexThread(ctx context.Context, client *CodexClient, messages
 	if threadID == "" {
 		return "", errors.New("codex app-server thread/start response did not include thread.id")
 	}
-	session.CodexThreadID = threadID
-	session.LastEvent = "thread/start"
-	upsertSession(opts, *session)
-	if err := setCodexThreadName(ctx, client, messages, session, task, threadID, idleTimeout, opts); err != nil {
-		return "", err
-	}
-	return threadID, nil
+	t.session.CodexThreadID = threadID
+	t.session.LastEvent = "thread/start"
+	upsertSession(t.opts, *t.session)
+	return threadID, t.nameThread(threadID)
 }
 
-func setCodexThreadName(ctx context.Context, client *CodexClient, messages <-chan CodexRPCMessage, session *RuntimeSession, task tasklifecycle.Task, threadID string, idleTimeout time.Duration, opts RunnerOptions) error {
-	title := strings.TrimSpace(firstNonEmpty(session.CodexThreadTitle, CodexRemoteThreadTitle(task.Ref, task.Title, task.ID)))
+func (t *codexTurn) tryResumeThread() (string, bool) {
+	id, err := t.client.request("thread/resume", codexThreadResumeParams(*t.session))
+	if err != nil {
+		return "", false
+	}
+	response, err := t.waitForResponse(id)
+	if err != nil {
+		return "", false
+	}
+	threadID := CodexThreadID(response.Result)
+	if threadID == "" {
+		return "", false
+	}
+	t.session.CodexThreadID = threadID
+	t.session.ResumeOutcome = "resumed"
+	t.session.LastEvent = "thread/resume"
+	upsertSession(t.opts, *t.session)
+	return threadID, true
+}
+
+func (t *codexTurn) nameThread(threadID string) error {
+	title := strings.TrimSpace(firstNonEmpty(t.session.CodexThreadTitle, CodexRemoteThreadTitle(t.task.Ref, t.task.Title, t.task.ID)))
 	if title == "" {
 		return nil
 	}
-	session.CodexThreadTitle = title
-	id, err := client.request("thread/name/set", codexThreadSetNameParams(threadID, title))
+	t.session.CodexThreadTitle = title
+	id, err := t.client.request("thread/name/set", codexThreadSetNameParams(threadID, title))
 	if err != nil {
 		return err
 	}
-	if _, err := waitForCodexResponse(ctx, messages, id, client, session, task, idleTimeout, opts); err != nil {
+	if _, err := t.waitForResponse(id); err != nil {
 		return fmt.Errorf("codex thread/name/set failed: %w", err)
 	}
-	session.LastEvent = "thread/name/set"
-	upsertSession(opts, *session)
+	t.session.LastEvent = "thread/name/set"
+	upsertSession(t.opts, *t.session)
 	return nil
 }

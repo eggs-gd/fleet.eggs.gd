@@ -34,24 +34,9 @@ func RunCursorVisibleSession(ctx context.Context, session RuntimeSession, task t
 		session.LastEvent = "waiting_for_visible_session"
 		upsertSession(opts, session)
 		appendSessionLogLine(logFile, "[core] provider visible-session wait started (cursor-agent create-chat)\n")
-		createCtx, cancelCreate := context.WithTimeout(ctx, 30*time.Second)
-		var createOutput bytes.Buffer
-		cmd := exec.CommandContext(createCtx, binary, "create-chat")
-		cmd.Dir = session.WorkingDir
-		cmd.Stdout = io.MultiWriter(&createOutput, logFile)
-		cmd.Stderr = io.MultiWriter(&createOutput, logFile)
-		appendSessionLogLine(logFile, "[core] creating cursor chat id command=%q cwd=%s\n\n", []string{binary, "create-chat"}, session.WorkingDir)
-		err := cmd.Run()
-		cancelCreate()
+		chatID, err = createCursorChat(ctx, opts, &session, logFile)
 		if err != nil {
-			session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent create-chat", err, createOutput.String())
-			failLaunch(opts, session, task, fmt.Errorf("cursor chat creation failed: %w", err))
-			return
-		}
-		chatID = ParseCursorChatID(createOutput.String())
-		if chatID == "" {
-			session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent create-chat", nil, createOutput.String())
-			failLaunch(opts, session, task, errors.New("could not parse Cursor chat id from `cursor-agent create-chat` output"))
+			failLaunch(opts, session, task, err)
 			return
 		}
 	} else {
@@ -103,55 +88,78 @@ func RunCursorVisibleSession(ctx context.Context, session RuntimeSession, task t
 
 	err = cmd.Wait()
 	session.ExitedAt = time.Now().Format(time.RFC3339)
-	session.Status = "exited"
-	session.ExecutionStatus = "succeeded"
-	session.LastEvent = "process_exited"
-	if err != nil {
-		session.Status = "failed"
-		session.ExecutionStatus = "failed"
-		session.ErrorMessage = err.Error()
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			session.ExitCode = exitErr.ExitCode()
-		}
-		if runCtx.Err() != nil {
-			session.ExecutionStatus = "cancelled"
-			session.ErrorMessage = runCtx.Err().Error()
-		}
-		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent output", err, readSessionLog(opts.RuntimeRoot, session.LogPath))
-		if session.ProviderError != nil {
-			session.ExecutionStatus = "provider_error"
-		}
-	}
+	settleCursorStatus(opts, &session, err, runCtx.Err())
 	if session.Status == "failed" && session.ErrorMessage != "" {
 		appendSessionLogLine(logFile, "\n[core] cursor session failed: %s\n", session.ErrorMessage)
 	}
-	if session.Result == nil {
-		if transcript := readSessionLog(opts.RuntimeRoot, session.LogPath); transcript != "" {
-			refreshSessionToolUsageFromText(&session, transcript)
-			if result := tasklifecycle.ParseWorkerResult(transcript); result != nil {
-				session.Result = result
-				session.LastEvent = "worker_result_reported"
-				if summary := strings.TrimSpace(result.Summary); summary != "" {
-					session.LastMessage = summary
-				}
-			}
-		}
-	} else {
-		refreshSessionToolUsageFromText(&session, readSessionLog(opts.RuntimeRoot, session.LogPath))
-	}
-	if session.Result != nil && session.ExecutionStatus != "cancelled" && session.ProviderError == nil {
-		if tasklifecycle.WorkerResultNeedsInput(session.Result) {
-			session.ExecutionStatus = "waiting_input"
-			session.Status = "waiting_input"
-			session.ExitedAt = ""
-		} else {
-			session.ExecutionStatus = "succeeded"
-		}
-	}
+	adoptCursorResult(opts, &session)
 	completeProviderSession(opts, session, task, firstNonEmpty(session.ErrorMessage, "Cursor visible agent process exited"), map[string]any{
 		"process_id":     session.ProcessID,
 		"cursor_chat_id": chatID,
 		"exit_code":      session.ExitCode,
 	})
+}
+
+// createCursorChat runs `cursor-agent create-chat` and returns the new chat id.
+// On failure it records the classified provider error on session.
+func createCursorChat(ctx context.Context, opts RunnerOptions, session *RuntimeSession, logFile io.Writer) (string, error) {
+	binary := session.Command[0]
+	createCtx, cancelCreate := context.WithTimeout(ctx, 30*time.Second)
+	defer cancelCreate()
+	var createOutput bytes.Buffer
+	cmd := exec.CommandContext(createCtx, binary, "create-chat")
+	cmd.Dir = session.WorkingDir
+	cmd.Stdout = io.MultiWriter(&createOutput, logFile)
+	cmd.Stderr = io.MultiWriter(&createOutput, logFile)
+	appendSessionLogLine(logFile, "[core] creating cursor chat id command=%q cwd=%s\n\n", []string{binary, "create-chat"}, session.WorkingDir)
+	if err := cmd.Run(); err != nil {
+		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent create-chat", err, createOutput.String())
+		return "", fmt.Errorf("cursor chat creation failed: %w", err)
+	}
+	chatID := ParseCursorChatID(createOutput.String())
+	if chatID == "" {
+		session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent create-chat", nil, createOutput.String())
+		return "", errors.New("could not parse Cursor chat id from `cursor-agent create-chat` output")
+	}
+	return chatID, nil
+}
+
+// settleCursorStatus turns how the process ended into the session status.
+func settleCursorStatus(opts RunnerOptions, session *RuntimeSession, waitErr error, runErr error) {
+	session.Status = "exited"
+	session.ExecutionStatus = "succeeded"
+	session.LastEvent = "process_exited"
+	if waitErr == nil {
+		return
+	}
+	session.Status = "failed"
+	session.ExecutionStatus = "failed"
+	session.ErrorMessage = waitErr.Error()
+	var exitErr *exec.ExitError
+	if errors.As(waitErr, &exitErr) {
+		session.ExitCode = exitErr.ExitCode()
+	}
+	if runErr != nil {
+		session.ExecutionStatus = "cancelled"
+		session.ErrorMessage = runErr.Error()
+	}
+	session.ProviderError = classifyProviderError(opts, session.Agent, session.Backend, "cursor-agent output", waitErr, readSessionLog(opts.RuntimeRoot, session.LogPath))
+	if session.ProviderError != nil {
+		session.ExecutionStatus = "provider_error"
+	}
+}
+
+// adoptCursorResult takes the worker result from the session log and pauses the
+// session when the worker asked for input.
+func adoptCursorResult(opts RunnerOptions, session *RuntimeSession) {
+	transcript := readSessionLog(opts.RuntimeRoot, session.LogPath)
+	if session.Result == nil {
+		if transcript != "" {
+			refreshSessionToolUsageFromText(session, transcript)
+			adoptWorkerResult(session, tasklifecycle.ParseWorkerResult(transcript))
+		}
+	} else {
+		refreshSessionToolUsageFromText(session, transcript)
+	}
+	settleReportedResult(session)
 }
