@@ -17,12 +17,18 @@ func classifySessions(runtime []executionapi.RuntimeSession, groups []execution.
 	for _, session := range runtime {
 		if hitlSession(session) {
 			counts.HITL++
-			continue
-		}
-		if session.IsActive() {
+		} else if session.IsActive() {
 			counts.Active++
 		}
 	}
+	counts.Closed, counts.Failed = countClosedSessions(groups)
+	return counts
+}
+
+// countClosedSessions counts the sessions in the history groups that are no
+// longer active, and how many of those failed. A session listed in two groups
+// counts once.
+func countClosedSessions(groups []execution.SessionGroup) (closed int, failed int) {
 	seen := map[string]bool{}
 	for _, group := range groups {
 		for _, session := range group.Sessions {
@@ -37,13 +43,13 @@ func classifySessions(runtime []executionapi.RuntimeSession, groups []execution.
 			if session.IsActive() {
 				continue
 			}
-			counts.Closed++
+			closed++
 			if failedSession(session.RuntimeSession) {
-				counts.Failed++
+				failed++
 			}
 		}
 	}
-	return counts
+	return closed, failed
 }
 
 func hitlSession(session executionapi.RuntimeSession) bool {

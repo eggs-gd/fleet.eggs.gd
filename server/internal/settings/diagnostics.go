@@ -105,6 +105,20 @@ func sessionHealth(sessions SessionCounts) HealthItem {
 }
 
 func collectIssues(projects Projects, agents Agents, integrations Integrations, sessions SessionCounts) []Issue {
+	issues := agentIssues(agents)
+	issues = append(issues, projectIssues(projects)...)
+	for _, server := range integrations.MCP {
+		if server.Configured && !server.Detected {
+			issues = append(issues, Issue{Severity: "warn", Code: "mcp_undetected", Message: "MCP " + server.Name + " not detected. Expected: " + server.Expected, Section: "integrations"})
+		}
+	}
+	if sessions.Orphaned > 0 {
+		issues = append(issues, Issue{Severity: "warn", Code: "orphaned_sessions", Message: fmt.Sprintf("%d orphaned sessions (%d resumable)", sessions.Orphaned, sessions.OrphanedResumable), Section: "diagnostics"})
+	}
+	return issues
+}
+
+func agentIssues(agents Agents) []Issue {
 	var issues []Issue
 	for _, agent := range agents.Providers {
 		if !agent.Enabled.Value {
@@ -117,6 +131,11 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 			issues = append(issues, Issue{Severity: "warn", Code: "agent_not_found", Message: agent.Name + " not found. Expected: " + agent.Expected, Section: "agents"})
 		}
 	}
+	return issues
+}
+
+func projectIssues(projects Projects) []Issue {
+	var issues []Issue
 	for _, root := range projects.Roots {
 		if !root.Reachable {
 			issues = append(issues, Issue{Severity: "warn", Code: "root_unavailable", Message: "Project root unavailable: " + root.Path, Section: "projects"})
@@ -126,14 +145,6 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 		if path.Name == "Data root" && path.Exists && !path.Writable {
 			issues = append(issues, Issue{Severity: "warn", Code: "data_not_writable", Message: "Data directory not writable: " + path.Path, Section: "projects"})
 		}
-	}
-	for _, server := range integrations.MCP {
-		if server.Configured && !server.Detected {
-			issues = append(issues, Issue{Severity: "warn", Code: "mcp_undetected", Message: "MCP " + server.Name + " not detected. Expected: " + server.Expected, Section: "integrations"})
-		}
-	}
-	if sessions.Orphaned > 0 {
-		issues = append(issues, Issue{Severity: "warn", Code: "orphaned_sessions", Message: fmt.Sprintf("%d orphaned sessions (%d resumable)", sessions.Orphaned, sessions.OrphanedResumable), Section: "diagnostics"})
 	}
 	return issues
 }

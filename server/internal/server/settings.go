@@ -28,45 +28,52 @@ func registerSettingsRoutes(mux *http.ServeMux, rt *settingsRuntime) {
 			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 		}
 	})
-	mux.HandleFunc("/api/settings/recheck", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
-			return
-		}
-		overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		settings.ApplyOverlay(overlay)
-		writeJSON(w, rt.snapshot())
-	})
-	mux.HandleFunc("/api/settings/rescan", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
-			return
-		}
-		overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		scanRoots, _ := settings.EffectiveScanRoots(overlay)
-		if err := rt.scanner.Start(scanRoots, filepath.Join(rt.cfg.CoreRoot, "_registry")); err != nil {
-			if errors.Is(err, settings.ErrScanBusy) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			if errors.Is(err, settings.ErrScanRootRequired) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-		writeJSON(w, rt.scanner.Status())
-	})
+	mux.HandleFunc("/api/settings/recheck", rt.recheck)
+	mux.HandleFunc("/api/settings/rescan", rt.rescan)
+}
+
+func (rt *settingsRuntime) recheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
+		return
+	}
+	overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	settings.ApplyOverlay(overlay)
+	writeJSON(w, rt.snapshot())
+}
+
+func (rt *settingsRuntime) rescan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
+		return
+	}
+	overlay, err := settings.LoadOverlay(rt.cfg.CoreRoot)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	scanRoots, _ := settings.EffectiveScanRoots(overlay)
+	if err := rt.scanner.Start(scanRoots, filepath.Join(rt.cfg.CoreRoot, "_registry")); err != nil {
+		http.Error(w, err.Error(), rescanErrorStatus(err))
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+	writeJSON(w, rt.scanner.Status())
+}
+
+func rescanErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, settings.ErrScanBusy):
+		return http.StatusConflict
+	case errors.Is(err, settings.ErrScanRootRequired):
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func (rt *settingsRuntime) snapshot() settings.Snapshot {

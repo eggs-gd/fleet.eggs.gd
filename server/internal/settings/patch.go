@@ -82,16 +82,7 @@ func MergeOverlay(base Overlay, patch PatchRequest) Overlay {
 		out.Launch = strings.TrimSpace(*patch.Launch)
 	}
 	for id, item := range patch.Agents {
-		cur := out.Agents[id]
-		if item.Enabled != nil {
-			cur.Enabled = item.Enabled
-		}
-		if item.Executable != nil {
-			cur.Executable = strings.TrimSpace(*item.Executable)
-		}
-		if item.RoutingInstructions != nil {
-			cur.RoutingInstructions = strings.TrimSpace(*item.RoutingInstructions)
-		}
+		cur := mergeAgentPatch(out.Agents[id], item)
 		if agentEmpty(cur) {
 			delete(out.Agents, id)
 			continue
@@ -99,24 +90,43 @@ func MergeOverlay(base Overlay, patch PatchRequest) Overlay {
 		out.Agents[id] = cur
 	}
 	if patch.Manager != nil {
-		cur := out.Manager
-		if patch.Manager.Agent != nil {
-			cur.Agent = strings.TrimSpace(*patch.Manager.Agent)
-		}
-		if patch.Manager.ThreadID != nil {
-			cur.ThreadID = strings.TrimSpace(*patch.Manager.ThreadID)
-		}
-		switch {
-		case cur.Agent == "" || cur.ThreadID == "":
-			cur = ManagerOverlay{}
-		case cur.Agent != base.Manager.Agent || cur.ThreadID != base.Manager.ThreadID:
-			cur.BoundAt = time.Now().UTC().Format(time.RFC3339)
-		default:
-			cur.BoundAt = base.Manager.BoundAt
-		}
-		out.Manager = cur
+		out.Manager = mergeManagerPatch(base.Manager, *patch.Manager)
 	}
 	return out
+}
+
+func mergeAgentPatch(cur AgentOverlay, item AgentPatch) AgentOverlay {
+	if item.Enabled != nil {
+		cur.Enabled = item.Enabled
+	}
+	if item.Executable != nil {
+		cur.Executable = strings.TrimSpace(*item.Executable)
+	}
+	if item.RoutingInstructions != nil {
+		cur.RoutingInstructions = strings.TrimSpace(*item.RoutingInstructions)
+	}
+	return cur
+}
+
+// mergeManagerPatch applies the manager binding patch. The binding needs both
+// an agent and a thread; a new pair is stamped with the time it was bound.
+func mergeManagerPatch(base ManagerOverlay, patch ManagerPatch) ManagerOverlay {
+	cur := base
+	if patch.Agent != nil {
+		cur.Agent = strings.TrimSpace(*patch.Agent)
+	}
+	if patch.ThreadID != nil {
+		cur.ThreadID = strings.TrimSpace(*patch.ThreadID)
+	}
+	switch {
+	case cur.Agent == "" || cur.ThreadID == "":
+		return ManagerOverlay{}
+	case cur.Agent != base.Agent || cur.ThreadID != base.ThreadID:
+		cur.BoundAt = time.Now().UTC().Format(time.RFC3339)
+	default:
+		cur.BoundAt = base.BoundAt
+	}
+	return cur
 }
 
 func ValidateOverlay(overlay Overlay) (warnings []string, err error) {
