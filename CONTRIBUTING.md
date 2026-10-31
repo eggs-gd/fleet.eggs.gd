@@ -56,8 +56,7 @@ published as the main branch.
 golangci-lint on the Go modules with staged files, and a secrets scan of the staged files when the
 SonarQube CLI (`brew install sonarqube-cli`) is installed; a finding stops the commit, and nothing
 goes to the server. **pre-push** runs `make sonar` when code the analysis covers changed: the report
-of the pushed commit goes to the server, and a red quality gate stops the push. Once a pull request
-is open, run `make sonar` once more so the server analyzes it as that pull request. Both do nothing
+of the pushed commit goes to the server, and a red quality gate stops the push. After every push, once it has finished, run `make sonar-publish`: the push's analysis was made while GitHub did not know the commit yet, so the pull request's check could not land on it; this sends the scan again, on the same reports. Both do nothing
 unless the two variables are set; skip one with `--no-verify`. `make sonar SONAR_GATE=false` sends
 the report without waiting for the gate. The setup and the reasons for it are in the organization's
 [SonarQube standard](https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md).

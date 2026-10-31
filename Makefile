@@ -19,7 +19,7 @@ LIVE ?=
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
 LDFLAGS := $(if $(VERSION),-X main.version=$(VERSION),)
 
-.PHONY: help setup ui build test vet check sonar serve scan rebuild-index version fmt site clean
+.PHONY: help setup ui build test vet check sonar sonar-publish serve scan rebuild-index version fmt site clean
 
 help:
 	@printf '%s\n' 'Fleet entry points:'
@@ -86,7 +86,20 @@ sonar:
 	(cd "$(SERVER_DIR)" && golangci-lint run --issues-exit-code=0 --output.text.path=stderr \
 		--output.checkstyle.path=$(CURDIR)/$(SERVER_DIR)/golangci-lint.xml ./... 2> /dev/null) && \
 	(cd view && npm run --silent test:coverage >/dev/null && sed 's|^SF:|SF:view/|' coverage/lcov.info > coverage/lcov.sonar.info) && \
+	{ mkdir -p .scannerwork; if [ -z "$$(git status --porcelain --untracked-files=no)" ]; then git rev-parse HEAD > .scannerwork/reports-head; else rm -f .scannerwork/reports-head; fi; } && \
 	sonar-scanner -Dsonar.qualitygate.wait=$(SONAR_GATE) $$scope
+
+# The scan again, on the reports `make sonar` wrote for this commit, once the commit is on GitHub:
+# the pull request's check is made for a commit GitHub knows, and at pre-push it does not yet.
+sonar-publish:
+	@env=./.env; [ -f $$env ] || env="$$(git rev-parse --path-format=absolute --git-common-dir)/../.env"; \
+	set -a; [ ! -f "$$env" ] || . "$$env"; set +a; \
+	test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { echo 'sonar-publish: set SONAR_HOST_URL and SONAR_TOKEN (.env)' >&2; exit 1; }; \
+	[ "$$(cat .scannerwork/reports-head 2>/dev/null)" = "$$(git rev-parse HEAD)" ] || { echo 'sonar-publish: no reports of this commit (or a dirty tree made them): run make sonar first' >&2; exit 1; }; \
+	git ls-remote origin "refs/heads/$$(git rev-parse --abbrev-ref HEAD)" | grep -q "^$$(git rev-parse HEAD)" || { echo 'sonar-publish: this commit is not on the remote yet: push it first' >&2; exit 1; }; \
+	scope=$$(scripts/sonar-scope) || exit 1; \
+	echo "sonar: $${scope:-main branch} (the reports of this commit, sent again)"; \
+	sonar-scanner -Dsonar.qualitygate.wait=false $$scope
 
 serve: build
 	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \
