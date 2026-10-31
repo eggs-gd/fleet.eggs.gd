@@ -76,7 +76,7 @@ check: vet test
 SONAR_GATE ?= true
 
 sonar:
-	@env=.env; [ -f $$env ] || env="$$(git rev-parse --path-format=absolute --git-common-dir)/../.env"; \
+	@env=./.env; [ -f $$env ] || env="$$(git rev-parse --path-format=absolute --git-common-dir)/../.env"; \
 	set -a; [ ! -f "$$env" ] || . "$$env"; set +a; \
 	test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
 		printf '%s\n' 'sonar: set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) in the environment or in .env.' >&2; exit 1; }; \
