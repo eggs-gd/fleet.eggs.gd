@@ -1,28 +1,31 @@
 #!/bin/sh
-# Optional pre-commit check: a secrets scan of the staged files and the
-# SonarQube analysis with its quality gate. Turn it on in this checkout with
-#   git config core.hooksPath .githooks
-# It does nothing unless SONAR_HOST_URL and SONAR_TOKEN are set (in the
-# environment or in a git-ignored .env at the repository root), so a
-# contributor without a SonarQube server is never blocked. Skip once with
-# `git commit --no-verify`.
+# The local gate before a commit; nothing goes to the server. It runs
+#   1. the secrets scan of the staged files (SonarQube CLI: sonar hook git-pre-commit),
+#      when the CLI is installed and SONAR_HOST_URL and SONAR_TOKEN are set;
+#   2. golangci-lint (.golangci.yml) on every Go module that has a staged .go file.
+# A finding stops the commit. The analysis that goes to the server runs on push (pre-push).
+# Enable per checkout: git config core.hooksPath .githooks
+# Skip once, and say so in the commit message: git commit --no-verify
+#
+# The part between the markers is canonical: eggs-gd/.github, sonarqube/hooks/pre-commit.
 
-set -a
-[ ! -f .env ] || . ./.env
-set +a
-
-[ -n "$SONAR_HOST_URL" ] && [ -n "$SONAR_TOKEN" ] || exit 0
-
-if command -v sonar >/dev/null 2>&1; then
+# --- sonar:begin
+set -a; [ ! -f .env ] || . ./.env; set +a
+if [ -n "${SONAR_HOST_URL:-}" ] && [ -n "${SONAR_TOKEN:-}" ] && command -v sonar >/dev/null 2>&1; then
 	sonar hook git-pre-commit || exit 1
 fi
 
-if ! command -v sonar-scanner >/dev/null 2>&1; then
-	echo "pre-commit: sonar-scanner is not installed, skipping the analysis" >&2
-	exit 0
+if command -v golangci-lint >/dev/null 2>&1; then
+	modules=$(git diff --cached --name-only --diff-filter=ACMR -- '*.go' | while read -r f; do
+		d=$(dirname "$f")
+		while [ "$d" != . ] && [ ! -f "$d/go.mod" ]; do d=$(dirname "$d"); done
+		[ -f "$d/go.mod" ] && echo "$d"
+	done | sort -u)
+	for m in $modules; do
+		echo "pre-commit: golangci-lint in $m"
+		(cd "$m" && golangci-lint run ./...) || exit 1
+	done
+elif [ -n "$(git diff --cached --name-only -- '*.go')" ]; then
+	echo "pre-commit: golangci-lint is not installed, the lint is skipped" >&2
 fi
-
-# Only code the analysis covers; a docs-only commit does not need it.
-git diff --cached --name-only | grep -qE '^(server|view/src|site/src)/' || exit 0
-
-exec make sonar
+# --- sonar:end

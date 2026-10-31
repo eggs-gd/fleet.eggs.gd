@@ -40,7 +40,7 @@ SONAR_TOKEN=<a SonarQube user token>
 ```
 
 ```bash
-make sonar       # Go tests with coverage, then the analysis; fails when the quality gate is red
+make sonar       # tests with coverage, then the analysis; fails when the quality gate is red
 ```
 
 `scripts/sonar-scope` decides what gets analyzed: on the main branch (`origin/HEAD`)
@@ -52,10 +52,15 @@ on the server; without it SonarQube Community only knows one branch. Do not run
 `sonar-scanner` directly from a feature branch: without those arguments it is
 published as the main branch.
 
-`.githooks/pre-commit` runs the same check, plus a secrets scan of the staged
-files when the SonarQube CLI (`brew install sonarqube-cli`) is installed. It does
-nothing unless both variables are set. Turn it on with
-`git config core.hooksPath .githooks`; skip it once with `git commit --no-verify`.
+`git config core.hooksPath .githooks` turns on two hooks. **pre-commit** is the local gate:
+golangci-lint on the Go modules with staged files, and a secrets scan of the staged files when the
+SonarQube CLI (`brew install sonarqube-cli`) is installed; a finding stops the commit, and nothing
+goes to the server. **pre-push** runs `make sonar` when code the analysis covers changed: the report
+of the pushed commit goes to the server, and a red quality gate stops the push. Once a pull request
+is open, run `make sonar` once more so the server analyzes it as that pull request. Both do nothing
+unless the two variables are set; skip one with `--no-verify`. `make sonar SONAR_GATE=false` sends
+the report without waiting for the gate. The setup and the reasons for it are in the organization's
+[SonarQube standard](https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md).
 
 ## How the code is laid out
 
