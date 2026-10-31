@@ -70,15 +70,19 @@ check: vet test
 
 # Needs sonar-scanner on PATH, and SONAR_HOST_URL and SONAR_TOKEN in the
 # environment or in a git-ignored .env file at the repository root.
+# scripts/sonar-scope says what this checkout is: the main branch, a branch or a
+# pull request, so a scan from a feature branch never overwrites the main one.
 sonar:
 	@set -a; [ ! -f .env ] || . ./.env; set +a; \
 	test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
 		printf '%s\n' 'Set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) in the environment or in .env.'; exit 1; }; \
+	scope=$$(scripts/sonar-scope) || exit 1; \
+	echo "sonar: $${scope:-main branch}"; \
 	(cd "$(SERVER_DIR)" && go test -coverpkg=./... -coverprofile=coverage.out ./...) && \
 	(cd "$(SERVER_DIR)" && golangci-lint run --issues-exit-code=0 --output.text.path=stderr \
 		--output.checkstyle.path=$(CURDIR)/$(SERVER_DIR)/golangci-lint.xml ./... 2> /dev/null) && \
 	(cd view && npm run --silent test:coverage >/dev/null && sed 's|^SF:|SF:view/|' coverage/lcov.info > coverage/lcov.sonar.info) && \
-	sonar-scanner -Dsonar.qualitygate.wait=true
+	sonar-scanner -Dsonar.qualitygate.wait=true $$scope
 
 serve: build
 	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \

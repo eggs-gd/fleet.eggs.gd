@@ -43,6 +43,15 @@ SONAR_TOKEN=<a SonarQube user token>
 make sonar       # Go tests with coverage, then the analysis; fails when the quality gate is red
 ```
 
+`scripts/sonar-scope` decides what gets analyzed: on the main branch (`origin/HEAD`)
+the main analysis, on any other branch the pull request when `gh` finds an open one,
+otherwise that branch. A feature branch never overwrites the main branch's state.
+Branch and pull request analysis need the
+[community branch plugin](https://github.com/mc1arke/sonarqube-community-branch-plugin)
+on the server; without it SonarQube Community only knows one branch. Do not run
+`sonar-scanner` directly from a feature branch: without those arguments it is
+published as the main branch.
+
 `.githooks/pre-commit` runs the same check, plus a secrets scan of the staged
 files when the SonarQube CLI (`brew install sonarqube-cli`) is installed. It does
 nothing unless both variables are set. Turn it on with
