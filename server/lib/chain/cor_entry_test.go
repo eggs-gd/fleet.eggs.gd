@@ -120,7 +120,7 @@ func TestEntryPoint(t *testing.T) {
 
 		select {
 		case err := <-cherr:
-			if err != expectedErr {
+			if !errors.Is(err, expectedErr) {
 				t.Errorf("expected error %v, got %v", expectedErr, err)
 			}
 		case <-time.After(time.Second):

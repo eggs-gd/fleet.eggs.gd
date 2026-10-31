@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -20,6 +21,10 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/runtimedb"
 	"github.com/eggs-gd/fleet.eggs.gd/internal/settings"
 )
+
+const msgMethodNotAllowed = "method not allowed"
+
+const headerContentType = "Content-Type"
 
 type Config struct {
 	Addr           string
@@ -178,18 +183,26 @@ func serveUntilDone(ctx context.Context, srv *http.Server, l net.Listener) error
 	if err := srv.Shutdown(shutdown); err != nil {
 		return err
 	}
-	<-done
+	if err := <-done; err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
 	return nil
 }
 
-func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Config) {
-	coreRoot := cfg.CoreRoot
-	runtimeRoot := cfg.RuntimeRoot
-	mux.HandleFunc("/api/manager/schema", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+// handleMethod serves path with h for one HTTP method and answers anything else
+// with 405.
+func handleMethod(mux *http.ServeMux, path string, method string, h http.HandlerFunc) {
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
+		h(w, r)
+	})
+}
+
+func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Config) {
+	handleMethod(mux, "/api/manager/schema", http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		schema, err := manager.SchemaObject()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -197,45 +210,16 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 		}
 		writeJSON(w, schema)
 	})
-	mux.HandleFunc("/api/manager/vocabulary", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	handleMethod(mux, "/api/manager/vocabulary", http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, service.Vocabulary())
 	})
-	mux.HandleFunc("/api/manager/binding", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		writeJSON(w, managerBindingStatus(coreRoot))
+	handleMethod(mux, "/api/manager/binding", http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, managerBindingStatus(cfg.CoreRoot))
 	})
-	mux.HandleFunc("/api/manager/threads", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		agent := strings.TrimSpace(r.URL.Query().Get("agent"))
-		if agent == "" {
-			http.Error(w, "agent query parameter is required", http.StatusBadRequest)
-			return
-		}
-		threads, err := listManagerThreads(r.Context(), runtimeRoot, agent)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		if cwd := strings.TrimSpace(r.URL.Query().Get("cwd")); cwd != "" {
-			threads = filterThreadsByCwd(threads, cwd)
-		}
-		writeJSON(w, threads)
+	handleMethod(mux, "/api/manager/threads", http.MethodGet, func(w http.ResponseWriter, r *http.Request) {
+		serveManagerThreads(w, r, cfg.RuntimeRoot)
 	})
-	mux.HandleFunc("/api/manager/text", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	handleMethod(mux, "/api/manager/text", http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		var req manager.TextRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -243,11 +227,7 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 		}
 		writeManagerResponse(w, service.SubmitText(r.Context(), req))
 	})
-	mux.HandleFunc("/api/manager/command", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	handleMethod(mux, "/api/manager/command", http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
 		var req manager.CommandRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -255,57 +235,81 @@ func registerManagerRoutes(mux *http.ServeMux, service *manager.Service, cfg Con
 		}
 		writeManagerResponse(w, service.SubmitCommand(r.Context(), req))
 	})
-	mux.HandleFunc("/api/manager/audio", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if err := r.ParseMultipartForm(16 << 20); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		file, header, err := r.FormFile("audio")
-		if err != nil {
-			http.Error(w, "audio file field is required", http.StatusBadRequest)
-			return
-		}
-		defer file.Close()
-		payload, err := io.ReadAll(file)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		contentType := header.Header.Get("Content-Type")
-		if contentType == "" {
-			contentType = "application/octet-stream"
-		}
-		source := r.FormValue("source")
-		writeManagerResponse(w, service.SubmitAudio(r.Context(), payload, contentType, source))
+	handleMethod(mux, "/api/manager/audio", http.MethodPost, func(w http.ResponseWriter, r *http.Request) {
+		serveManagerAudio(w, r, service)
 	})
 }
 
-func writeManagerResponse(w http.ResponseWriter, response manager.Response) {
-	status := http.StatusOK
-	if !response.OK {
-		status = http.StatusBadRequest
-		if response.Failure != nil {
-			switch response.Failure.Code {
-			case manager.FailureSTTNotConfigured, manager.FailureLLMNotConfigured:
-				status = http.StatusServiceUnavailable
-			case manager.FailureNotFound:
-				status = http.StatusNotFound
-			case manager.FailureProviderError:
-				status = http.StatusBadGateway
-			}
-		}
+func serveManagerThreads(w http.ResponseWriter, r *http.Request, runtimeRoot string) {
+	agent := strings.TrimSpace(r.URL.Query().Get("agent"))
+	if agent == "" {
+		http.Error(w, "agent query parameter is required", http.StatusBadRequest)
+		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	threads, err := listManagerThreads(r.Context(), runtimeRoot, agent)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+	if cwd := strings.TrimSpace(r.URL.Query().Get("cwd")); cwd != "" {
+		threads = filterThreadsByCwd(threads, cwd)
+	}
+	writeJSON(w, threads)
+}
+
+func serveManagerAudio(w http.ResponseWriter, r *http.Request, service *manager.Service) {
+	if err := r.ParseMultipartForm(16 << 20); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	file, header, err := r.FormFile("audio")
+	if err != nil {
+		http.Error(w, "audio file field is required", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+	payload, err := io.ReadAll(file)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	contentType := header.Header.Get(headerContentType)
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+	writeManagerResponse(w, service.SubmitAudio(r.Context(), payload, contentType, r.FormValue("source")))
+}
+
+// managerResponseStatus is the HTTP status for a manager response: 200 when it
+// worked, else one that tells the client what kind of failure it was.
+func managerResponseStatus(response manager.Response) int {
+	if response.OK {
+		return http.StatusOK
+	}
+	if response.Failure == nil {
+		return http.StatusBadRequest
+	}
+	switch response.Failure.Code {
+	case manager.FailureSTTNotConfigured, manager.FailureLLMNotConfigured:
+		return http.StatusServiceUnavailable
+	case manager.FailureNotFound:
+		return http.StatusNotFound
+	case manager.FailureProviderError:
+		return http.StatusBadGateway
+	default:
+		return http.StatusBadRequest
+	}
+}
+
+func writeManagerResponse(w http.ResponseWriter, response manager.Response) {
+	status := managerResponseStatus(response)
+	w.Header().Set(headerContentType, "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headerContentType, "application/json")
 	_ = json.NewEncoder(w).Encode(value)
 }
 

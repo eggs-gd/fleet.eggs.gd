@@ -41,6 +41,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Consent banner colours (the component reads --consent-*). */
+  --consent-bg: var(--panel-strong);
+  --consent-text: var(--text);
+  --consent-muted: var(--muted);
+  --consent-border: var(--line-strong);
+  --consent-accent: var(--text);
 }
 
 * {
@@ -195,7 +201,8 @@ button {
 
 .secondary-cta {
   color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.02);
+  /* rgba(255, 255, 255, 0.02) over --bg, flattened so the contrast is known. */
+  background: #111316;
 }
 
 .secondary-cta:hover,
@@ -394,13 +401,4 @@ h3 {
   .secondary-cta {
     width: 100%;
   }
-}
-
-/* Consent banner colours (the component reads --consent-*). */
-:root {
-  --consent-bg: var(--panel-strong);
-  --consent-text: var(--text);
-  --consent-muted: var(--muted);
-  --consent-border: var(--line-strong);
-  --consent-accent: var(--text);
 }

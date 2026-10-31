@@ -1,10 +1,16 @@
 import { apiFetch, readApiError } from './api.ts';
 
+const trimTrailingSlashes = (path: string): string => {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === '/') end -= 1;
+  return path.slice(0, end);
+};
+
 /** The scan roots with `path` added; null when it is blank or already there. */
 export const withScanRoot = (roots: string[], path: string): string[] | null => {
   const next = path.trim();
   if (!next) return null;
-  const same = (a: string, b: string) => a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
+  const same = (a: string, b: string) => trimTrailingSlashes(a) === trimTrailingSlashes(b);
   if (roots.some((root) => same(root, next))) return null;
   return [...roots, next];
 };

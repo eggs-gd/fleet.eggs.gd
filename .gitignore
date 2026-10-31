@@ -15,3 +15,12 @@ server/internal/webui/dist/*
 !server/internal/webui/dist/PLACEHOLDER
 bin/
 Makefile.local
+
+# SonarQube
+.scannerwork/
+server/coverage.out
+
+# Local secrets (SonarQube token and so on)
+.env
+golangci-lint.xml
+view/coverage/

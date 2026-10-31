@@ -243,9 +243,7 @@ export const sessionActivityAt = (session?: Session | null): string =>
 
 export const groupLatestSession = (group?: SessionGroup | null): Session | null => {
   const sessions = group?.sessions ?? [];
-  return (
-    sessions.find((session) => session?.role === 'current') || sessions[sessions.length - 1] || null
-  );
+  return sessions.find((session) => session?.role === 'current') || sessions.at(-1) || null;
 };
 
 export const groupActivityAt = (group?: SessionGroup | null): string => {
@@ -272,9 +270,9 @@ export const taskTitleForSessionGroup = (
 };
 
 const parseTimestampMs = (value?: string | null): number => {
-  if (!value) return NaN;
+  if (!value) return Number.NaN;
   const ms = Date.parse(value);
-  return Number.isFinite(ms) ? ms : NaN;
+  return Number.isFinite(ms) ? ms : Number.NaN;
 };
 
 export const visibleSessionsForGroup = (

@@ -16,7 +16,7 @@ func TestServeUntilDoneStopsWhenTheContextEnds(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "ok") })}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() { done <- serveUntilDone(ctx, srv, l) }()
@@ -36,7 +36,8 @@ func TestServeUntilDoneStopsWhenTheContextEnds(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("serveUntilDone did not stop")
 	}
-	if _, err := http.Get("http://" + l.Addr().String()); err == nil {
+	if resp, err := http.Get("http://" + l.Addr().String()); err == nil {
+		_ = resp.Body.Close()
 		t.Fatal("server still accepts connections after shutdown")
 	}
 }

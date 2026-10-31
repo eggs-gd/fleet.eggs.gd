@@ -18,60 +18,8 @@ func detectTechnologies(repo string, children map[string]struct{}, ignoreRules [
 		children = map[string]struct{}{}
 	}
 	var evidence []Evidence
-	_ = filepath.WalkDir(repo, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		rel, err := filepath.Rel(repo, path)
-		if err != nil {
-			return nil
-		}
-		rel = filepath.ToSlash(rel)
-		depth := 0
-		if rel != "." {
-			depth = strings.Count(rel, "/") + 1
-		}
-		if entry.IsDir() {
-			if path != repo {
-				name := entry.Name()
-				if _, pruned := pruneDirs[name]; pruned || name == ".git" {
-					return fs.SkipDir
-				}
-				if _, child := children[path]; child {
-					return fs.SkipDir
-				}
-				if depth > 3 {
-					return fs.SkipDir
-				}
-			}
-			return nil
-		}
-		name := entry.Name()
-		if techs, ok := stackMarkers[name]; ok {
-			addEvidence(&evidence, "marker", rel, techs, name+" marker", ignoreRules)
-			return nil
-		}
-		if strings.HasSuffix(name, ".csproj") || strings.HasSuffix(name, ".sln") {
-			second := "dotnet"
-			if isUnityProject(repo) {
-				second = "unity"
-			}
-			addEvidence(&evidence, "marker", rel, []string{"csharp", second}, name+" marker", ignoreRules)
-		}
-		return nil
-	})
-
-	packageJSON := filepath.Join(repo, "package.json")
-	if info, err := os.Stat(packageJSON); err == nil && info.Mode().IsRegular() {
-		lower := strings.ToLower(readText(packageJSON, 12000))
-		var techs []string
-		for _, name := range []string{"svelte", "react", "vite", "tauri", "typescript"} {
-			if strings.Contains(lower, name) {
-				techs = append(techs, name)
-			}
-		}
-		addEvidence(&evidence, "package-manifest", "package.json", techs, "package.json dependency/name scan", ignoreRules)
-	}
+	collectMarkerEvidence(&evidence, repo, children, ignoreRules)
+	collectPackageManifestEvidence(&evidence, repo, ignoreRules)
 	if isUnityProject(repo) {
 		addEvidence(&evidence, "layout", ".", []string{"unity"}, "Assets and ProjectSettings directories", ignoreRules)
 	}
@@ -97,6 +45,66 @@ func detectTechnologies(repo string, children map[string]struct{}, ignoreRules [
 		return detected.Evidence[i].Path < detected.Evidence[j].Path
 	})
 	return detected
+}
+
+// collectMarkerEvidence walks repo (not into nested repositories, pruned
+// directories or anything deeper than three levels) for files that name a stack.
+func collectMarkerEvidence(evidence *[]Evidence, repo string, children map[string]struct{}, ignoreRules []ignoreRule) {
+	_ = filepath.WalkDir(repo, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return nil //nolint:nilerr // an unreadable entry is skipped; the scan goes on
+		}
+		rel, err := filepath.Rel(repo, path)
+		if err != nil {
+			return nil //nolint:nilerr // an unreadable entry is skipped; the scan goes on
+		}
+		rel = filepath.ToSlash(rel)
+		if entry.IsDir() {
+			if path != repo && skipMarkerDir(path, entry.Name(), rel, children) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		name := entry.Name()
+		if techs, ok := stackMarkers[name]; ok {
+			addEvidence(evidence, "marker", rel, techs, name+" marker", ignoreRules)
+			return nil
+		}
+		if strings.HasSuffix(name, ".csproj") || strings.HasSuffix(name, ".sln") {
+			second := "dotnet"
+			if isUnityProject(repo) {
+				second = "unity"
+			}
+			addEvidence(evidence, "marker", rel, []string{"csharp", second}, name+" marker", ignoreRules)
+		}
+		return nil
+	})
+}
+
+func skipMarkerDir(path string, name string, rel string, children map[string]struct{}) bool {
+	if _, pruned := pruneDirs[name]; pruned || name == ".git" {
+		return true
+	}
+	if _, child := children[path]; child {
+		return true
+	}
+	return strings.Count(rel, "/")+1 > 3
+}
+
+func collectPackageManifestEvidence(evidence *[]Evidence, repo string, ignoreRules []ignoreRule) {
+	packageJSON := filepath.Join(repo, "package.json")
+	info, err := os.Stat(packageJSON)
+	if err != nil || !info.Mode().IsRegular() {
+		return
+	}
+	lower := strings.ToLower(readText(packageJSON, 12000))
+	var techs []string
+	for _, name := range []string{"svelte", "react", "vite", "tauri", "typescript"} {
+		if strings.Contains(lower, name) {
+			techs = append(techs, name)
+		}
+	}
+	addEvidence(evidence, "package-manifest", "package.json", techs, "package.json dependency/name scan", ignoreRules)
 }
 
 func addEvidence(evidence *[]Evidence, kind, markerPath string, technologies []string, detail string, ignoreRules []ignoreRule) {

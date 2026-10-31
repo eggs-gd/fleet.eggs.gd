@@ -156,46 +156,57 @@ func (s *Service) projectCandidates(phrase string) (exact, fuzzy []string, err e
 	if s != nil && s.Board != nil {
 		view = s.Board.Board()
 	}
-	needle := strings.ToLower(strings.TrimSpace(phrase))
-	consider := func(id string, names ...string) error {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return nil
-		}
-		if s.DataRoot != "" {
-			folder, _, _ := strings.Cut(id, "/")
-			aliases, err := workfiles.ProjectAliases(s.DataRoot, folder)
-			if err != nil {
-				return err
-			}
-			names = append(names, aliases...)
-		}
-		for _, name := range names {
-			if strings.EqualFold(strings.TrimSpace(name), phrase) {
-				exact = appendFold(exact, id)
-				return nil
-			}
-		}
-		for _, name := range names {
-			if needle != "" && strings.Contains(strings.ToLower(name), needle) {
-				fuzzy = appendFold(fuzzy, id)
-				return nil
-			}
-		}
-		return nil
-	}
+	m := &projectMatcher{s: s, phrase: phrase, needle: strings.ToLower(strings.TrimSpace(phrase))}
 	for _, ws := range view.Workspaces {
-		if err := consider(ws.ID, ws.ID, ws.Title); err != nil {
+		if err := m.consider(ws.ID, ws.ID, ws.Title); err != nil {
 			return nil, nil, err
 		}
 	}
 	for _, project := range view.Projects {
 		id := firstNonEmpty(project.WorkspaceID, project.ID)
-		if err := consider(id, project.ID, id, project.Title); err != nil {
+		if err := m.consider(id, project.ID, id, project.Title); err != nil {
 			return nil, nil, err
 		}
 	}
-	return exact, fuzzy, nil
+	return m.exact, m.fuzzy, nil
+}
+
+// projectMatcher sorts project ids into exact and fuzzy matches of a phrase.
+type projectMatcher struct {
+	s            *Service
+	phrase       string
+	needle       string
+	exact, fuzzy []string
+}
+
+// consider files id under exact when one of its names (plus the aliases on its
+// project card) equals the phrase, or under fuzzy when one contains it.
+func (m *projectMatcher) consider(id string, names ...string) error {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return nil
+	}
+	if m.s.DataRoot != "" {
+		folder, _, _ := strings.Cut(id, "/")
+		aliases, err := workfiles.ProjectAliases(m.s.DataRoot, folder)
+		if err != nil {
+			return err
+		}
+		names = append(names, aliases...)
+	}
+	for _, name := range names {
+		if strings.EqualFold(strings.TrimSpace(name), m.phrase) {
+			m.exact = appendFold(m.exact, id)
+			return nil
+		}
+	}
+	for _, name := range names {
+		if m.needle != "" && strings.Contains(strings.ToLower(name), m.needle) {
+			m.fuzzy = appendFold(m.fuzzy, id)
+			return nil
+		}
+	}
+	return nil
 }
 
 func appendFold(list []string, id string) []string {

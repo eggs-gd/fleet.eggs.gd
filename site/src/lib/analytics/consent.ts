@@ -11,9 +11,7 @@ const STORAGE_KEY = 'analyticsConsent';
 export type Consent = 'granted' | 'denied' | 'unset';
 
 declare global {
-  interface Window {
-    setAnalyticsConsent?: (choice: 'granted' | 'denied') => void;
-  }
+  var setAnalyticsConsent: ((choice: 'granted' | 'denied') => void) | undefined;
 }
 
 const read = (): Consent => {
@@ -32,7 +30,7 @@ export const consent = writable<Consent>('unset');
 export const initConsent = () => consent.set(read());
 
 export function choose(choice: 'granted' | 'denied') {
-  window.setAnalyticsConsent?.(choice);
+  globalThis.setAnalyticsConsent?.(choice);
   consent.set(choice);
 }
 

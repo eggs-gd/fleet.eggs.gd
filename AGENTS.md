@@ -499,3 +499,4 @@ The dashboard in `view/` is small — don't bring in React-world enterprise patt
 - [ ] go_diagnostics and go_vulncheck run clean on touched files?
 - [ ] svelte-autofixer run clean on touched Svelte files?
 - [ ] Any new file duplicating existing logic? → merge instead
+- [ ] SonarQube, when `SONAR_HOST_URL` and `SONAR_TOKEN` are set: the `sonar` skill ([`.agents/skills/sonar`](.agents/skills/sonar/SKILL.md)) says how: the pre-commit hook is the local gate, the pre-push hook sends the analysis and stops on a red quality gate. Without them, skip it: it is a maintainer-machine check, not a requirement. Never print the token.

@@ -54,7 +54,7 @@ func scanProjects(args []string) {
 	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet/workspace)")
 	var projects stringList
 	flags.Var(&projects, "projects", "absolute directory to scan; repeat for several roots")
-	flags.Parse(args)
+	flags.Parse(args) //nolint:errcheck // ExitOnError exits on a bad flag itself
 
 	coreRoot, _, err := appconfig.ResolveDataRoot(*root)
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *stringList) Set(value string) error {
 func rebuildIndex(args []string) {
 	flags := flag.NewFlagSet("rebuild-index", flag.ExitOnError)
 	root := flags.String("root", "", "Data root (default: saved app config, else ~/.fleet_data)")
-	flags.Parse(args)
+	flags.Parse(args) //nolint:errcheck // ExitOnError exits on a bad flag itself
 
 	coreRoot, _, err := appconfig.ResolveDataRoot(*root)
 	if err != nil {
@@ -114,7 +114,7 @@ func serve(args []string) {
 	live := flags.Bool("live", false, "start AI agents for ready tasks. They edit files without asking each time")
 	dryRun := flags.Bool("dry-run", false, "only plan agent launches (the default)")
 	sessionTimeout := flags.Duration("session-timeout", 10*time.Minute, "idle attention threshold for controllable agent sessions; resets on activity and is not a total-session cap")
-	flags.Parse(args)
+	flags.Parse(args) //nolint:errcheck // ExitOnError exits on a bad flag itself
 	sessionTimeoutFlag := false
 	launchFlag := ""
 	flags.Visit(func(f *flag.Flag) {
@@ -198,15 +198,18 @@ func resolveDashboard(dir string) (fs.FS, string, error) {
 	return nil, "", errors.New("this binary was built without the dashboard: run `make build`, or pass --backoffice-dir <dir with index.html>")
 }
 
+const usageText = `usage:
+  fleet serve [--addr 127.0.0.1:8787] [--root <data-root>] [--live | --dry-run] [--session-timeout 10m]
+  fleet scan [--root <data-root>] --projects <scan-root> [--projects <scan-root>...]
+  fleet rebuild-index [--root <data-root>]
+  fleet version
+
+serve only plans agent launches unless you pass --live or turn live mode on in
+Settings. Live mode starts agents that edit files without asking each time.
+--root is optional: without it, Fleet uses the Data root saved in
+~/.fleet/app.json, defaulting to and creating ~/.fleet/workspace on first run.
+`
+
 func usage(w io.Writer) {
-	fmt.Fprintln(w, "usage:")
-	fmt.Fprintln(w, "  fleet serve [--addr 127.0.0.1:8787] [--root <data-root>] [--live | --dry-run] [--session-timeout 10m]")
-	fmt.Fprintln(w, "  fleet scan [--root <data-root>] --projects <scan-root> [--projects <scan-root>...]")
-	fmt.Fprintln(w, "  fleet rebuild-index [--root <data-root>]")
-	fmt.Fprintln(w, "  fleet version")
-	fmt.Fprintln(w, "")
-	fmt.Fprintln(w, "serve only plans agent launches unless you pass --live or turn live mode on in")
-	fmt.Fprintln(w, "Settings. Live mode starts agents that edit files without asking each time.")
-	fmt.Fprintln(w, "--root is optional: without it, Fleet uses the Data root saved in")
-	fmt.Fprintln(w, "~/.fleet/app.json, defaulting to and creating ~/.fleet/workspace on first run.")
+	_, _ = io.WriteString(w, usageText) // a failed usage write has nowhere to be reported
 }

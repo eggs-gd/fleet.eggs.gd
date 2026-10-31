@@ -6,6 +6,6 @@ export function isSize(value: string): value is Size {
   return (SIZES as readonly string[]).includes(value);
 }
 
-export function spaceVar(gap: Size | string): string {
+export function spaceVar(gap: string): string {
   return isSize(gap) ? `var(--space-${gap})` : gap;
 }

@@ -131,7 +131,7 @@ func renderCreatedTaskMarkdown(req tasklifecycle.TaskCreateRequest, ref string, 
 	body.WriteString("title: " + mdfile.Quote(strings.TrimSpace(req.Title)) + "\n")
 	body.WriteString("type: " + req.Type + "\n")
 	body.WriteString("status: " + req.Status + "\n")
-	body.WriteString(fmt.Sprintf("priority: %d\n", priority))
+	fmt.Fprintf(&body, "priority: %d\n", priority)
 	body.WriteString("project: " + req.Project + "\n")
 	body.WriteString(repoLines + "\n")
 	if len(req.DependsOn) > 0 {

@@ -107,15 +107,32 @@ func scanRootsOf(repositories []Repository) []string {
 
 func suggestGroups(repositories []Repository) []Group {
 	var groups []Group
-	byTop := map[string][]Repository{}
+	groups = append(groups, topFolderGroups(repositories)...)
+	groups = append(groups, remoteGroups(repositories)...)
+	groups = append(groups, nameGroups(repositories)...)
+	groups = append(groups, nestedGroups(repositories)...)
+	return rankedUniqueGroups(groups)
+}
+
+// repositoriesBy groups repositories under the key keyOf gives them; a blank
+// key leaves a repository out.
+func repositoriesBy(repositories []Repository, keyOf func(Repository) string) map[string][]Repository {
+	out := map[string][]Repository{}
 	for _, repo := range repositories {
-		first := strings.Split(repo.RelativePath, "/")[0]
-		key := repo.ScanRoot + "\n" + first
-		byTop[key] = append(byTop[key], repo)
+		if key := keyOf(repo); key != "" {
+			out[key] = append(out[key], repo)
+		}
 	}
+	return out
+}
+
+func topFolderGroups(repositories []Repository) []Group {
+	byTop := repositoriesBy(repositories, func(repo Repository) string {
+		return repo.ScanRoot + "\n" + strings.Split(repo.RelativePath, "/")[0]
+	})
 	multi := len(scanRootsOf(repositories)) > 1
-	folders := keysOfStringMap(byTop)
-	for _, key := range folders {
+	var groups []Group
+	for _, key := range keysOfStringMap(byTop) {
 		items := byTop[key]
 		if len(items) < 2 {
 			continue
@@ -135,13 +152,12 @@ func suggestGroups(repositories []Repository) []Group {
 			RepositoryIDs:      sortedIDs(items),
 		})
 	}
+	return groups
+}
 
-	byRemote := map[string][]Repository{}
-	for _, repo := range repositories {
-		if repo.RemoteIdentity != "" {
-			byRemote[repo.RemoteIdentity] = append(byRemote[repo.RemoteIdentity], repo)
-		}
-	}
+func remoteGroups(repositories []Repository) []Group {
+	byRemote := repositoriesBy(repositories, func(repo Repository) string { return repo.RemoteIdentity })
+	var groups []Group
 	for _, remoteID := range keysOfStringMap(byRemote) {
 		items := byRemote[remoteID]
 		if len(items) < 2 {
@@ -157,14 +173,17 @@ func suggestGroups(repositories []Repository) []Group {
 			RepositoryIDs:      sortedIDs(items),
 		})
 	}
+	return groups
+}
 
-	byName := map[string][]Repository{}
-	for _, repo := range repositories {
-		key := comparableName(repo.Name)
-		if len(key) >= 4 {
-			byName[key] = append(byName[key], repo)
+func nameGroups(repositories []Repository) []Group {
+	byName := repositoriesBy(repositories, func(repo Repository) string {
+		if key := comparableName(repo.Name); len(key) >= 4 {
+			return key
 		}
-	}
+		return ""
+	})
+	var groups []Group
 	for _, key := range keysOfStringMap(byName) {
 		items := byName[key]
 		if len(items) < 2 {
@@ -180,7 +199,11 @@ func suggestGroups(repositories []Repository) []Group {
 			RepositoryIDs:      sortedIDs(items),
 		})
 	}
+	return groups
+}
 
+func nestedGroups(repositories []Repository) []Group {
+	var groups []Group
 	for _, repo := range repositories {
 		if len(repo.NestedRepositoryIDs) == 0 {
 			continue
@@ -197,7 +220,12 @@ func suggestGroups(repositories []Repository) []Group {
 			RepositoryIDs:      ids,
 		})
 	}
+	return groups
+}
 
+// rankedUniqueGroups drops groups of fewer than two repositories and groups
+// that repeat another's reason and members, then orders by kind.
+func rankedUniqueGroups(groups []Group) []Group {
 	unique := map[string]Group{}
 	for _, group := range groups {
 		if len(group.RepositoryIDs) < 2 {

@@ -88,39 +88,15 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 	req.Assignee = strings.TrimSpace(req.Assignee)
 	req.AssignmentReason = strings.TrimSpace(req.AssignmentReason)
 
-	if req.Title == "" {
-		return TaskCreateRequest{}, fmt.Errorf("title is required")
+	if err := validateCreateTarget(req); err != nil {
+		return TaskCreateRequest{}, err
 	}
-	if req.Request == "" {
-		return TaskCreateRequest{}, fmt.Errorf("request/description is required")
+	if err := normalizeCreateStatusAndType(&req); err != nil {
+		return TaskCreateRequest{}, err
 	}
-	if req.Project == "" {
-		return TaskCreateRequest{}, fmt.Errorf("project is required")
+	if err := normalizeCreateAssignee(&req); err != nil {
+		return TaskCreateRequest{}, err
 	}
-	if strings.Contains(req.Project, "..") || strings.ContainsAny(req.Project, `\:`) {
-		return TaskCreateRequest{}, fmt.Errorf("project id %q is invalid", req.Project)
-	}
-
-	if req.Status == "" {
-		req.Status = "backlog"
-	}
-	if !taskStatusSet[req.Status] {
-		return TaskCreateRequest{}, fmt.Errorf("unknown task status %q", req.Status)
-	}
-
-	req.Type = NormalizeTaskType(req.Type)
-	if !taskTypes[req.Type] {
-		return TaskCreateRequest{}, fmt.Errorf("unknown task type %q", req.Type)
-	}
-
-	req.Assignee = strings.ToLower(strings.TrimSpace(req.Assignee))
-	if req.Assignee == "" {
-		req.Assignee = Unassigned
-	}
-	if !ValidAssigneeName(req.Assignee) {
-		return TaskCreateRequest{}, fmt.Errorf("assignee %q is not a valid name", req.Assignee)
-	}
-
 	priority := 5
 	if req.Priority != nil {
 		priority = *req.Priority
@@ -129,18 +105,57 @@ func normalizeTaskCreateRequest(req TaskCreateRequest) (TaskCreateRequest, error
 		return TaskCreateRequest{}, fmt.Errorf("unknown task priority %d", priority)
 	}
 	req.Priority = &priority
-
-	if req.AssignmentReason == "" {
-		if req.Assignee == "unassigned" {
-			req.AssignmentReason = "Created from the backoffice dashboard; left unassigned until it is routed."
-		} else {
-			req.AssignmentReason = fmt.Sprintf("Assigned to %s from the backoffice dashboard.", req.Assignee)
-		}
-	}
-
 	req.DependsOn = NormalizeDependsOn(req.DependsOn)
-
 	return req, nil
+}
+
+// validateCreateTarget checks the text fields a task cannot be created without.
+func validateCreateTarget(req TaskCreateRequest) error {
+	switch {
+	case req.Title == "":
+		return fmt.Errorf("title is required")
+	case req.Request == "":
+		return fmt.Errorf("request/description is required")
+	case req.Project == "":
+		return fmt.Errorf("project is required")
+	case strings.Contains(req.Project, "..") || strings.ContainsAny(req.Project, `\:`):
+		return fmt.Errorf("project id %q is invalid", req.Project)
+	}
+	return nil
+}
+
+func normalizeCreateStatusAndType(req *TaskCreateRequest) error {
+	if req.Status == "" {
+		req.Status = "backlog"
+	}
+	if !taskStatusSet[req.Status] {
+		return fmt.Errorf("unknown task status %q", req.Status)
+	}
+	req.Type = NormalizeTaskType(req.Type)
+	if !taskTypes[req.Type] {
+		return fmt.Errorf("unknown task type %q", req.Type)
+	}
+	return nil
+}
+
+// normalizeCreateAssignee lower-cases the assignee (unassigned when blank) and
+// fills the reason it was assigned when the caller gave none.
+func normalizeCreateAssignee(req *TaskCreateRequest) error {
+	req.Assignee = strings.ToLower(strings.TrimSpace(req.Assignee))
+	if req.Assignee == "" {
+		req.Assignee = Unassigned
+	}
+	if !ValidAssigneeName(req.Assignee) {
+		return fmt.Errorf("assignee %q is not a valid name", req.Assignee)
+	}
+	switch {
+	case req.AssignmentReason != "":
+	case req.Assignee == "unassigned":
+		req.AssignmentReason = "Created from the backoffice dashboard; left unassigned until it is routed."
+	default:
+		req.AssignmentReason = fmt.Sprintf("Assigned to %s from the backoffice dashboard.", req.Assignee)
+	}
+	return nil
 }
 
 func writeCountersAtomic(path string, data []byte) error {

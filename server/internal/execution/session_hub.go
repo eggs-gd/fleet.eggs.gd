@@ -57,37 +57,9 @@ func (hub *sessionHub) UpsertSession(session RuntimeSession) {
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	if existing, ok := hub.sessions[session.ClaimID]; ok {
-		if session.LastEventAt == "" {
-			session.LastEventAt = existing.LastEventAt
-		}
-		if session.LastOutputAt == "" {
-			session.LastOutputAt = existing.LastOutputAt
-		}
-		if session.LastStatusAt == "" {
-			session.LastStatusAt = existing.LastStatusAt
-		}
-		if session.Result == nil && existing.Result != nil {
-			session.Result = existing.Result
-		}
-		if session.LastEvent != "" && session.LastEvent != existing.LastEvent {
-			session.LastEventAt = now
-		}
-		if session.LastMessage != "" && session.LastMessage != existing.LastMessage {
-			session.LastOutputAt = now
-		}
-		if firstNonEmpty(session.ExecutionStatus, session.Status) != firstNonEmpty(existing.ExecutionStatus, existing.Status) {
-			session.LastStatusAt = now
-		}
+		stampChangedTimes(&session, existing, now)
 	} else {
-		if session.LastEvent != "" && session.LastEventAt == "" {
-			session.LastEventAt = now
-		}
-		if session.LastMessage != "" && session.LastOutputAt == "" {
-			session.LastOutputAt = now
-		}
-		if firstNonEmpty(session.ExecutionStatus, session.Status) != "" && session.LastStatusAt == "" {
-			session.LastStatusAt = now
-		}
+		stampNewTimes(&session, now)
 	}
 	if session.ExecutionStatus != "resumable" {
 		session.LastSeenAt = now
@@ -97,6 +69,39 @@ func (hub *sessionHub) UpsertSession(session RuntimeSession) {
 	hub.sessions[session.ClaimID] = session
 	_ = persistRuntimeSession(hub.root, session)
 	hub.removeOrphanForSessionLocked(session)
+}
+
+// stampChangedTimes carries the timestamps of the stored session over and
+// moves the ones whose field changed to now.
+func stampChangedTimes(session *RuntimeSession, existing RuntimeSession, now string) {
+	session.LastEventAt = firstNonEmpty(session.LastEventAt, existing.LastEventAt)
+	session.LastOutputAt = firstNonEmpty(session.LastOutputAt, existing.LastOutputAt)
+	session.LastStatusAt = firstNonEmpty(session.LastStatusAt, existing.LastStatusAt)
+	if session.Result == nil {
+		session.Result = existing.Result
+	}
+	if session.LastEvent != "" && session.LastEvent != existing.LastEvent {
+		session.LastEventAt = now
+	}
+	if session.LastMessage != "" && session.LastMessage != existing.LastMessage {
+		session.LastOutputAt = now
+	}
+	if firstNonEmpty(session.ExecutionStatus, session.Status) != firstNonEmpty(existing.ExecutionStatus, existing.Status) {
+		session.LastStatusAt = now
+	}
+}
+
+// stampNewTimes starts the timestamps of a session the hub has not seen.
+func stampNewTimes(session *RuntimeSession, now string) {
+	if session.LastEvent != "" && session.LastEventAt == "" {
+		session.LastEventAt = now
+	}
+	if session.LastMessage != "" && session.LastOutputAt == "" {
+		session.LastOutputAt = now
+	}
+	if firstNonEmpty(session.ExecutionStatus, session.Status) != "" && session.LastStatusAt == "" {
+		session.LastStatusAt = now
+	}
 }
 
 func (hub *sessionHub) TryReserveSession(session RuntimeSession) (RuntimeSession, string, bool) {
@@ -484,6 +489,19 @@ func orphanBlockingReason(orphan OrphanedTask, state string) string {
 	return fmt.Sprintf("Unresolved %s execution for %s blocks later %s launches until the task leaves doing or is reclaimed: %s", state, task, agent, reason)
 }
 
+// withOrphanDefaults fills the display fields an orphan row may lack.
+func withOrphanDefaults(orphan OrphanedTask) OrphanedTask {
+	orphan.ExecutionState = firstNonEmpty(orphan.ExecutionState, "orphaned")
+	orphan.VisibilityMode = firstNonEmpty(orphan.VisibilityMode, "unknown")
+	if orphan.Capabilities.Provider == "" {
+		orphan.Capabilities = ProviderCapabilityFlags(firstNonEmpty(orphan.Provider, orphan.Assignee), orphan.Backend)
+	}
+	if orphan.BlockingReason == "" {
+		orphan.BlockingReason = orphanBlockingReason(orphan, orphan.ExecutionState)
+	}
+	return orphan
+}
+
 // status snapshots the active session strip, session history groups, and
 // current orphans, mirroring corechain.Store.Snapshot's equivalent fields.
 func (hub *sessionHub) status() Status {
@@ -509,19 +527,7 @@ func (hub *sessionHub) status() Status {
 		if !hub.orphanIsVisibleLocked(orphan) {
 			continue
 		}
-		if orphan.ExecutionState == "" {
-			orphan.ExecutionState = "orphaned"
-		}
-		if orphan.VisibilityMode == "" {
-			orphan.VisibilityMode = "unknown"
-		}
-		if orphan.Capabilities.Provider == "" {
-			orphan.Capabilities = ProviderCapabilityFlags(firstNonEmpty(orphan.Provider, orphan.Assignee), orphan.Backend)
-		}
-		if orphan.BlockingReason == "" {
-			orphan.BlockingReason = orphanBlockingReason(orphan, orphan.ExecutionState)
-		}
-		orphans = append(orphans, orphan)
+		orphans = append(orphans, withOrphanDefaults(orphan))
 	}
 	sort.Slice(orphans, func(i, j int) bool {
 		return orphans[i].TaskRef < orphans[j].TaskRef
@@ -733,72 +739,50 @@ func (hub *sessionHub) revalidateLaunchWaiting(task tasklifecycle.Task) (tasklif
 }
 
 func (hub *sessionHub) currentLaunchWaitBlockerLocked(task tasklifecycle.Task, wait tasklifecycle.LaunchWait) (tasklifecycle.LaunchWait, bool) {
+	resource := wait.Resource
+	var conflict RuntimeSession
+	var ok bool
 	switch wait.Scope {
 	case "assignee_orphan":
 		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Assignee)
-		orphan, ok := hub.activeOrphanConflictLocked(assignee, runtimeSessionForTaskIdentity(task))
-		if !ok {
+		orphan, found := hub.activeOrphanConflictLocked(assignee, runtimeSessionForTaskIdentity(task))
+		if !found {
 			return tasklifecycle.LaunchWait{}, false
 		}
-		conflict := orphanRuntimeSession(orphan)
-		return tasklifecycle.LaunchWait{
-			Scope:           "assignee_orphan",
-			Resource:        assignee,
-			ConflictClaimID: conflict.ClaimID,
-			Reason:          LaunchConflictReason(conflict, "assignee_orphan", assignee),
-			WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
-		}, true
+		conflict, ok, resource = orphanRuntimeSession(orphan), true, assignee
 	case "assignee":
-		assignee := firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Assignee)
-		for _, session := range hub.sessions {
-			if !session.IsActive() || session.Agent == "" || session.Agent != assignee {
-				continue
-			}
-			if sameTaskIdentity(session.TaskPath, task.RelativePath, session.TaskID, task.ID, session.TaskRef, task.Ref) {
-				continue
-			}
-			return tasklifecycle.LaunchWait{
-				Scope:           "assignee",
-				Resource:        assignee,
-				ConflictClaimID: session.ClaimID,
-				Reason:          LaunchConflictReason(session, "assignee", assignee),
-				WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
-			}, true
-		}
+		resource = firstNonEmpty(wait.Resource, task.LaunchEvaluation.Agent, task.Assignee)
+		conflict, ok = hub.otherTaskSessionLocked(task, func(s RuntimeSession) bool { return s.Agent != "" && s.Agent == resource })
 	case "project":
-		for _, session := range hub.sessions {
-			if !session.IsActive() || session.ProjectID == "" || session.ProjectID != wait.Resource {
-				continue
-			}
-			if sameTaskIdentity(session.TaskPath, task.RelativePath, session.TaskID, task.ID, session.TaskRef, task.Ref) {
-				continue
-			}
-			return tasklifecycle.LaunchWait{
-				Scope:           "project",
-				Resource:        wait.Resource,
-				ConflictClaimID: session.ClaimID,
-				Reason:          LaunchConflictReason(session, "project", wait.Resource),
-				WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
-			}, true
-		}
+		conflict, ok = hub.otherTaskSessionLocked(task, func(s RuntimeSession) bool { return s.ProjectID != "" && s.ProjectID == wait.Resource })
 	case "repository":
-		for _, session := range hub.sessions {
-			if !session.IsActive() || session.Repository == "" || session.Repository != wait.Resource {
-				continue
-			}
-			if sameTaskIdentity(session.TaskPath, task.RelativePath, session.TaskID, task.ID, session.TaskRef, task.Ref) {
-				continue
-			}
-			return tasklifecycle.LaunchWait{
-				Scope:           "repository",
-				Resource:        wait.Resource,
-				ConflictClaimID: session.ClaimID,
-				Reason:          LaunchConflictReason(session, "repository", wait.Resource),
-				WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
-			}, true
-		}
+		conflict, ok = hub.otherTaskSessionLocked(task, func(s RuntimeSession) bool { return s.Repository != "" && s.Repository == wait.Resource })
 	}
-	return tasklifecycle.LaunchWait{}, false
+	if !ok {
+		return tasklifecycle.LaunchWait{}, false
+	}
+	return tasklifecycle.LaunchWait{
+		Scope:           wait.Scope,
+		Resource:        resource,
+		ConflictClaimID: conflict.ClaimID,
+		Reason:          LaunchConflictReason(conflict, wait.Scope, resource),
+		WaitingSince:    firstNonEmpty(wait.WaitingSince, time.Now().Format(time.RFC3339)),
+	}, true
+}
+
+// otherTaskSessionLocked finds an active session that matches and belongs to
+// a different task than the one waiting.
+func (hub *sessionHub) otherTaskSessionLocked(task tasklifecycle.Task, match func(RuntimeSession) bool) (RuntimeSession, bool) {
+	for _, session := range hub.sessions {
+		if !session.IsActive() || !match(session) {
+			continue
+		}
+		if sameTaskIdentity(session.TaskPath, task.RelativePath, session.TaskID, task.ID, session.TaskRef, task.Ref) {
+			continue
+		}
+		return session, true
+	}
+	return RuntimeSession{}, false
 }
 
 func runtimeSessionForTaskIdentity(task tasklifecycle.Task) RuntimeSession {

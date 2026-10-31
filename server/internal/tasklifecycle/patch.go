@@ -39,32 +39,26 @@ type TaskCreate struct {
 // TaskPatchChangeSummary describes what a patch actually changed, for
 // logging/event-detail purposes.
 func TaskPatchChangeSummary(before Task, after Task, patch TaskPatch) []string {
-	var changes []string
-	if before.Status != "" && before.Status != after.Status {
-		changes = append(changes, "status="+before.Status+"->"+after.Status)
-	}
-	if before.Assignee != "" && before.Assignee != after.Assignee {
-		changes = append(changes, "assignee="+before.Assignee+"->"+after.Assignee)
-	}
-	if before.Priority != 0 && before.Priority != after.Priority {
-		changes = append(changes, "priority="+strconv.Itoa(before.Priority)+"->"+strconv.Itoa(after.Priority))
-	}
 	beforeProject := firstNonEmpty(before.ProjectID, before.Project)
 	afterProject := firstNonEmpty(after.ProjectID, after.Project)
-	if beforeProject != "" && beforeProject != afterProject {
-		changes = append(changes, "project="+beforeProject+"->"+afterProject)
+	beforeDeps := strings.Join(NormalizeDependsOn(before.DependsOn), ",")
+	afterDeps := strings.Join(NormalizeDependsOn(after.DependsOn), ",")
+	rows := []struct {
+		label, from, to string
+		changed         bool
+	}{
+		{"status", before.Status, after.Status, before.Status != "" && before.Status != after.Status},
+		{"assignee", before.Assignee, after.Assignee, before.Assignee != "" && before.Assignee != after.Assignee},
+		{"priority", strconv.Itoa(before.Priority), strconv.Itoa(after.Priority), before.Priority != 0 && before.Priority != after.Priority},
+		{"project", beforeProject, afterProject, beforeProject != "" && beforeProject != afterProject},
+		{"path", before.RelativePath, after.RelativePath, before.RelativePath != "" && after.RelativePath != "" && before.RelativePath != after.RelativePath},
+		{"milestone", before.Milestone, after.Milestone, patch.Milestone != nil && before.Milestone != after.Milestone},
+		{"depends_on", beforeDeps, afterDeps, patch.DependsOn != nil && beforeDeps != afterDeps},
 	}
-	if before.RelativePath != "" && after.RelativePath != "" && before.RelativePath != after.RelativePath {
-		changes = append(changes, "path="+before.RelativePath+"->"+after.RelativePath)
-	}
-	if patch.Milestone != nil && before.Milestone != after.Milestone {
-		changes = append(changes, "milestone="+before.Milestone+"->"+after.Milestone)
-	}
-	if patch.DependsOn != nil {
-		beforeDeps := strings.Join(NormalizeDependsOn(before.DependsOn), ",")
-		afterDeps := strings.Join(NormalizeDependsOn(after.DependsOn), ",")
-		if beforeDeps != afterDeps {
-			changes = append(changes, "depends_on="+beforeDeps+"->"+afterDeps)
+	var changes []string
+	for _, row := range rows {
+		if row.changed {
+			changes = append(changes, row.label+"="+row.from+"->"+row.to)
 		}
 	}
 	if patch.Body != nil {

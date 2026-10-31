@@ -84,7 +84,7 @@ func TestChainProcessor(t *testing.T) {
 
 		select {
 		case err := <-errch:
-			if err != expectedErr {
+			if !errors.Is(err, expectedErr) {
 				t.Errorf("expected error %v, got %v", expectedErr, err)
 			}
 		case <-time.After(200 * time.Millisecond):

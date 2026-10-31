@@ -294,19 +294,47 @@ func patchLocked(ctx context.Context, p TaskProvider, id string, patch PatchInpu
 		return Task{}, err
 	}
 
-	needsUpdate := false
-	if status := Status(strings.TrimSpace(string(patch.Status))); status != "" {
-		if !patch.AllowStatusOverride && !AllowedStatusTransition(task.Status, status) {
-			return Task{}, fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, task.Status, status)
+	needsUpdate, err := applyPatchFields(&task, patch)
+	if err != nil {
+		return Task{}, err
+	}
+	if needsUpdate {
+		updateCtx := ctx
+		if patch.AllowStatusOverride {
+			updateCtx = WithStatusOverride(ctx)
 		}
-		if task.Status != status {
-			task.Status = status
-			needsUpdate = true
+		if projectPatch := strings.TrimSpace(patch.Project); projectPatch != "" {
+			updateCtx = WithProjectPatch(updateCtx, projectPatch, strings.TrimSpace(patch.Repository))
 		}
-		if strings.TrimSpace(patch.Reason) != "" && status == StatusBlocked {
-			task.BlockedReason = strings.TrimSpace(patch.Reason)
-			needsUpdate = true
+		if err := p.Update(updateCtx, task); err != nil {
+			return Task{}, err
 		}
+	}
+
+	locator := currentLocator(ctx, p, id, task.Ref)
+	if comment := strings.TrimSpace(patch.Comment); comment != "" {
+		commentCtx := WithCommentAuthor(ctx, patch.CommentAuthor)
+		if err := p.AddComment(commentCtx, locator, comment); err != nil {
+			return Task{}, err
+		}
+	}
+
+	result, err := p.Get(ctx, locator)
+	if err != nil {
+		return Task{}, err
+	}
+	if patch.Milestone != nil && result.Milestone != strings.TrimSpace(*patch.Milestone) {
+		return Task{}, ErrMilestoneNotPersisted
+	}
+	return result, nil
+}
+
+// applyPatchFields copies the set fields of patch onto task and reports whether
+// anything needs saving. A status change is checked against the allowed moves.
+func applyPatchFields(task *Task, patch PatchInput) (bool, error) {
+	needsUpdate, err := applyStatusPatch(task, patch)
+	if err != nil {
+		return false, err
 	}
 	if patch.Priority != nil {
 		task.Priority = *patch.Priority
@@ -316,13 +344,11 @@ func patchLocked(ctx context.Context, p TaskProvider, id string, patch PatchInpu
 		task.Assignee = assignee
 		needsUpdate = true
 	}
-	projectPatch := strings.TrimSpace(patch.Project)
-	if projectPatch != "" {
-		task.Project = projectPatch
+	if project := strings.TrimSpace(patch.Project); project != "" {
+		task.Project = project
+		task.Repositories = nil
 		if repo := strings.TrimSpace(patch.Repository); repo != "" {
 			task.Repositories = []string{repo}
-		} else {
-			task.Repositories = nil
 		}
 		needsUpdate = true
 	}
@@ -341,49 +367,47 @@ func patchLocked(ctx context.Context, p TaskProvider, id string, patch PatchInpu
 		// Omit body rewrite on field/status patches.
 		task.Body = ""
 	}
-	if needsUpdate {
-		updateCtx := ctx
-		if patch.AllowStatusOverride {
-			updateCtx = WithStatusOverride(ctx)
-		}
-		if projectPatch != "" {
-			updateCtx = WithProjectPatch(updateCtx, projectPatch, strings.TrimSpace(patch.Repository))
-		}
-		if err := p.Update(updateCtx, task); err != nil {
-			return Task{}, err
-		}
-	}
+	return needsUpdate, nil
+}
 
-	locator := id
+func applyStatusPatch(task *Task, patch PatchInput) (bool, error) {
+	status := Status(strings.TrimSpace(string(patch.Status)))
+	if status == "" {
+		return false, nil
+	}
+	if !patch.AllowStatusOverride && !AllowedStatusTransition(task.Status, status) {
+		return false, fmt.Errorf("%w: %s -> %s", ErrInvalidTransition, task.Status, status)
+	}
+	changed := task.Status != status
+	task.Status = status
+	if reason := strings.TrimSpace(patch.Reason); reason != "" && status == StatusBlocked {
+		task.BlockedReason = reason
+		changed = true
+	}
+	return changed, nil
+}
+
+// currentLocator is where the task lives now. A project move can change the
+// storage locator, so when the old one is gone the durable ref finds it again.
+func currentLocator(ctx context.Context, p TaskProvider, id string, ref string) string {
 	if refreshed, err := p.Get(ctx, id); err == nil {
 		if loc := strings.TrimSpace(refreshed.Locator); loc != "" {
-			locator = loc
+			return loc
 		}
-	} else if ref := strings.TrimSpace(task.Ref); ref != "" {
-		// Project moves can change the storage locator; recover via durable ref.
-		listed, listErr := p.List(ctx, TaskFilter{Ref: ref})
-		if listErr == nil && len(listed) == 1 {
-			if loc := strings.TrimSpace(listed[0].Locator); loc != "" {
-				locator = loc
-			}
-		}
+		return id
 	}
-
-	if comment := strings.TrimSpace(patch.Comment); comment != "" {
-		commentCtx := WithCommentAuthor(ctx, patch.CommentAuthor)
-		if err := p.AddComment(commentCtx, locator, comment); err != nil {
-			return Task{}, err
-		}
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return id
 	}
-
-	result, err := p.Get(ctx, locator)
-	if err != nil {
-		return Task{}, err
+	listed, err := p.List(ctx, TaskFilter{Ref: ref})
+	if err != nil || len(listed) != 1 {
+		return id
 	}
-	if patch.Milestone != nil && result.Milestone != strings.TrimSpace(*patch.Milestone) {
-		return Task{}, ErrMilestoneNotPersisted
+	if loc := strings.TrimSpace(listed[0].Locator); loc != "" {
+		return loc
 	}
-	return result, nil
+	return id
 }
 
 func reportExecutionLocked(ctx context.Context, p TaskProvider, result ExecutionResult) error {
@@ -422,54 +446,35 @@ func transitionComment(meta TransitionMeta) string {
 
 func formatExecutionComment(result ExecutionResult) string {
 	var b strings.Builder
-	b.WriteString("Execution outcome: `")
-	b.WriteString(string(result.Outcome))
-	b.WriteString("`")
-	if agent := strings.TrimSpace(result.Agent); agent != "" {
-		b.WriteString("\nAgent: `")
-		b.WriteString(agent)
-		b.WriteString("`")
-	}
-	if execID := strings.TrimSpace(result.ExecutionID); execID != "" {
-		b.WriteString("\nExecution ID: `")
-		b.WriteString(execID)
-		b.WriteString("`")
-	}
-	if summary := strings.TrimSpace(result.Summary); summary != "" {
-		b.WriteString("\n\n")
-		b.WriteString(summary)
-	}
-	if question := strings.TrimSpace(result.Question); question != "" {
-		b.WriteString("\n\nQuestion: ")
-		b.WriteString(question)
-	}
-	if errText := strings.TrimSpace(result.Error); errText != "" {
-		b.WriteString("\n\nError: ")
-		b.WriteString(errText)
-	}
-	if len(result.Artifacts) > 0 {
-		b.WriteString("\n\nArtifacts:")
-		for _, artifact := range result.Artifacts {
-			artifact = strings.TrimSpace(artifact)
-			if artifact == "" {
-				continue
-			}
-			b.WriteString("\n- `")
-			b.WriteString(artifact)
-			b.WriteString("`")
-		}
-	}
-	if len(result.Tests) > 0 {
-		b.WriteString("\n\nTests:")
-		for _, test := range result.Tests {
-			test = strings.TrimSpace(test)
-			if test == "" {
-				continue
-			}
-			b.WriteString("\n- `")
-			b.WriteString(test)
-			b.WriteString("`")
-		}
-	}
+	b.WriteString("Execution outcome: `" + string(result.Outcome) + "`")
+	writeTrimmed(&b, "\nAgent: `", result.Agent, "`")
+	writeTrimmed(&b, "\nExecution ID: `", result.ExecutionID, "`")
+	writeTrimmed(&b, "\n\n", result.Summary, "")
+	writeTrimmed(&b, "\n\nQuestion: ", result.Question, "")
+	writeTrimmed(&b, "\n\nError: ", result.Error, "")
+	writeBulletList(&b, "Artifacts", result.Artifacts)
+	writeBulletList(&b, "Tests", result.Tests)
 	return b.String()
+}
+
+// writeTrimmed writes prefix, the trimmed text and suffix, or nothing when the
+// text is blank.
+func writeTrimmed(b *strings.Builder, prefix string, text string, suffix string) {
+	if text = strings.TrimSpace(text); text != "" {
+		b.WriteString(prefix + text + suffix)
+	}
+}
+
+// writeBulletList writes a titled list of code-quoted items; a title with no
+// items is not written.
+func writeBulletList(b *strings.Builder, title string, items []string) {
+	if len(items) == 0 {
+		return
+	}
+	b.WriteString("\n\n" + title + ":")
+	for _, item := range items {
+		if item = strings.TrimSpace(item); item != "" {
+			b.WriteString("\n- `" + item + "`")
+		}
+	}
 }

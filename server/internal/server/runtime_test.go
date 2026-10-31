@@ -3236,7 +3236,7 @@ func TestStartLaunchCandidateTimesOutHungProcess(t *testing.T) {
 
 	data := firstSessionLog(t, root)
 	if !strings.Contains(data, "process timed out after 25ms") {
-		t.Fatalf("session log does not record timeout:\n%s", string(data))
+		t.Fatalf("session log does not record timeout:\n%s", data)
 	}
 }
 

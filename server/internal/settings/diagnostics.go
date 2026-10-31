@@ -7,6 +7,12 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/execution/providers"
 )
 
+const labelMCP = "MCP integrations"
+
+const labelStorage = "Task storage"
+
+const labelRegistry = "Project registry"
+
 func inspectDiagnostics(projects Projects, agents Agents, manager Manager, integrations Integrations, sessions SessionCounts) Diagnostics {
 	_ = manager
 	health := []HealthItem{
@@ -33,25 +39,25 @@ func inspectDiagnostics(projects Projects, agents Agents, manager Manager, integ
 func registryHealth(projects Projects) HealthItem {
 	for _, root := range projects.Roots {
 		if root.Kind == "registry_scan" && !root.Reachable {
-			return HealthItem{ID: "registry", Label: "Project registry", Status: "warn", Detail: "scan root unreachable: " + root.Path}
+			return HealthItem{ID: "registry", Label: labelRegistry, Status: "warn", Detail: "scan root unreachable: " + root.Path}
 		}
 	}
 	if len(projects.Roots) == 0 {
-		return HealthItem{ID: "registry", Label: "Project registry", Status: "warn", Detail: "no roots"}
+		return HealthItem{ID: "registry", Label: labelRegistry, Status: "warn", Detail: "no roots"}
 	}
-	return HealthItem{ID: "registry", Label: "Project registry", Status: "ok"}
+	return HealthItem{ID: "registry", Label: labelRegistry, Status: "ok"}
 }
 
 func storageHealth(projects Projects) HealthItem {
 	for _, path := range projects.DataPaths {
 		if path.Name == "Tasks" && !path.Exists {
-			return HealthItem{ID: "storage", Label: "Task storage", Status: "error", Detail: path.Path + " missing"}
+			return HealthItem{ID: "storage", Label: labelStorage, Status: "error", Detail: path.Path + " missing"}
 		}
 		if path.Name == "Tasks" && !path.Writable {
-			return HealthItem{ID: "storage", Label: "Task storage", Status: "warn", Detail: path.Path + " not writable"}
+			return HealthItem{ID: "storage", Label: labelStorage, Status: "warn", Detail: path.Path + " not writable"}
 		}
 	}
-	return HealthItem{ID: "storage", Label: "Task storage", Status: "ok", Detail: projects.TaskBackend.Active}
+	return HealthItem{ID: "storage", Label: labelStorage, Status: "ok", Detail: projects.TaskBackend.Active}
 }
 
 func agentHealth(agents Agents) HealthItem {
@@ -78,12 +84,12 @@ func mcpHealth(integrations Integrations) HealthItem {
 		}
 	}
 	if missing > 0 {
-		return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "warn", Detail: fmt.Sprintf("%d configured server(s) not detected", missing)}
+		return HealthItem{ID: "mcp", Label: labelMCP, Status: "warn", Detail: fmt.Sprintf("%d configured server(s) not detected", missing)}
 	}
 	if len(integrations.MCP) == 0 {
-		return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "ok", Detail: "no .mcp.json servers"}
+		return HealthItem{ID: "mcp", Label: labelMCP, Status: "ok", Detail: "no .mcp.json servers"}
 	}
-	return HealthItem{ID: "mcp", Label: "MCP integrations", Status: "ok"}
+	return HealthItem{ID: "mcp", Label: labelMCP, Status: "ok"}
 }
 
 func sessionHealth(sessions SessionCounts) HealthItem {
@@ -99,6 +105,20 @@ func sessionHealth(sessions SessionCounts) HealthItem {
 }
 
 func collectIssues(projects Projects, agents Agents, integrations Integrations, sessions SessionCounts) []Issue {
+	issues := agentIssues(agents)
+	issues = append(issues, projectIssues(projects)...)
+	for _, server := range integrations.MCP {
+		if server.Configured && !server.Detected {
+			issues = append(issues, Issue{Severity: "warn", Code: "mcp_undetected", Message: "MCP " + server.Name + " not detected. Expected: " + server.Expected, Section: "integrations"})
+		}
+	}
+	if sessions.Orphaned > 0 {
+		issues = append(issues, Issue{Severity: "warn", Code: "orphaned_sessions", Message: fmt.Sprintf("%d orphaned sessions (%d resumable)", sessions.Orphaned, sessions.OrphanedResumable), Section: "diagnostics"})
+	}
+	return issues
+}
+
+func agentIssues(agents Agents) []Issue {
 	var issues []Issue
 	for _, agent := range agents.Providers {
 		if !agent.Enabled.Value {
@@ -111,6 +131,11 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 			issues = append(issues, Issue{Severity: "warn", Code: "agent_not_found", Message: agent.Name + " not found. Expected: " + agent.Expected, Section: "agents"})
 		}
 	}
+	return issues
+}
+
+func projectIssues(projects Projects) []Issue {
+	var issues []Issue
 	for _, root := range projects.Roots {
 		if !root.Reachable {
 			issues = append(issues, Issue{Severity: "warn", Code: "root_unavailable", Message: "Project root unavailable: " + root.Path, Section: "projects"})
@@ -120,14 +145,6 @@ func collectIssues(projects Projects, agents Agents, integrations Integrations, 
 		if path.Name == "Data root" && path.Exists && !path.Writable {
 			issues = append(issues, Issue{Severity: "warn", Code: "data_not_writable", Message: "Data directory not writable: " + path.Path, Section: "projects"})
 		}
-	}
-	for _, server := range integrations.MCP {
-		if server.Configured && !server.Detected {
-			issues = append(issues, Issue{Severity: "warn", Code: "mcp_undetected", Message: "MCP " + server.Name + " not detected. Expected: " + server.Expected, Section: "integrations"})
-		}
-	}
-	if sessions.Orphaned > 0 {
-		issues = append(issues, Issue{Severity: "warn", Code: "orphaned_sessions", Message: fmt.Sprintf("%d orphaned sessions (%d resumable)", sessions.Orphaned, sessions.OrphanedResumable), Section: "diagnostics"})
 	}
 	return issues
 }

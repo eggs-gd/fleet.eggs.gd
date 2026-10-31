@@ -88,26 +88,77 @@ type Vocabulary struct {
 // Core state: projects/workspaces with short explanations, repository aliases,
 // and technologies present in context.
 func BuildVocabulary(view BoardView) Vocabulary {
-	seenTerm := map[string]bool{}
-	terms := make([]string, 0, 128)
-	addTerm := func(term string) {
-		term = strings.TrimSpace(term)
-		if term == "" {
-			return
-		}
-		key := strings.ToLower(term)
-		if seenTerm[key] {
-			return
-		}
-		seenTerm[key] = true
-		terms = append(terms, term)
-	}
-
+	v := &vocabularyBuilder{seenTerm: map[string]bool{}, terms: make([]string, 0, 128), techSeen: map[string]string{}}
 	for _, term := range fixedOperationalTerms {
-		addTerm(term)
+		v.addTerm(term)
 	}
 
-	workspaces := make([]VocabularyEntity, 0, len(view.Workspaces))
+	workspaces := v.workspaceEntities(view)
+	projects := v.projectEntities(view)
+	for _, ws := range view.Workspaces {
+		v.collectTech(ws.Technology.EffectiveTags...)
+		v.collectTech(ws.Technology.DetectedTags...)
+	}
+	for _, project := range view.Projects {
+		v.collectTech(project.Technology.EffectiveTags...)
+		v.collectTech(project.Technology.DetectedTags...)
+	}
+	repositories := v.repositoryEntities(view)
+
+	technologies := make([]string, 0, len(v.techSeen))
+	for _, display := range v.techSeen {
+		technologies = append(technologies, display)
+	}
+	sort.Strings(technologies)
+
+	return Vocabulary{
+		Terms:         v.terms,
+		Prompt:        buildVocabularyPrompt(projects, workspaces, technologies),
+		Projects:      projects,
+		Workspaces:    workspaces,
+		Repositories:  repositories,
+		Technologies:  technologies,
+		GeneratedFrom: "board projection/workspaces/technologies + operational terms",
+	}
+}
+
+// vocabularyBuilder collects the de-duplicated terms and technology names.
+type vocabularyBuilder struct {
+	seenTerm map[string]bool
+	terms    []string
+	techSeen map[string]string
+}
+
+func (v *vocabularyBuilder) addTerm(term string) {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return
+	}
+	key := strings.ToLower(term)
+	if v.seenTerm[key] {
+		return
+	}
+	v.seenTerm[key] = true
+	v.terms = append(v.terms, term)
+}
+
+func (v *vocabularyBuilder) collectTech(tags ...string) {
+	for _, tag := range tags {
+		display := technologyDisplay(tag)
+		if display == "" {
+			continue
+		}
+		key := strings.ToLower(display)
+		if _, ok := v.techSeen[key]; ok {
+			continue
+		}
+		v.techSeen[key] = display
+		v.addTerm(display)
+	}
+}
+
+func (v *vocabularyBuilder) workspaceEntities(view BoardView) []VocabularyEntity {
+	out := make([]VocabularyEntity, 0, len(view.Workspaces))
 	for _, ws := range view.Workspaces {
 		entity := VocabularyEntity{
 			ID:            strings.TrimSpace(ws.ID),
@@ -121,15 +172,16 @@ func BuildVocabulary(view BoardView) Vocabulary {
 		if entity.ID == "" && entity.Title == "" {
 			continue
 		}
-		workspaces = append(workspaces, entity)
-		addEntityTerms(addTerm, entity)
-		addTechnologyTerms(addTerm, ws.Technology)
+		out = append(out, entity)
+		addEntityTerms(v.addTerm, entity)
+		addTechnologyTerms(v.addTerm, ws.Technology)
 	}
-	sort.Slice(workspaces, func(i, j int) bool {
-		return strings.ToLower(workspaces[i].Title) < strings.ToLower(workspaces[j].Title)
-	})
+	sortByTitle(out)
+	return out
+}
 
-	projects := make([]VocabularyEntity, 0, len(view.Projects))
+func (v *vocabularyBuilder) projectEntities(view BoardView) []VocabularyEntity {
+	out := make([]VocabularyEntity, 0, len(view.Projects))
 	for _, project := range view.Projects {
 		entity := VocabularyEntity{
 			ID:            strings.TrimSpace(project.ID),
@@ -143,40 +195,16 @@ func BuildVocabulary(view BoardView) Vocabulary {
 		if entity.ID == "" && entity.Title == "" {
 			continue
 		}
-		projects = append(projects, entity)
-		addEntityTerms(addTerm, entity)
-		addTechnologyTerms(addTerm, project.Technology)
+		out = append(out, entity)
+		addEntityTerms(v.addTerm, entity)
+		addTechnologyTerms(v.addTerm, project.Technology)
 	}
-	sort.Slice(projects, func(i, j int) bool {
-		return strings.ToLower(projects[i].Title) < strings.ToLower(projects[j].Title)
-	})
+	sortByTitle(out)
+	return out
+}
 
-	repositories := make([]VocabularyEntity, 0, len(view.Registry.Repositories))
-	techSeen := map[string]string{}
-	collectTech := func(tags ...string) {
-		for _, tag := range tags {
-			display := technologyDisplay(tag)
-			if display == "" {
-				continue
-			}
-			key := strings.ToLower(display)
-			if _, ok := techSeen[key]; ok {
-				continue
-			}
-			techSeen[key] = display
-			addTerm(display)
-		}
-	}
-
-	for _, ws := range view.Workspaces {
-		collectTech(ws.Technology.EffectiveTags...)
-		collectTech(ws.Technology.DetectedTags...)
-	}
-	for _, project := range view.Projects {
-		collectTech(project.Technology.EffectiveTags...)
-		collectTech(project.Technology.DetectedTags...)
-	}
-
+func (v *vocabularyBuilder) repositoryEntities(view BoardView) []VocabularyEntity {
+	out := make([]VocabularyEntity, 0, len(view.Registry.Repositories))
 	for _, repo := range view.Registry.Repositories {
 		entity := VocabularyEntity{
 			ID:      firstNonEmpty(repo.ID, repo.RelativePath, repo.Name),
@@ -188,32 +216,21 @@ func BuildVocabulary(view BoardView) Vocabulary {
 		if entity.ID == "" && entity.Title == "" {
 			continue
 		}
-		repositories = append(repositories, entity)
-		addEntityTerms(addTerm, entity)
-		collectTech(repo.EffectiveTags...)
-		collectTech(repo.DetectedTags...)
-		collectTech(technologyProfileTags(repo.Effective)...)
-		collectTech(technologyProfileTags(repo.Detected)...)
+		out = append(out, entity)
+		addEntityTerms(v.addTerm, entity)
+		v.collectTech(repo.EffectiveTags...)
+		v.collectTech(repo.DetectedTags...)
+		v.collectTech(technologyProfileTags(repo.Effective)...)
+		v.collectTech(technologyProfileTags(repo.Detected)...)
 	}
-	sort.Slice(repositories, func(i, j int) bool {
-		return strings.ToLower(repositories[i].Title) < strings.ToLower(repositories[j].Title)
+	sortByTitle(out)
+	return out
+}
+
+func sortByTitle(entities []VocabularyEntity) {
+	sort.Slice(entities, func(i, j int) bool {
+		return strings.ToLower(entities[i].Title) < strings.ToLower(entities[j].Title)
 	})
-
-	technologies := make([]string, 0, len(techSeen))
-	for _, display := range techSeen {
-		technologies = append(technologies, display)
-	}
-	sort.Strings(technologies)
-
-	return Vocabulary{
-		Terms:         terms,
-		Prompt:        buildVocabularyPrompt(projects, workspaces, technologies),
-		Projects:      projects,
-		Workspaces:    workspaces,
-		Repositories:  repositories,
-		Technologies:  technologies,
-		GeneratedFrom: "board projection/workspaces/technologies + operational terms",
-	}
 }
 
 func addEntityTerms(add func(string), entity VocabularyEntity) {
@@ -346,17 +363,17 @@ func writeEntityLine(b *strings.Builder, entity VocabularyEntity) {
 	b.WriteByte('\n')
 }
 
-func truncateRunes(value string, max int) string {
+func truncateRunes(value string, limit int) string {
 	value = strings.TrimSpace(value)
-	if max <= 0 || value == "" {
+	if limit <= 0 || value == "" {
 		return value
 	}
-	if utf8.RuneCountInString(value) <= max {
+	if utf8.RuneCountInString(value) <= limit {
 		return value
 	}
 	runes := []rune(value)
-	trimmed := strings.TrimSpace(string(runes[:max]))
-	if cut := strings.LastIndexAny(trimmed, " .,;"); cut > max/2 {
+	trimmed := strings.TrimSpace(string(runes[:limit]))
+	if cut := strings.LastIndexAny(trimmed, " .,;"); cut > limit/2 {
 		trimmed = strings.TrimRight(trimmed[:cut], " .,;")
 	}
 	return trimmed + "…"

@@ -71,7 +71,7 @@ func renderWorkIndex(tasks []tasklifecycle.Task, workspaces []board.Workspace, p
 	out.WriteString("| Status | Count |\n")
 	out.WriteString("|---|---:|\n")
 	for _, status := range tasklifecycle.TaskStatuses() {
-		out.WriteString(fmt.Sprintf("| `%s` | %d |\n", status, countTasksByStatus(tasks, status)))
+		fmt.Fprintf(&out, "| `%s` | %d |\n", status, countTasksByStatus(tasks, status))
 	}
 	out.WriteString("\n")
 
@@ -97,7 +97,7 @@ func writeTaskSection(out *strings.Builder, title string, description string, ta
 		if task.Status != status {
 			continue
 		}
-		out.WriteString(fmt.Sprintf(
+		fmt.Fprintf(out,
 			"| %d | `%s` | [%s](%s) | `%s` | `%s` | `%s` |\n",
 			task.Priority,
 			task.Ref,
@@ -106,7 +106,7 @@ func writeTaskSection(out *strings.Builder, title string, description string, ta
 			task.ProjectID,
 			task.Type,
 			task.Assignee,
-		))
+		)
 	}
 	out.WriteString("\n")
 }
@@ -117,14 +117,14 @@ func writeProjectSection(out *strings.Builder, projects []board.Project, tasks [
 	out.WriteString("| Project | Workspace | Kind | Repositories | Tasks |\n")
 	out.WriteString("|---|---|---|---:|---:|\n")
 	for _, project := range projects {
-		out.WriteString(fmt.Sprintf(
+		fmt.Fprintf(out,
 			"| `%s` | `%s` | `%s` | %d | %d |\n",
 			project.ID,
 			project.WorkspaceID,
 			project.Kind,
 			len(project.Repositories),
 			countTasksByProject(tasks, project.ID),
-		))
+		)
 	}
 	out.WriteString("\n")
 }
@@ -135,14 +135,14 @@ func writeWorkspaceSection(out *strings.Builder, workspaces []board.Workspace) {
 	out.WriteString("| Workspace | Kind | Repositories | Status |\n")
 	out.WriteString("|---|---|---:|---|\n")
 	for _, workspace := range workspaces {
-		out.WriteString(fmt.Sprintf(
+		fmt.Fprintf(out,
 			"| [%s](%s) | `%s` | %d | `%s` |\n",
 			escapeTable(workspace.Title),
 			workIndexLink(workspace.RelativePath),
 			workspace.Kind,
 			len(workspace.Repositories),
 			workspace.Status,
-		))
+		)
 	}
 }
 

@@ -24,6 +24,44 @@ LIVE := 1
 For the dashboard alone, `npm run dev` in `view/` proxies to a running
 `bin/fleet serve` and reads the token from `~/.fleet/launch-token`.
 
+## SonarQube (optional)
+
+A maintainer can run the SonarQube analysis locally. You need the
+[SonarScanner CLI](https://docs.sonarsource.com/sonarqube-community-build/analyzing-source-code/scanners/sonarscanner)
+(`brew install sonar-scanner`), [golangci-lint](https://golangci-lint.run/) v2
+(`brew install golangci-lint`; its report is imported into SonarQube, config in
+`.golangci.yml`), a SonarQube server and a user token for it. The
+server address and the token stay out of the repository: put them in the
+environment, or in a `.env` file at the root (it is git-ignored):
+
+```bash
+SONAR_HOST_URL=http://your-server:9000
+SONAR_TOKEN=<a SonarQube user token>
+```
+
+```bash
+make sonar       # tests with coverage, then the analysis; fails when the quality gate is red
+```
+
+`scripts/sonar-scope` decides what gets analyzed: on the main branch (`origin/HEAD`)
+the main analysis, on any other branch the pull request when `gh` finds an open one,
+otherwise that branch. A feature branch never overwrites the main branch's state.
+Branch and pull request analysis need the
+[community branch plugin](https://github.com/mc1arke/sonarqube-community-branch-plugin)
+on the server; without it SonarQube Community only knows one branch. Do not run
+`sonar-scanner` directly from a feature branch: without those arguments it is
+published as the main branch.
+
+`git config core.hooksPath .githooks` turns on two hooks. **pre-commit** is the local gate:
+golangci-lint on the Go modules with staged files, and a secrets scan of the staged files when the
+SonarQube CLI (`brew install sonarqube-cli`) is installed; a finding stops the commit, and nothing
+goes to the server. **pre-push** runs `make sonar` when code the analysis covers changed: the report
+of the pushed commit goes to the server, and a red quality gate stops the push. Once a pull request
+is open, run `make sonar` once more so the server analyzes it as that pull request. Both do nothing
+unless the two variables are set; skip one with `--no-verify`. `make sonar SONAR_GATE=false` sends
+the report without waiting for the gate. The setup and the reasons for it are in the organization's
+[SonarQube standard](https://github.com/eggs-gd/.github/blob/main/docs/sonarqube.md).
+
 ## How the code is laid out
 
 - `server/internal/server`: HTTP routes and the composition root.

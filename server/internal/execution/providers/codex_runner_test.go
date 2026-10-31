@@ -22,7 +22,7 @@ func TestFakeCodexAppServer(t *testing.T) {
 		t.Skip("only runs as a child process of the runner tests")
 	}
 	if mode == "crash" {
-		os.Stderr.WriteString("codex: fatal: not signed in\n")
+		_, _ = os.Stderr.WriteString("codex: fatal: not signed in\n")
 		os.Exit(3)
 	}
 	in := bufio.NewScanner(os.Stdin)

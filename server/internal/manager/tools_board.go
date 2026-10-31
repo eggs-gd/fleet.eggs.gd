@@ -46,59 +46,18 @@ func (s *Service) ShowBoard(ctx context.Context, q BoardQuery) Response {
 	if detail != "" && detail != "cards" && detail != "summary" {
 		return failResponse(Failure{Code: FailureValidation, Message: fmt.Sprintf("unknown detail %q", detail), Suggestions: []string{"cards", "summary"}})
 	}
-	var shown []taskflow.Task
-	switch view {
-	case "all":
-		shown = tasks
-	case "needs_attention":
-		shown = filterTasks(tasks, func(task taskflow.Task) bool {
-			return task.Status == taskflow.StatusBlocked || strings.TrimSpace(task.BlockedReason) != ""
-		})
-	case "blocked":
-		shown = filterTasks(tasks, func(task taskflow.Task) bool { return task.Status == taskflow.StatusBlocked })
-	case "in_review":
-		shown = filterTasks(tasks, func(task taskflow.Task) bool { return task.Status == "needs_review" })
-	default:
+	shown, ok := tasksInView(tasks, view)
+	if !ok {
 		return failResponse(Failure{
 			Code:        FailureValidation,
 			Message:     fmt.Sprintf("unknown view %q", view),
 			Suggestions: []string{"needs_attention", "blocked", "in_review", "all"},
 		})
 	}
-	if project := strings.TrimSpace(q.Project); project != "" {
-		shown = filterTasks(shown, func(task taskflow.Task) bool {
-			return strings.EqualFold(firstNonEmpty(task.ProjectID, task.Project, task.WorkspaceID), project) ||
-				strings.EqualFold(task.Project, project) || strings.EqualFold(task.WorkspaceID, project)
-		})
-	}
-	if status := strings.TrimSpace(q.Status); status != "" {
-		shown = filterTasks(shown, func(task taskflow.Task) bool { return strings.EqualFold(string(task.Status), status) })
-	}
-	if milestone := strings.TrimSpace(q.Milestone); milestone != "" {
-		shown = filterTasks(shown, func(task taskflow.Task) bool {
-			if strings.EqualFold(milestone, "none") {
-				return task.Milestone == ""
-			}
-			return strings.EqualFold(task.Milestone, milestone)
-		})
-	}
+	shown = filterBoardTasks(shown, q)
 	total := len(shown)
-	limit := q.Limit
-	if limit <= 0 {
-		limit = defaultBoardLimit
-	}
-	if limit > maxBoardLimit {
-		limit = maxBoardLimit
-	}
-	offset := q.Offset
-	if offset < 0 || offset > total {
-		offset = total
-	}
-	end := offset + limit
-	if end > total {
-		end = total
-	}
-	page := shown[offset:end]
+	start, end := boardPage(total, q.Offset, q.Limit)
+	page := shown[start:end]
 	cards := cardsOf(page)
 	if detail == "summary" {
 		for i, task := range page {
@@ -118,13 +77,67 @@ func (s *Service) ShowBoard(ctx context.Context, q BoardQuery) Response {
 	return Response{OK: true, Result: &Result{Action: "board", Detail: out}}
 }
 
-func excerpt(text string, max int) string {
+// tasksInView is the tasks a named board view shows; ok is false for an
+// unknown view.
+func tasksInView(tasks []taskflow.Task, view string) ([]taskflow.Task, bool) {
+	switch view {
+	case "all":
+		return tasks, true
+	case "needs_attention":
+		return filterTasks(tasks, func(task taskflow.Task) bool {
+			return task.Status == taskflow.StatusBlocked || strings.TrimSpace(task.BlockedReason) != ""
+		}), true
+	case "blocked":
+		return filterTasks(tasks, func(task taskflow.Task) bool { return task.Status == taskflow.StatusBlocked }), true
+	case "in_review":
+		return filterTasks(tasks, func(task taskflow.Task) bool { return task.Status == "needs_review" }), true
+	default:
+		return nil, false
+	}
+}
+
+// filterBoardTasks narrows tasks by the project, status and milestone of q.
+func filterBoardTasks(tasks []taskflow.Task, q BoardQuery) []taskflow.Task {
+	if project := strings.TrimSpace(q.Project); project != "" {
+		tasks = filterTasks(tasks, func(task taskflow.Task) bool {
+			return strings.EqualFold(firstNonEmpty(task.ProjectID, task.Project, task.WorkspaceID), project) ||
+				strings.EqualFold(task.Project, project) || strings.EqualFold(task.WorkspaceID, project)
+		})
+	}
+	if status := strings.TrimSpace(q.Status); status != "" {
+		tasks = filterTasks(tasks, func(task taskflow.Task) bool { return strings.EqualFold(string(task.Status), status) })
+	}
+	if milestone := strings.TrimSpace(q.Milestone); milestone != "" {
+		tasks = filterTasks(tasks, func(task taskflow.Task) bool {
+			if strings.EqualFold(milestone, "none") {
+				return task.Milestone == ""
+			}
+			return strings.EqualFold(task.Milestone, milestone)
+		})
+	}
+	return tasks
+}
+
+// boardPage is the [start, end) window of a total-long list for an offset and
+// a limit, with the defaults and caps applied.
+func boardPage(total int, offset int, limit int) (int, int) {
+	if limit <= 0 {
+		limit = defaultBoardLimit
+	}
+	limit = min(limit, maxBoardLimit)
+	if offset < 0 || offset > total {
+		offset = total
+	}
+	return offset, min(offset+limit, total)
+}
+
+func excerpt(text string, limit int) string {
 	text = strings.Join(strings.Fields(text), " ")
 	runes := []rune(text)
-	if len(runes) <= max {
+	if len(runes) <= limit {
 		return text
 	}
-	return string(runes[:max]) + "…"
+	return string(runes[:limit]) + "…"
 }
 
 // Task returns one card, its dependencies, blockers, session, and activity tail.
@@ -141,8 +154,8 @@ func (s *Service) Task(ctx context.Context, ref string) Response {
 		refs = append(refs, task.Ref)
 		byRef[strings.ToUpper(task.Ref)] = task
 		if strings.EqualFold(task.Ref, ref) {
-			copy := task
-			found = &copy
+			match := task
+			found = &match
 		}
 	}
 	if found == nil {

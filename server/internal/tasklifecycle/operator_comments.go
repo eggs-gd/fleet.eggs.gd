@@ -2,6 +2,8 @@ package tasklifecycle
 
 import "strings"
 
+const sessionLogLead = "\n\nSession log: `"
+
 // ProviderErrorContext carries the session identifiers a task-facing
 // provider-error comment can reference, without requiring the caller
 // (corechain) to hand this package its RuntimeSession type. Every field is
@@ -50,7 +52,7 @@ func ProviderErrorComment(pe *ProviderError, ctx ProviderErrorContext) string {
 		comment += "\n\nSession identifiers: " + strings.Join(ids, ", ") + "."
 	}
 	if ctx.LogPath != "" {
-		comment += "\n\nSession log: `" + ctx.LogPath + "`"
+		comment += sessionLogLead + ctx.LogPath + "`"
 	}
 	comment += "\n\nMove this task to `needs_rework` or `todo` after the fix for an operator-approved retry, or to `needs_review` if the operator has already verified the artifacts."
 	return comment
@@ -79,7 +81,7 @@ func compactIdentifiers(values ...string) []string {
 func GenericProviderBlockedComment(errorMessage string, logPath string) string {
 	comment := "Provider blocker detected: " + firstNonEmpty(errorMessage, "unknown provider failure")
 	if logPath != "" {
-		comment += "\n\nSession log: `" + logPath + "`"
+		comment += sessionLogLead + logPath + "`"
 	}
 	return comment
 }
@@ -95,7 +97,7 @@ func LaunchStartFailedComment(errorMessage string) string {
 func LaunchProcessFailedComment(errorMessage string, logPath string) string {
 	comment := "Launch process failed: " + firstNonEmpty(errorMessage, "unknown process failure")
 	if logPath != "" {
-		comment += "\n\nSession log: `" + logPath + "`"
+		comment += sessionLogLead + logPath + "`"
 	}
 	return comment
 }
@@ -106,7 +108,7 @@ func LaunchProcessFailedComment(errorMessage string, logPath string) string {
 func OperatorAttentionComment(reason string, logPath string) string {
 	comment := firstNonEmpty(reason, "Agent execution needs operator attention.")
 	if logPath != "" {
-		comment += "\n\nSession log: `" + logPath + "`"
+		comment += sessionLogLead + logPath + "`"
 	}
 	return comment
 }
@@ -153,7 +155,7 @@ func OperatorReleaseComment(action string, claimID string, executionStatus strin
 	comment := OperatorReleaseReason(action, claimID)
 	comment += "\n\nExecution status is now `" + executionStatus + "`."
 	if logPath != "" {
-		comment += "\n\nSession log: `" + logPath + "`"
+		comment += sessionLogLead + logPath + "`"
 	}
 	if targetStatus != "" {
 		comment += "\n\nTask target after release: `" + targetStatus + "`."

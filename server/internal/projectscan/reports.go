@@ -33,32 +33,39 @@ func renderBootstrapReport(root string, repositories []Repository, groups []Grou
 	if len(groups) == 0 {
 		lines = append(lines, "No grouping suggestions detected.")
 	} else {
-		labels := map[string]string{}
-		for _, repo := range repositories {
-			labels[repo.ID] = fmt.Sprintf("%s (%s)", repo.Name, repo.RelativePath)
-		}
-		for _, group := range groups {
-			var names []string
-			for _, id := range group.RepositoryIDs {
-				label := labels[id]
-				if label == "" {
-					label = id
-				}
-				names = append(names, "`"+label+"`")
-			}
-			lines = append(lines,
-				"### "+group.SuggestedProjectID,
-				"",
-				"- Kind: "+group.Kind,
-				"- Confidence: "+group.Confidence,
-				"- Decision: "+group.Decision,
-				"- Reason: "+group.Reason,
-				"- Repositories: "+joinComma(names),
-				"",
-			)
-		}
+		lines = append(lines, groupSections(repositories, groups)...)
 	}
 	return joinLines(lines)
+}
+
+// groupSections is one section per group, naming its repositories.
+func groupSections(repositories []Repository, groups []Group) []string {
+	labels := map[string]string{}
+	for _, repo := range repositories {
+		labels[repo.ID] = fmt.Sprintf("%s (%s)", repo.Name, repo.RelativePath)
+	}
+	var lines []string
+	for _, group := range groups {
+		var names []string
+		for _, id := range group.RepositoryIDs {
+			label := labels[id]
+			if label == "" {
+				label = id
+			}
+			names = append(names, "`"+label+"`")
+		}
+		lines = append(lines,
+			"### "+group.SuggestedProjectID,
+			"",
+			"- Kind: "+group.Kind,
+			"- Confidence: "+group.Confidence,
+			"- Decision: "+group.Decision,
+			"- Reason: "+group.Reason,
+			"- Repositories: "+joinComma(names),
+			"",
+		)
+	}
+	return lines
 }
 
 func renderDeletionReport(candidates []DeletionCandidate, generatedAt string) string {

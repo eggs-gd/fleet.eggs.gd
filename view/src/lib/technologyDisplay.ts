@@ -1,3 +1,4 @@
+import { asText } from './text.ts';
 import type { AnyRecord, Repository } from './types.ts';
 
 export const primaryTechnologyKinds = ['languages', 'frameworks', 'runtimes'];
@@ -150,9 +151,7 @@ export const technologyIconMap: Record<string, IconEntry> = {
 };
 
 export const normalizeTechnologyTag = (tag: unknown): string => {
-  let value = String(tag || '')
-    .trim()
-    .toLowerCase();
+  let value = asText(tag).trim().toLowerCase();
   while (/^(raw|detected|eff|effective)[:\s_-]+/.test(value)) {
     value = value.replace(/^(raw|detected|eff|effective)[:\s_-]+/, '');
   }
@@ -370,18 +369,18 @@ export const repoHasTechnology = (repo: AnyRecord | null | undefined): boolean =
 // git@github.com:org/repo.git) — browsers can't open that as a link, so it
 // silently falls through to the current page. Normalize to https before use.
 export const repoWebUrl = (remote: unknown): string => {
-  const value = String(remote || '').trim();
+  const value = asText(remote).trim();
   if (!value) return '';
   const withoutSuffix = value.replace(/\.git$/, '');
   // Check the full ssh://[user@]host[:port]/path form before the scp-style
   // shorthand below — otherwise the scp regex greedily reads "ssh" itself as
   // the host (matching up to the first ':') and never reaches this branch.
-  const sshUrlMatch = withoutSuffix.match(/^ssh:\/\/(?:[\w.-]+@)?([^/:]+)(?::\d+)?\/(.+)$/);
+  const sshUrlMatch = /^ssh:\/\/(?:[\w.-]+@)?([^/:]+)(?::\d+)?\/(.+)$/.exec(withoutSuffix);
   if (sshUrlMatch) {
     return `https://${sshUrlMatch[1]}/${sshUrlMatch[2]}`;
   }
   if (/^https?:\/\//i.test(withoutSuffix)) return withoutSuffix;
-  const scpMatch = withoutSuffix.match(/^(?:[\w.-]+@)?([\w.-]+):(.+)$/);
+  const scpMatch = /^(?:[\w.-]+@)?([\w.-]+):(.+)$/.exec(withoutSuffix);
   if (scpMatch && scpMatch[1].toLowerCase() !== 'ssh') {
     return `https://${scpMatch[1]}/${scpMatch[2]}`;
   }

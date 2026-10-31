@@ -50,7 +50,7 @@ func newCustomConsoleEncoder(decorator CustomEncoderDecorator) *customConsoleEnc
 func NewLogger(level LogLevel, decorator CustomEncoderDecorator, options ...Option) *Logger {
 	core := zapcore.NewCore(
 		newCustomConsoleEncoder(decorator),
-		//zapcore.NewConsoleEncoder(encoderConfig),
+		// zapcore.NewConsoleEncoder(encoderConfig),
 		zapcore.AddSync(zapcore.Lock(os.Stdout)),
 		zapcore.Level(level),
 	)

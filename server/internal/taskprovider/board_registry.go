@@ -123,35 +123,39 @@ func mergeEffectiveRepositoryViews(raw []registryRepositoryJSON, effective []reg
 			effectiveRepo, ok = effectiveByPath[repo.RelativePath]
 		}
 		if ok {
-			repo.Effective = effectiveRepo.Effective
-			if repo.ID == "" {
-				repo.ID = effectiveRepo.ID
-			}
-			if repo.Name == "" {
-				repo.Name = effectiveRepo.Name
-			}
-			if repo.RelativePath == "" {
-				repo.RelativePath = effectiveRepo.RelativePath
-			}
-			if repo.Remote == "" {
-				repo.Remote = effectiveRepo.Remote
-			}
-			if repo.Branch == "" {
-				repo.Branch = effectiveRepo.Branch
-			}
-			if repo.ParentRepositoryID == "" {
-				repo.ParentRepositoryID = effectiveRepo.ParentRepositoryID
-			}
-			if len(repo.NestedRepositoryIDs) == 0 {
-				repo.NestedRepositoryIDs = effectiveRepo.NestedRepositoryIDs
-			}
-			if len(repo.Evidence) == 0 {
-				repo.Evidence = effectiveRepo.Evidence
-			}
+			repo = withEffectiveView(repo, effectiveRepo)
 		}
 		merged = append(merged, repo)
 	}
 	return merged
+}
+
+// withEffectiveView takes the effective profile and fills whatever the raw
+// registry row leaves empty from the scanned repository.
+func withEffectiveView(repo registryRepositoryJSON, scanned registryRepositoryJSON) registryRepositoryJSON {
+	repo.Effective = scanned.Effective
+	for _, field := range []struct {
+		dst *string
+		src string
+	}{
+		{&repo.ID, scanned.ID},
+		{&repo.Name, scanned.Name},
+		{&repo.RelativePath, scanned.RelativePath},
+		{&repo.Remote, scanned.Remote},
+		{&repo.Branch, scanned.Branch},
+		{&repo.ParentRepositoryID, scanned.ParentRepositoryID},
+	} {
+		if *field.dst == "" {
+			*field.dst = field.src
+		}
+	}
+	if len(repo.NestedRepositoryIDs) == 0 {
+		repo.NestedRepositoryIDs = scanned.NestedRepositoryIDs
+	}
+	if len(repo.Evidence) == 0 {
+		repo.Evidence = scanned.Evidence
+	}
+	return repo
 }
 
 func profileIsEmpty(profile board.TechnologyProfile) bool {

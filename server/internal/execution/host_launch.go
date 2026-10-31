@@ -16,6 +16,8 @@ import (
 	l "github.com/eggs-gd/fleet.eggs.gd/lib/logger"
 )
 
+const stageSessionGate = "session-gate"
+
 func (s *Service) StartLaunchCandidate(ctx context.Context, candidate Task) {
 	s.startLaunchCandidate(ctx, candidate)
 }
@@ -23,38 +25,7 @@ func (s *Service) StartLaunchCandidate(ctx context.Context, candidate Task) {
 func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 	session := runtimeSessionForTask(candidate, s.cfg)
 	if conflict, scope, ok := s.tryReserveSession(session); !ok {
-		resource := SessionConflictResource(scope, candidate)
-		reason := LaunchConflictReason(conflict, scope, resource)
-		candidate.MarkLaunchWaiting(tasklifecycle.LaunchWait{
-			Scope:           scope,
-			Resource:        resource,
-			ConflictClaimID: conflict.ClaimID,
-			Reason:          reason,
-			WaitingSince:    time.Now().Format(time.RFC3339),
-		})
-		if s.board.UpsertTask != nil {
-			s.board.UpsertTask(candidate)
-		}
-		s.emitTaskEvent("launch_waiting", candidate, reason, map[string]any{
-			"stage":             "session-gate",
-			"conflict_claim_id": conflict.ClaimID,
-			"scope":             scope,
-			"conflict_status":   firstNonEmpty(conflict.ExecutionStatus, conflict.Status),
-			"provider_startup":  conflict.IsProviderStartup(),
-		})
-		if s.logger != nil {
-			if conflict.IsProviderStartup() {
-				s.logger.Warn("waiting on in-progress provider startup",
-					l.String("task", taskLabel(&candidate)),
-					l.String("stage", "session-gate"),
-					l.String("scope", scope),
-					l.String("conflict_claim_id", conflict.ClaimID),
-					l.String("conflict_status", firstNonEmpty(conflict.ExecutionStatus, conflict.Status)),
-					l.String("reason", reason))
-			} else {
-				s.logger.Warn("waiting due to active session", l.String("task", taskLabel(&candidate)), l.String("stage", "session-gate"), l.String("reason", reason))
-			}
-		}
+		s.holdForConflict(candidate, conflict, scope)
 		return
 	}
 	candidate.ClearLaunchWaiting()
@@ -62,7 +33,7 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 		s.board.UpsertTask(candidate)
 	}
 	s.emitTaskEvent("runtime_slot_reserved", candidate, "Launch slot reserved before provider start", map[string]any{
-		"stage":      "session-gate",
+		"stage":      stageSessionGate,
 		"claim_id":   session.ClaimID,
 		"agent":      session.Agent,
 		"project_id": session.ProjectID,
@@ -78,6 +49,79 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 			l.String("repository", session.Repository))
 	}
 
+	claimed, ok := s.claimCandidate(ctx, candidate, session)
+	if !ok {
+		return
+	}
+	s.fillSessionFromClaim(&session, claimed)
+	s.upsertSession(session)
+	s.emitTaskEvent("agent_process_starting", claimed, "Agent process launch starting", map[string]any{
+		"claim_id":            session.ClaimID,
+		"launcher":            session.Launcher,
+		"command":             session.Command,
+		"log_path":            session.LogPath,
+		"session_timeout":     s.cfg.EffectiveSessionTimeout().String(),
+		"supersedes_claim_id": session.SupersedesClaimID,
+		"reuse_capability":    session.ReuseCapability,
+		"resume_attempted":    session.ResumeAttempted,
+	})
+
+	if run, ok := backendRunners[claimed.LaunchEvaluation.Backend]; ok {
+		s.spawnRunner(run, ctx, session, claimed)
+		return
+	}
+	s.startPlainProcess(ctx, session, claimed)
+}
+
+// backendRunners are the backends that run their own session loop; every other
+// backend is a plain process the service waits on.
+var backendRunners = map[string]func(context.Context, RuntimeSession, Task, RunnerOptions){
+	BackendBackgroundRemote: RunBackgroundRemoteSession,
+	BackendCodexAppServer:   RunCodexAppServerSession,
+	BackendCursorVisible:    RunCursorVisibleSession,
+	BackendGeminiHeadless:   RunGeminiHeadlessSession,
+}
+
+// holdForConflict leaves the task waiting on the session or orphan that blocks it.
+func (s *Service) holdForConflict(candidate Task, conflict RuntimeSession, scope string) {
+	resource := SessionConflictResource(scope, candidate)
+	reason := LaunchConflictReason(conflict, scope, resource)
+	candidate.MarkLaunchWaiting(tasklifecycle.LaunchWait{
+		Scope:           scope,
+		Resource:        resource,
+		ConflictClaimID: conflict.ClaimID,
+		Reason:          reason,
+		WaitingSince:    time.Now().Format(time.RFC3339),
+	})
+	if s.board.UpsertTask != nil {
+		s.board.UpsertTask(candidate)
+	}
+	s.emitTaskEvent("launch_waiting", candidate, reason, map[string]any{
+		"stage":             stageSessionGate,
+		"conflict_claim_id": conflict.ClaimID,
+		"scope":             scope,
+		"conflict_status":   firstNonEmpty(conflict.ExecutionStatus, conflict.Status),
+		"provider_startup":  conflict.IsProviderStartup(),
+	})
+	if s.logger == nil {
+		return
+	}
+	if conflict.IsProviderStartup() {
+		s.logger.Warn("waiting on in-progress provider startup",
+			l.String("task", taskLabel(&candidate)),
+			l.String("stage", stageSessionGate),
+			l.String("scope", scope),
+			l.String("conflict_claim_id", conflict.ClaimID),
+			l.String("conflict_status", firstNonEmpty(conflict.ExecutionStatus, conflict.Status)),
+			l.String("reason", reason))
+		return
+	}
+	s.logger.Warn("waiting due to active session", l.String("task", taskLabel(&candidate)), l.String("stage", stageSessionGate), l.String("reason", reason))
+}
+
+// claimCandidate moves the task to doing. On failure it frees the reserved
+// slot and reports false.
+func (s *Service) claimCandidate(ctx context.Context, candidate Task, session RuntimeSession) (Task, bool) {
 	locator := firstNonEmpty(candidate.RelativePath, candidate.Path)
 	flowClaimed, err := s.tasks.Claim(ctx, locator)
 	if err != nil {
@@ -89,7 +133,7 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 		if s.logger != nil {
 			s.logger.Warn("launch claim failed", l.String("task", taskLabel(&candidate)), l.Error(err))
 		}
-		return
+		return Task{}, false
 	}
 	claimed := TaskFromFlow(flowClaimed)
 	if s.reload != nil {
@@ -109,7 +153,12 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 			l.String("claim_id", session.ClaimID),
 			l.String("agent", claimed.LaunchEvaluation.Agent))
 	}
+	return claimed, true
+}
 
+// fillSessionFromClaim copies what the claimed task decided about the launch
+// (agent, backend, command, visibility) onto the reserved session.
+func (s *Service) fillSessionFromClaim(session *RuntimeSession, claimed Task) {
 	session.TaskRef = claimed.Ref
 	session.TaskID = claimed.ID
 	session.TaskPath = claimed.RelativePath
@@ -118,47 +167,22 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 	session.Repository = claimed.LaunchEvaluation.Repository
 	session.Agent = claimed.LaunchEvaluation.Agent
 	session.Backend = claimed.LaunchEvaluation.Backend
-	session.VisibilityMode = firstNonEmpty(claimed.LaunchEvaluation.VisibilityMode, VisibilityModeForSession(session))
+	session.VisibilityMode = firstNonEmpty(claimed.LaunchEvaluation.VisibilityMode, VisibilityModeForSession(*session))
 	session.Capabilities = ProviderCapabilityFlags(session.Agent, session.Backend)
 	if session.VisibilityMode == "" || session.VisibilityMode == string(VisibilityUnknown) {
-		session.VisibilityMode = firstNonEmpty(session.Capabilities.OperatorVisibility, VisibilityModeForSession(session))
+		session.VisibilityMode = firstNonEmpty(session.Capabilities.OperatorVisibility, VisibilityModeForSession(*session))
 	}
 	session.Command = append([]string{}, claimed.LaunchEvaluation.Command...)
 	session.WorkingDir = claimed.LaunchEvaluation.WorkingDir
 	if session.Backend == BackendCodexAppServer {
 		session.CodexThreadTitle = CodexRemoteThreadTitle(claimed.Ref, claimed.Title, claimed.ID)
 	}
-	s.applySessionReuse(&session, claimed)
-	InitSessionToolUsage(&session, claimed)
-	s.upsertSession(session)
-	s.emitTaskEvent("agent_process_starting", claimed, "Agent process launch starting", map[string]any{
-		"claim_id":            session.ClaimID,
-		"launcher":            session.Launcher,
-		"command":             session.Command,
-		"log_path":            session.LogPath,
-		"session_timeout":     s.cfg.EffectiveSessionTimeout().String(),
-		"supersedes_claim_id": session.SupersedesClaimID,
-		"reuse_capability":    session.ReuseCapability,
-		"resume_attempted":    session.ResumeAttempted,
-	})
+	s.applySessionReuse(session, claimed)
+	InitSessionToolUsage(session, claimed)
+}
 
-	if claimed.LaunchEvaluation.Backend == BackendBackgroundRemote {
-		s.spawnRunner(RunBackgroundRemoteSession, ctx, session, claimed)
-		return
-	}
-	if claimed.LaunchEvaluation.Backend == BackendCodexAppServer {
-		s.spawnRunner(RunCodexAppServerSession, ctx, session, claimed)
-		return
-	}
-	if claimed.LaunchEvaluation.Backend == BackendCursorVisible {
-		s.spawnRunner(RunCursorVisibleSession, ctx, session, claimed)
-		return
-	}
-	if claimed.LaunchEvaluation.Backend == BackendGeminiHeadless {
-		s.spawnRunner(RunGeminiHeadlessSession, ctx, session, claimed)
-		return
-	}
-
+// startPlainProcess starts the agent as a child process and waits on it.
+func (s *Service) startPlainProcess(ctx context.Context, session RuntimeSession, claimed Task) {
 	process, err := StartProcess(ctx, Plan{
 		Agent:        session.Agent,
 		Backend:      claimed.LaunchEvaluation.Backend,
@@ -186,9 +210,7 @@ func (s *Service) startLaunchCandidate(ctx context.Context, candidate Task) {
 		s.logger.Info("agent process started", l.String("task", taskLabel(&claimed)), l.String("claim_id", session.ClaimID), l.Int("process_id", session.ProcessID))
 	}
 
-	s.spawn(func(session RuntimeSession, claimed Task) func() {
-		return func() { s.waitLaunchSession(ctx, process, session, claimed) }
-	}(session, claimed))
+	s.spawn(func() { s.waitLaunchSession(ctx, process, session, claimed) })
 }
 
 func (s *Service) runnerOptions() RunnerOptions {

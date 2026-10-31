@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/eggs-gd/fleet.eggs.gd/internal/providerconfig"
-	"github.com/eggs-gd/fleet.eggs.gd/internal/taskflow"
 )
 
 func TestCorechainHasNoRuntimeTypeAlias(t *testing.T) {
@@ -304,12 +303,11 @@ func TestCorechainDoesNotCallReportExecution(t *testing.T) {
 
 func TestDashboardStaysOutsideExecutionWiring(t *testing.T) {
 	app := Compose(ComposeConfig{CoreRoot: t.TempDir(), Interval: time.Second, DryRun: true})
-	var surface DashboardSurface = app.Surface()
+	surface := app.Surface()
 	_ = surface.State()
 	if app.TaskService() == nil {
 		t.Fatal("Dashboard.TaskService must remain wired for Manager")
 	}
-	var _ taskflow.TaskService = app.TaskService()
 }
 
 func TestDashboardPackageHasNoChannelOrExecutionCoupling(t *testing.T) {

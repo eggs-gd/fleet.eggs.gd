@@ -163,7 +163,7 @@ func TestDashboardSurfaceImplementedByCompose(t *testing.T) {
 		SessionTimeout: time.Second,
 		DryRun:         true,
 	})
-	var surface DashboardSurface = app.Surface()
+	surface := app.Surface()
 	state := surface.State()
 	if state.Root == "" && state.GeneratedAt == "" && len(state.Statuses) == 0 {
 		_ = state

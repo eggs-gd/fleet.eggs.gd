@@ -80,7 +80,7 @@ func registerMilestoneRoutes(mux *http.ServeMux, dashboard DashboardSurface) {
 			}
 			writeJSON(w, map[string]int{"cleared": cleared})
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 		}
 	})
 }

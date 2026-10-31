@@ -8,7 +8,7 @@ import (
 func TestFailAndRecover(t *testing.T) {
 	m := New()
 	boom := errors.New("disk full")
-	if got := m.Fail("audit", boom); got != boom {
+	if got := m.Fail("audit", boom); !errors.Is(got, boom) {
 		t.Fatalf("Fail must return the error unchanged, got %v", got)
 	}
 	first, ok := m.Has("audit")
@@ -32,7 +32,7 @@ func TestFailAndRecover(t *testing.T) {
 func TestNilMonitorIsHarmless(t *testing.T) {
 	var m *Monitor
 	err := errors.New("x")
-	if m.Fail("a", err) != err {
+	if !errors.Is(m.Fail("a", err), err) {
 		t.Fatal("nil monitor changed the error")
 	}
 	m.OK("a")

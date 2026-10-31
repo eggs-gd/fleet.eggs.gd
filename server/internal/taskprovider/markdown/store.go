@@ -223,81 +223,20 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	}
 	body := doc.Body()
 
-	if patch.Status != "" {
-		if !tasklifecycle.IsKnownTaskStatus(patch.Status) {
-			return tasklifecycle.Task{}, fmt.Errorf("unknown task status %q", patch.Status)
-		}
-		if !patch.AllowStatusOverride && !tasklifecycle.AllowedTaskStatusTransition(current.Status, patch.Status) {
-			return tasklifecycle.Task{}, fmt.Errorf("%w: %s -> %s", tasklifecycle.ErrTaskTransitionRejected, current.Status, patch.Status)
-		}
-		doc.SetString("status", patch.Status)
+	if err := applyFieldPatch(doc, current, patch); err != nil {
+		return tasklifecycle.Task{}, err
 	}
-	if patch.Assignee != "" {
-		doc.SetString("assignee", patch.Assignee)
+	writePath, projectMoved, unlockDestination, err := p.applyProjectPatch(doc, taskPath, patch)
+	if err != nil {
+		return tasklifecycle.Task{}, err
 	}
-	if patch.Priority != nil {
-		if *patch.Priority < 1 || *patch.Priority > 5 {
-			return tasklifecycle.Task{}, fmt.Errorf("unknown task priority %d", *patch.Priority)
-		}
-		doc.SetString("priority", fmt.Sprintf("%d", *patch.Priority))
-	}
-	if patch.DependsOn != nil {
-		doc.SetStrings("depends_on", tasklifecycle.NormalizeDependsOn(*patch.DependsOn))
-	}
-
-	writePath := taskPath
-	projectMoved := false
-	var destinationUnlock func()
-	if projectPatch := strings.TrimSpace(patch.Project); projectPatch != "" {
-		if strings.Contains(projectPatch, "..") || strings.ContainsAny(projectPatch, `\:`) {
-			return tasklifecycle.Task{}, fmt.Errorf("project id %q is invalid", projectPatch)
-		}
-		workProjectID := workProjectDirID(projectPatch)
-		if err := validateProjectForCreate(p.root, workProjectID); err != nil {
+	defer unlockDestination()
+	if patch.Milestone != nil && !projectMoved {
+		unlockMilestone, err := applyMilestonePatch(doc, taskPath, *patch.Milestone)
+		if err != nil {
 			return tasklifecycle.Task{}, err
 		}
-		doc.SetString("project", workProjectID)
-		repositories := []string{}
-		if repo := strings.TrimSpace(patch.Repository); repo != "" {
-			repositories = []string{repo}
-		}
-		doc.SetStrings("repositories", repositories)
-
-		currentWorkProjectID := filepath.Base(filepath.Dir(filepath.Dir(taskPath)))
-		if workProjectID != currentWorkProjectID {
-			// A milestone belongs to one project's card, so it does not follow
-			// the task to another project.
-			projectMoved = true
-			doc.Remove("milestone")
-			destPath, destErr := uniqueTaskDestinationPath(p.root, workProjectID, filepath.Base(taskPath))
-			if destErr != nil {
-				return tasklifecycle.Task{}, destErr
-			}
-			if filepath.Clean(destPath) != filepath.Clean(taskPath) {
-				lock := lockTaskFile(destPath)
-				destinationUnlock = lock.Unlock
-				writePath = destPath
-			}
-		}
-	}
-	if destinationUnlock != nil {
-		defer destinationUnlock()
-	}
-	if patch.Milestone != nil && !projectMoved {
-		milestone := strings.TrimSpace(*patch.Milestone)
-		if milestone == "" {
-			doc.Remove("milestone")
-		} else {
-			// Hold the card lock from validation through the task write, so a
-			// milestone cannot be deleted between the two (see
-			// Dashboard.DeleteMilestone).
-			mdfile.EditMu.Lock()
-			defer mdfile.EditMu.Unlock()
-			if err := validateMilestone(taskPath, milestone); err != nil {
-				return tasklifecycle.Task{}, err
-			}
-			doc.SetString("milestone", milestone)
-		}
+		defer unlockMilestone()
 	}
 
 	doc.SetString("updated_at", time.Now().Format(time.RFC3339))
@@ -319,6 +258,94 @@ func (p *Provider) mutateLoadedLocked(taskPath string, data []byte, current task
 	}
 
 	return LoadTaskFile(p.root, writePath)
+}
+
+// noUnlock stands in for an unlock when no lock was taken.
+func noUnlock() {
+	// Nothing was locked.
+}
+
+// applyFieldPatch sets status, assignee, priority and depends_on from patch.
+func applyFieldPatch(doc *mdfile.Doc, current tasklifecycle.Task, patch tasklifecycle.TaskPatch) error {
+	if patch.Status != "" {
+		if !tasklifecycle.IsKnownTaskStatus(patch.Status) {
+			return fmt.Errorf("unknown task status %q", patch.Status)
+		}
+		if !patch.AllowStatusOverride && !tasklifecycle.AllowedTaskStatusTransition(current.Status, patch.Status) {
+			return fmt.Errorf("%w: %s -> %s", tasklifecycle.ErrTaskTransitionRejected, current.Status, patch.Status)
+		}
+		doc.SetString("status", patch.Status)
+	}
+	if patch.Assignee != "" {
+		doc.SetString("assignee", patch.Assignee)
+	}
+	if patch.Priority != nil {
+		if *patch.Priority < 1 || *patch.Priority > 5 {
+			return fmt.Errorf("unknown task priority %d", *patch.Priority)
+		}
+		doc.SetString("priority", fmt.Sprintf("%d", *patch.Priority))
+	}
+	if patch.DependsOn != nil {
+		doc.SetStrings("depends_on", tasklifecycle.NormalizeDependsOn(*patch.DependsOn))
+	}
+	return nil
+}
+
+// applyProjectPatch points the task at another project. It returns the path to
+// write (the destination when the file moves), whether the task changed
+// project, and a function releasing the destination lock; the caller defers it.
+func (p *Provider) applyProjectPatch(doc *mdfile.Doc, taskPath string, patch tasklifecycle.TaskPatch) (string, bool, func(), error) {
+	projectPatch := strings.TrimSpace(patch.Project)
+	if projectPatch == "" {
+		return taskPath, false, noUnlock, nil
+	}
+	if strings.Contains(projectPatch, "..") || strings.ContainsAny(projectPatch, `\:`) {
+		return "", false, noUnlock, fmt.Errorf("project id %q is invalid", projectPatch)
+	}
+	workProjectID := workProjectDirID(projectPatch)
+	if err := validateProjectForCreate(p.root, workProjectID); err != nil {
+		return "", false, noUnlock, err
+	}
+	doc.SetString("project", workProjectID)
+	repositories := []string{}
+	if repo := strings.TrimSpace(patch.Repository); repo != "" {
+		repositories = []string{repo}
+	}
+	doc.SetStrings("repositories", repositories)
+
+	if workProjectID == filepath.Base(filepath.Dir(filepath.Dir(taskPath))) {
+		return taskPath, false, noUnlock, nil
+	}
+	// A milestone belongs to one project's card, so it does not follow the task
+	// to another project.
+	doc.Remove("milestone")
+	destPath, err := uniqueTaskDestinationPath(p.root, workProjectID, filepath.Base(taskPath))
+	if err != nil {
+		return "", true, noUnlock, err
+	}
+	if filepath.Clean(destPath) == filepath.Clean(taskPath) {
+		return taskPath, true, noUnlock, nil
+	}
+	return destPath, true, lockTaskFile(destPath).Unlock, nil
+}
+
+// applyMilestonePatch sets or clears the milestone. Setting one holds the card
+// lock from validation through the task write (the returned unlock, which the
+// caller defers), so a milestone cannot be deleted between the two (see
+// Dashboard.DeleteMilestone).
+func applyMilestonePatch(doc *mdfile.Doc, taskPath string, value string) (func(), error) {
+	milestone := strings.TrimSpace(value)
+	if milestone == "" {
+		doc.Remove("milestone")
+		return noUnlock, nil
+	}
+	mdfile.EditMu.Lock()
+	if err := validateMilestone(taskPath, milestone); err != nil {
+		mdfile.EditMu.Unlock()
+		return noUnlock, err
+	}
+	doc.SetString("milestone", milestone)
+	return mdfile.EditMu.Unlock, nil
 }
 
 func uniqueTaskDestinationPath(root string, workProjectID string, fileName string) (string, error) {

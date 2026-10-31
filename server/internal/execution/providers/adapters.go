@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+const cursorAgentName = "cursor-agent"
+
+const overlayFile = "fleet.local.yaml"
+
+const pathHintSep = " PATH="
+
 type Claude struct{}
 
 func (Claude) Name() string {
@@ -19,14 +25,14 @@ func (agent Claude) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveClaudeBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
 			Prompt:          prompt,
 			VisibilityClass: "unknown",
 			LiveReady:       false,
-			LiveNotes:       "Claude CLI binary could not be resolved: " + err.Error() + " PATH=" + pathEnvHint(),
+			LiveNotes:       "Claude CLI binary could not be resolved: " + err.Error() + pathHintSep + pathEnvHint(),
 		}, nil
 	}
 
@@ -57,9 +63,9 @@ func resolveClaudeBinary() (string, error) {
 func resolveClaudeBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("claude"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Claude executable"); err != nil {
-			return "", "fleet.local.yaml", err
+			return "", overlayFile, err
 		}
-		return overlay, "fleet.local.yaml", nil
+		return overlay, overlayFile, nil
 	}
 	if path, err := exec.LookPath("claude"); err == nil {
 		return path, "path", nil
@@ -111,7 +117,7 @@ func (agent Codex) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveCodexBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
@@ -168,9 +174,9 @@ func resolveCodexBinaryWithSource() (string, string, error) {
 	}
 	if overlay := localExecutable("codex"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Codex executable"); err != nil {
-			return "", "fleet.local.yaml", err
+			return "", overlayFile, err
 		}
-		return overlay, "fleet.local.yaml", nil
+		return overlay, overlayFile, nil
 	}
 	if path, err := exec.LookPath("codex"); err == nil {
 		return path, "path", nil
@@ -199,14 +205,14 @@ func (agent Cursor) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveCursorAgentBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
 			Prompt:          prompt,
 			VisibilityClass: "unknown",
 			LiveReady:       false,
-			LiveNotes:       "Cursor Agent CLI binary could not be resolved: " + err.Error() + " PATH=" + pathEnvHint(),
+			LiveNotes:       "Cursor Agent CLI binary could not be resolved: " + err.Error() + pathHintSep + pathEnvHint(),
 		}, nil
 	}
 
@@ -234,11 +240,11 @@ func resolveCursorAgentBinary() (string, error) {
 func resolveCursorAgentBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("cursor"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Cursor executable"); err != nil {
-			return "", "fleet.local.yaml", err
+			return "", overlayFile, err
 		}
-		return overlay, "fleet.local.yaml", nil
+		return overlay, overlayFile, nil
 	}
-	if path, err := exec.LookPath("cursor-agent"); err == nil {
+	if path, err := exec.LookPath(cursorAgentName); err == nil {
 		return path, "path", nil
 	}
 	candidate, err := newestBundledCursor()
@@ -268,7 +274,7 @@ func bundledCursorPaths() []string {
 	if err != nil {
 		return nil
 	}
-	matches, err := filepath.Glob(filepath.Join(home, ".local", "share", "cursor-agent", "versions", "*", "cursor-agent"))
+	matches, err := filepath.Glob(filepath.Join(home, ".local", "share", cursorAgentName, "versions", "*", cursorAgentName))
 	if err != nil {
 		return nil
 	}
@@ -286,14 +292,14 @@ func (agent Gemini) Plan(task TaskContext) (Plan, error) {
 	prompt := BuildPrompt(task)
 	binary, err := resolveGeminiBinary()
 	if err != nil {
-		return Plan{
+		return Plan{ //nolint:nilerr // an unresolved binary becomes an unsupported plan, not an error
 			Agent:           agent.Name(),
 			Backend:         "unsupported",
 			WorkingDir:      task.WorkingDir,
 			Prompt:          prompt,
 			VisibilityClass: "unknown",
 			LiveReady:       false,
-			LiveNotes:       "Antigravity CLI (`agy`) binary could not be resolved: " + err.Error() + " PATH=" + pathEnvHint(),
+			LiveNotes:       "Antigravity CLI (`agy`) binary could not be resolved: " + err.Error() + pathHintSep + pathEnvHint(),
 		}, nil
 	}
 
@@ -320,9 +326,9 @@ func resolveGeminiBinary() (string, error) {
 func resolveGeminiBinaryWithSource() (string, string, error) {
 	if overlay := localExecutable("gemini"); overlay != "" {
 		if err := requireRunnable(overlay, "configured Gemini executable"); err != nil {
-			return "", "fleet.local.yaml", err
+			return "", overlayFile, err
 		}
-		return overlay, "fleet.local.yaml", nil
+		return overlay, overlayFile, nil
 	}
 	if path, err := exec.LookPath("agy"); err == nil {
 		return path, "path", nil

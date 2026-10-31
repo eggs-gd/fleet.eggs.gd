@@ -1,5 +1,7 @@
 /** Shared task tag tones. Every panel should use these helpers, not local color classes. */
 
+import { asText } from './text.ts';
+
 export const PILL_TONES = [
   'red',
   'blue',
@@ -32,12 +34,9 @@ export const TASK_TYPE_TONES: Record<string, string> = {
 };
 
 const toneHash = (value: unknown): number =>
-  [...String(value)].reduce((hash, ch) => (hash * 33 + ch.charCodeAt(0)) >>> 0, 0);
+  [...String(value)].reduce((hash, ch) => (hash * 33 + (ch.codePointAt(0) ?? 0)) >>> 0, 0);
 
-export const normalizeTaskType = (type: unknown): string =>
-  String(type || '')
-    .trim()
-    .toLowerCase();
+export const normalizeTaskType = (type: unknown): string => asText(type).trim().toLowerCase();
 
 export const typeTone = (type: unknown): string => {
   const key = normalizeTaskType(type);

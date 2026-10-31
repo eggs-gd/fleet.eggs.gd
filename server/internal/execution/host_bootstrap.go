@@ -172,62 +172,80 @@ func (s *Service) DetectStartupOrphans(tasks []Task) {
 	detectedAt := time.Now().Format(time.RFC3339)
 	count := 0
 	for _, task := range tasks {
-		if s.board.TaskByPath != nil {
-			if current, ok := s.board.TaskByPath(task.RelativePath); ok {
-				task = current
-			}
-		}
-		if task.Status != "doing" {
-			continue
-		}
-		if _, ok := s.activeSessionForTask(task); ok {
-			continue
-		}
-		if s.hasOrphanForTask(task) {
-			continue
-		}
-		if session, ok := previousSessionForTask(s.cfg.RuntimeRoot, task); ok && session.IsActive() {
-			decision := s.classifyPersistedSessionRecovery(session)
-			session = enrichRecoveredSession(session, task)
-			session.Capabilities = ProviderCapabilityFlags(firstNonEmpty(session.Agent, task.Assignee), session.Backend)
-			session.VisibilityMode = VisibilityModeForSession(session)
-			if decision.AttachAsSession {
-				session, question, waiting := applyAttachedRecovery(session, decision)
-				s.upsertSession(session)
-				if waiting {
-					s.notifyOperatorAttention(task, question)
-				}
-				continue
-			}
-			s.applyFailedSessionRecovery(task, session, decision)
+		if s.recoverStartupTask(task, detectedAt) {
 			count++
-			continue
 		}
-		session := RuntimeSession{
-			ClaimedAt: detectedAt,
-			Agent:     task.Assignee,
-			Backend:   "",
-		}
-		caps := ProviderCapabilityFlags(task.Assignee, "")
-		session.Capabilities = caps
-		state := "orphaned"
-		reason := "task is doing but runtime has no active session after startup"
-		if caps.CanDetectRunningSession.IsUnknown() && caps.CanResumeSession.IsUnknown() {
-			state = "unknown"
-			reason = "task is doing with no persisted session metadata and unknown provider recovery capabilities"
-		}
-		s.recordOrphan(task, session, state, reason)
-		s.emitTaskEvent("runtime_orphan_detected", task, reason, map[string]any{
-			"detected_at":    detectedAt,
-			"repository":     FirstRepository(task),
-			"recovery_state": state,
-			"provider":       firstNonEmpty(session.Agent, task.Assignee),
-		})
-		count++
 	}
 	if count > 0 && s.logger != nil {
 		s.logger.Warn("orphaned doing tasks detected", l.Int("tasks", count))
 	}
+}
+
+// recoverStartupTask looks at one task after startup and reports whether it
+// ended up orphaned or with a failed recovery (a session that was attached
+// again, or a task that is not doing, does not count).
+func (s *Service) recoverStartupTask(task Task, detectedAt string) bool {
+	if s.board.TaskByPath != nil {
+		if current, ok := s.board.TaskByPath(task.RelativePath); ok {
+			task = current
+		}
+	}
+	if task.Status != "doing" {
+		return false
+	}
+	if _, ok := s.activeSessionForTask(task); ok {
+		return false
+	}
+	if s.hasOrphanForTask(task) {
+		return false
+	}
+	if session, ok := previousSessionForTask(s.cfg.RuntimeRoot, task); ok && session.IsActive() {
+		return s.recoverPersistedSession(task, session)
+	}
+	s.recordOrphanWithoutSession(task, detectedAt)
+	return true
+}
+
+// recoverPersistedSession re-attaches a session that was active before the
+// restart, or fails it; true means it was failed.
+func (s *Service) recoverPersistedSession(task Task, session RuntimeSession) bool {
+	decision := s.classifyPersistedSessionRecovery(session)
+	session = enrichRecoveredSession(session, task)
+	session.Capabilities = ProviderCapabilityFlags(firstNonEmpty(session.Agent, task.Assignee), session.Backend)
+	session.VisibilityMode = VisibilityModeForSession(session)
+	if decision.AttachAsSession {
+		session, question, waiting := applyAttachedRecovery(session, decision)
+		s.upsertSession(session)
+		if waiting {
+			s.notifyOperatorAttention(task, question)
+		}
+		return false
+	}
+	s.applyFailedSessionRecovery(task, session, decision)
+	return true
+}
+
+func (s *Service) recordOrphanWithoutSession(task Task, detectedAt string) {
+	session := RuntimeSession{
+		ClaimedAt: detectedAt,
+		Agent:     task.Assignee,
+		Backend:   "",
+	}
+	caps := ProviderCapabilityFlags(task.Assignee, "")
+	session.Capabilities = caps
+	state := "orphaned"
+	reason := "task is doing but runtime has no active session after startup"
+	if caps.CanDetectRunningSession.IsUnknown() && caps.CanResumeSession.IsUnknown() {
+		state = "unknown"
+		reason = "task is doing with no persisted session metadata and unknown provider recovery capabilities"
+	}
+	s.recordOrphan(task, session, state, reason)
+	s.emitTaskEvent("runtime_orphan_detected", task, reason, map[string]any{
+		"detected_at":    detectedAt,
+		"repository":     FirstRepository(task),
+		"recovery_state": state,
+		"provider":       firstNonEmpty(session.Agent, task.Assignee),
+	})
 }
 
 // AnnounceOpenPauses delivers a still-unanswered worker question that survived

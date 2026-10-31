@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const skillFile = "SKILL.md"
+
 //go:embed all:skills
 var skillFS embed.FS
 
@@ -40,10 +42,10 @@ func Install(root string) error {
 		}
 		desc := descriptionOf(body)
 		targets := map[string][]byte{
-			filepath.Join(root, ".agents", "skills", name, "SKILL.md"):      body,
-			filepath.Join(root, ".claude", "skills", name, "SKILL.md"):      []byte(stub(name, desc)),
-			filepath.Join(root, ".codex", "skills", name, "SKILL.md"):       []byte(stub(name, desc)),
-			filepath.Join(root, ".gemini", "skills", name, "SKILL.md"):      []byte(stub(name, desc)),
+			filepath.Join(root, ".agents", "skills", name, skillFile):       body,
+			filepath.Join(root, ".claude", "skills", name, skillFile):       []byte(stub(name, desc)),
+			filepath.Join(root, ".codex", "skills", name, skillFile):        []byte(stub(name, desc)),
+			filepath.Join(root, ".gemini", "skills", name, skillFile):       []byte(stub(name, desc)),
 			filepath.Join(root, ".cursor", "rules", "manager-"+name+".mdc"): []byte(cursorRule(name, desc)),
 		}
 		for path, data := range targets {

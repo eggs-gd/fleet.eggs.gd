@@ -17,79 +17,21 @@ const managerSessionPrompt = "You are the Fleet manager for this workspace. The 
 // and then exits app-server, so Codex Desktop can open that thread. It does
 // not send a turn.
 func StartCodexManagerThread(ctx context.Context, workingDir string, logFile io.Writer) (string, error) {
-	if logFile == nil {
-		logFile = io.Discard
-	}
-	codexBinary, err := resolveCodexBinary()
-	if err != nil {
-		return "", fmt.Errorf("resolve codex binary: %w", err)
-	}
-	cmd := exec.CommandContext(ctx, codexBinary, "app-server", "--stdio")
-	cmd.Dir = workingDir
-	stdin, err := cmd.StdinPipe()
+	server, err := startCodexAppServer(ctx, workingDir, 0, logFile, "Fleet manager setup does not service server-initiated requests")
 	if err != nil {
 		return "", err
 	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return "", err
-	}
-	if err := cmd.Start(); err != nil {
-		return "", fmt.Errorf("start codex app-server: %w", err)
-	}
-	defer func() {
-		_ = stdin.Close()
-		_ = cmd.Wait()
-	}()
+	defer server.close()
+	server.timedOut = "codex manager setup stopped"
 
-	messages := make(chan CodexRPCMessage, 64)
-	go readCodexStdout(stdout, logFile, messages, make(chan error, 1))
-	go copyCodexStderr(stderr, logFile)
-	client := NewCodexClient(stdin, logFile)
-
-	waitForID := func(id int) (CodexRPCMessage, error) {
-		for {
-			select {
-			case <-ctx.Done():
-				return CodexRPCMessage{}, ctx.Err()
-			case msg, ok := <-messages:
-				if !ok {
-					return CodexRPCMessage{}, errors.New("codex app-server stdout closed before response")
-				}
-				if msg.Method != "" && len(msg.ID) > 0 {
-					_ = client.respondError(msg.ID, -32601, "Fleet manager setup does not service server-initiated requests")
-					continue
-				}
-				if codexMessageID(msg) == id {
-					if msg.Error != nil {
-						return CodexRPCMessage{}, errors.New(msg.Error.Message)
-					}
-					return msg, nil
-				}
-			}
-		}
+	if err := server.handshake(); err != nil {
+		return "", err
 	}
-
-	id, err := client.request("initialize", codexInitializeParams())
+	id, err := server.client.request("thread/start", codexThreadStartParams(RuntimeSession{WorkingDir: workingDir}))
 	if err != nil {
 		return "", err
 	}
-	if _, err := waitForID(id); err != nil {
-		return "", err
-	}
-	if err := client.notify("initialized", nil); err != nil {
-		return "", err
-	}
-	session := RuntimeSession{WorkingDir: workingDir}
-	id, err = client.request("thread/start", codexThreadStartParams(session))
-	if err != nil {
-		return "", err
-	}
-	response, err := waitForID(id)
+	response, err := server.waitForID(id)
 	if err != nil {
 		return "", err
 	}
@@ -97,8 +39,8 @@ func StartCodexManagerThread(ctx context.Context, workingDir string, logFile io.
 	if threadID == "" {
 		return "", errors.New("codex thread/start did not include thread.id")
 	}
-	if nameID, nameErr := client.request("thread/name/set", codexThreadSetNameParams(threadID, "Fleet Manager")); nameErr == nil {
-		_, _ = waitForID(nameID)
+	if nameID, nameErr := server.client.request("thread/name/set", codexThreadSetNameParams(threadID, "Fleet Manager")); nameErr == nil {
+		_, _ = server.waitForID(nameID)
 	}
 	return threadID, nil
 }

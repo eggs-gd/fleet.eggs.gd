@@ -1,5 +1,6 @@
 /** Pure display helpers shared by backoffice dashboard components. */
 
+import { asText } from './text.ts';
 import type { AnyRecord, Milestone, Project, Session, Task, ToolCall, Workspace } from './types.ts';
 
 export const assigneeLabel = (value: unknown): string => (value as string) || 'unassigned';
@@ -101,7 +102,7 @@ export const showExecutionSignal = (task: Task): boolean =>
 export const executionReason = (task: Task): string =>
   execution(task).blocking_reason || execution(task).terminal_reason || '';
 
-const pauseStates = ['waiting_input', 'operator_attention', 'stalled'];
+const pauseStates = new Set(['waiting_input', 'operator_attention', 'stalled']);
 
 export const latestCommentText = (task?: Task | null): string => {
   const comments = task?.comments || [];
@@ -119,16 +120,22 @@ export interface OperatorPause {
 
 export const operatorPause = (task: Task): OperatorPause => {
   const state = executionState(task);
-  if (pauseStates.includes(state)) {
+  if (pauseStates.has(state)) {
     return { waiting: true, question: executionReason(task) };
   }
   if (task?.status !== 'doing') return { waiting: false, question: '' };
   const text = latestCommentText(task);
   if (!/waiting on operator input/i.test(text)) return { waiting: false, question: '' };
-  const match = text.match(
-    /Question:\s*([\s\S]*?)(?=\s+Artifacts:|\s+Session log:|\s+Tests\/checks:|$)/
-  );
-  return { waiting: true, question: (match?.[1] || text).trim() };
+  return { waiting: true, question: (questionIn(text) || text).trim() };
+};
+
+/** The question the worker left, up to the section that follows it; empty when there is none. */
+const questionIn = (text: string): string => {
+  const start = text.indexOf('Question:');
+  if (start < 0) return '';
+  const rest = text.slice(start + 'Question:'.length);
+  const end = /\s(?:Artifacts:|Session log:|Tests\/checks:)/.exec(rest);
+  return (end ? rest.slice(0, end.index) : rest).trim();
 };
 
 export const cardStatusLabel = (task: Task): string => {
@@ -321,7 +328,7 @@ export const dependsOnDraft = (task?: Task | null): string => dependsOnList(task
 export const parseDependsOnDraft = (text: unknown): string[] => {
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const part of String(text || '').split(/[\n,]+/)) {
+  for (const part of asText(text).split(/[\n,]+/)) {
     const ref = part.trim();
     if (!ref) continue;
     const key = ref.toUpperCase();
@@ -340,7 +347,7 @@ export const showLaunchSignal = (task: Task): boolean => {
 const KNOWN_AGENT_COLORS = new Set(['claude', 'codex', 'cursor', 'gemini']);
 
 export const agentColorClass = (agent: unknown): string => {
-  const name = String(agent || '').toLowerCase();
+  const name = asText(agent).toLowerCase();
   return KNOWN_AGENT_COLORS.has(name) ? `agent-${name}` : 'agent-other';
 };
 

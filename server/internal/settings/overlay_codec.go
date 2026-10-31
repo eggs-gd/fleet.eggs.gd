@@ -9,21 +9,37 @@ import (
 func EncodeOverlay(overlay Overlay) []byte {
 	var b strings.Builder
 	b.WriteString("# Machine-local Fleet overlay. Do not commit.\n")
-	if timeout := strings.TrimSpace(overlay.SessionTimeout); timeout != "" {
-		fmt.Fprintf(&b, "sessionTimeout: %s\n", yamlQuote(timeout))
-	}
-	if launch := strings.TrimSpace(overlay.Launch); launch != "" {
-		fmt.Fprintf(&b, "launch: %s\n", yamlQuote(launch))
-	}
+	writeQuoted(&b, "", "sessionTimeout", strings.TrimSpace(overlay.SessionTimeout))
+	writeQuoted(&b, "", "launch", strings.TrimSpace(overlay.Launch))
 	if roots := normalizeScanRoots(overlay.ScanRoots); len(roots) > 0 {
 		b.WriteString("scanRoots:\n")
 		for _, root := range roots {
 			fmt.Fprintf(&b, "  - %s\n", yamlQuote(root))
 		}
 	}
+	encodeAgents(&b, overlay.Agents)
+	if !managerEmpty(overlay.Manager) {
+		b.WriteString("manager:\n")
+		writeQuoted(&b, "  ", "agent", overlay.Manager.Agent)
+		writeQuoted(&b, "  ", "threadId", overlay.Manager.ThreadID)
+		writeQuoted(&b, "  ", "workspace", overlay.Manager.Workspace)
+		writeQuoted(&b, "  ", "boundAt", overlay.Manager.BoundAt)
+	}
+	return []byte(b.String())
+}
+
+// writeQuoted writes `key: value`, or nothing when the value is blank.
+func writeQuoted(b *strings.Builder, indent string, key string, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	fmt.Fprintf(b, "%s%s: %s\n", indent, key, yamlQuote(value))
+}
+
+func encodeAgents(b *strings.Builder, agents map[string]AgentOverlay) {
 	wroteAgents := false
 	for _, id := range knownAgentIDs {
-		agent, ok := overlay.Agents[id]
+		agent, ok := agents[id]
 		if !ok || agentEmpty(agent) {
 			continue
 		}
@@ -31,178 +47,188 @@ func EncodeOverlay(overlay Overlay) []byte {
 			b.WriteString("agents:\n")
 			wroteAgents = true
 		}
-		fmt.Fprintf(&b, "  %s:\n", id)
+		fmt.Fprintf(b, "  %s:\n", id)
 		if agent.Enabled != nil {
-			fmt.Fprintf(&b, "    enabled: %v\n", *agent.Enabled)
+			fmt.Fprintf(b, "    enabled: %v\n", *agent.Enabled)
 		}
-		if strings.TrimSpace(agent.Executable) != "" {
-			fmt.Fprintf(&b, "    executable: %s\n", yamlQuote(agent.Executable))
-		}
+		writeQuoted(b, "    ", "executable", agent.Executable)
 		if strings.TrimSpace(agent.RoutingInstructions) != "" {
 			b.WriteString("    routingInstructions: |\n")
 			for _, line := range strings.Split(agent.RoutingInstructions, "\n") {
-				fmt.Fprintf(&b, "      %s\n", line)
+				fmt.Fprintf(b, "      %s\n", line)
 			}
 		}
 	}
-	if !managerEmpty(overlay.Manager) {
-		b.WriteString("manager:\n")
-		if strings.TrimSpace(overlay.Manager.Agent) != "" {
-			fmt.Fprintf(&b, "  agent: %s\n", yamlQuote(overlay.Manager.Agent))
-		}
-		if strings.TrimSpace(overlay.Manager.ThreadID) != "" {
-			fmt.Fprintf(&b, "  threadId: %s\n", yamlQuote(overlay.Manager.ThreadID))
-		}
-		if strings.TrimSpace(overlay.Manager.Workspace) != "" {
-			fmt.Fprintf(&b, "  workspace: %s\n", yamlQuote(overlay.Manager.Workspace))
-		}
-		if strings.TrimSpace(overlay.Manager.BoundAt) != "" {
-			fmt.Fprintf(&b, "  boundAt: %s\n", yamlQuote(overlay.Manager.BoundAt))
-		}
-	}
-	return []byte(b.String())
 }
 
 func ParseOverlay(data []byte) (Overlay, error) {
-	out := Overlay{Agents: map[string]AgentOverlay{}}
-	lines := strings.Split(string(data), "\n")
-	section := ""
-	agentID := ""
-	blockKey := ""
-	blockIndent := 0
-	var block []string
-
-	flushBlock := func() {
-		if blockKey == "" || agentID == "" {
-			blockKey = ""
-			block = nil
-			return
+	p := &overlayParser{out: Overlay{Agents: map[string]AgentOverlay{}}}
+	for i, line := range strings.Split(string(data), "\n") {
+		p.lineNo = i + 1
+		if err := p.parseLine(strings.TrimRight(line, "\r")); err != nil {
+			return Overlay{}, err
 		}
-		cur := out.Agents[agentID]
-		cur.RoutingInstructions = trimRouting(strings.Join(block, "\n"))
-		out.Agents[agentID] = cur
-		blockKey = ""
-		block = nil
 	}
+	p.flushBlock()
+	return p.out, nil
+}
 
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimRight(lines[i], "\r")
-		if blockKey != "" {
-			indent := leadingSpaces(line)
-			if strings.TrimSpace(line) == "" {
-				block = append(block, "")
-				continue
-			}
-			if indent > blockIndent {
-				prefix := blockIndent + 2
-				if len(line) >= prefix {
-					block = append(block, line[prefix:])
-				} else {
-					block = append(block, strings.TrimLeft(line, " "))
-				}
-				continue
-			}
-			flushBlock()
-		}
+// overlayParser reads the small YAML subset EncodeOverlay writes, line by line.
+type overlayParser struct {
+	out     Overlay
+	lineNo  int
+	section string
+	agentID string
 
-		trim := strings.TrimSpace(line)
-		if trim == "" || strings.HasPrefix(trim, "#") {
-			continue
-		}
-		indent := leadingSpaces(line)
-		if indent == 2 && section == "scanRoots" && strings.HasPrefix(trim, "-") {
-			item := strings.TrimSpace(strings.TrimPrefix(trim, "-"))
-			if item == "" {
-				return Overlay{}, fmt.Errorf("line %d: empty scan root", i+1)
-			}
-			out.ScanRoots = append(out.ScanRoots, unquoteYAML(item))
-			continue
-		}
-		key, raw, ok := strings.Cut(strings.TrimSpace(line), ":")
-		if !ok {
-			return Overlay{}, fmt.Errorf("line %d: expected key: value", i+1)
-		}
-		key = strings.TrimSpace(key)
-		raw = strings.TrimSpace(raw)
+	// A routingInstructions block scalar being collected.
+	blockKey    string
+	blockIndent int
+	block       []string
+}
 
-		if indent == 0 {
-			agentID = ""
-			switch key {
-			case "sessionTimeout":
-				section = ""
-				out.SessionTimeout = unquoteYAML(raw)
-			case "launch":
-				section = ""
-				out.Launch = unquoteYAML(raw)
-			case "scanRoots":
-				section = "scanRoots"
-				if raw != "" {
-					out.ScanRoots = append(out.ScanRoots, unquoteYAML(raw))
-				}
-			case "agents":
-				section = "agents"
-			case "manager":
-				section = "manager"
-			default:
-				return Overlay{}, fmt.Errorf("unknown overlay key %q", key)
-			}
-			continue
-		}
-		if indent == 2 && section == "manager" {
-			switch key {
-			case "agent":
-				out.Manager.Agent = unquoteYAML(raw)
-			case "threadId":
-				out.Manager.ThreadID = unquoteYAML(raw)
-			case "workspace":
-				out.Manager.Workspace = unquoteYAML(raw)
-			case "boundAt":
-				out.Manager.BoundAt = unquoteYAML(raw)
-			default:
-				return Overlay{}, fmt.Errorf("unknown overlay key manager.%s", key)
-			}
-			continue
-		}
-		if indent == 2 && section == "agents" {
-			if !isKnownAgent(key) {
-				return Overlay{}, fmt.Errorf("unknown agent %q", key)
-			}
-			agentID = key
-			if _, ok := out.Agents[agentID]; !ok {
-				out.Agents[agentID] = AgentOverlay{}
-			}
-			continue
-		}
-		if indent == 4 && agentID != "" {
-			cur := out.Agents[agentID]
-			switch key {
-			case "enabled":
-				value, err := parseBool(raw)
-				if err != nil {
-					return Overlay{}, fmt.Errorf("agents.%s.enabled: %w", agentID, err)
-				}
-				cur.Enabled = &value
-			case "executable":
-				cur.Executable = unquoteYAML(raw)
-			case "routingInstructions":
-				if raw == "|" || raw == ">" {
-					blockKey = key
-					blockIndent = indent
-					block = nil
-					out.Agents[agentID] = cur
-					continue
-				}
-				cur.RoutingInstructions = unquoteYAML(raw)
-			default:
-				return Overlay{}, fmt.Errorf("unknown overlay key agents.%s.%s", agentID, key)
-			}
-			out.Agents[agentID] = cur
-			continue
-		}
-		return Overlay{}, fmt.Errorf("line %d: unexpected indent", i+1)
+func (p *overlayParser) flushBlock() {
+	if p.blockKey != "" && p.agentID != "" {
+		cur := p.out.Agents[p.agentID]
+		cur.RoutingInstructions = trimRouting(strings.Join(p.block, "\n"))
+		p.out.Agents[p.agentID] = cur
 	}
-	flushBlock()
-	return out, nil
+	p.blockKey = ""
+	p.block = nil
+}
+
+// continueBlock takes line into the open block scalar; false means the block
+// ended and the line is an ordinary one.
+func (p *overlayParser) continueBlock(line string) bool {
+	if strings.TrimSpace(line) == "" {
+		p.block = append(p.block, "")
+		return true
+	}
+	if leadingSpaces(line) <= p.blockIndent {
+		p.flushBlock()
+		return false
+	}
+	prefix := p.blockIndent + 2
+	if len(line) >= prefix {
+		p.block = append(p.block, line[prefix:])
+	} else {
+		p.block = append(p.block, strings.TrimLeft(line, " "))
+	}
+	return true
+}
+
+func (p *overlayParser) parseLine(line string) error {
+	if p.blockKey != "" && p.continueBlock(line) {
+		return nil
+	}
+	trim := strings.TrimSpace(line)
+	if trim == "" || strings.HasPrefix(trim, "#") {
+		return nil
+	}
+	indent := leadingSpaces(line)
+	if indent == 2 && p.section == "scanRoots" && strings.HasPrefix(trim, "-") {
+		item := strings.TrimSpace(strings.TrimPrefix(trim, "-"))
+		if item == "" {
+			return fmt.Errorf("line %d: empty scan root", p.lineNo)
+		}
+		p.out.ScanRoots = append(p.out.ScanRoots, unquoteYAML(item))
+		return nil
+	}
+	key, raw, ok := strings.Cut(trim, ":")
+	if !ok {
+		return fmt.Errorf("line %d: expected key: value", p.lineNo)
+	}
+	key = strings.TrimSpace(key)
+	raw = strings.TrimSpace(raw)
+
+	switch {
+	case indent == 0:
+		return p.topLevel(key, raw)
+	case indent == 2 && p.section == "manager":
+		return p.managerField(key, raw)
+	case indent == 2 && p.section == "agents":
+		return p.agentHeader(key)
+	case indent == 4 && p.agentID != "":
+		return p.agentField(key, raw, indent)
+	}
+	return fmt.Errorf("line %d: unexpected indent", p.lineNo)
+}
+
+func (p *overlayParser) topLevel(key string, raw string) error {
+	p.agentID = ""
+	switch key {
+	case "sessionTimeout":
+		p.section = ""
+		p.out.SessionTimeout = unquoteYAML(raw)
+	case "launch":
+		p.section = ""
+		p.out.Launch = unquoteYAML(raw)
+	case "scanRoots":
+		p.section = "scanRoots"
+		if raw != "" {
+			p.out.ScanRoots = append(p.out.ScanRoots, unquoteYAML(raw))
+		}
+	case "agents":
+		p.section = "agents"
+	case "manager":
+		p.section = "manager"
+	default:
+		return fmt.Errorf("unknown overlay key %q", key)
+	}
+	return nil
+}
+
+func (p *overlayParser) managerField(key string, raw string) error {
+	switch key {
+	case "agent":
+		p.out.Manager.Agent = unquoteYAML(raw)
+	case "threadId":
+		p.out.Manager.ThreadID = unquoteYAML(raw)
+	case "workspace":
+		p.out.Manager.Workspace = unquoteYAML(raw)
+	case "boundAt":
+		p.out.Manager.BoundAt = unquoteYAML(raw)
+	default:
+		return fmt.Errorf("unknown overlay key manager.%s", key)
+	}
+	return nil
+}
+
+func (p *overlayParser) agentHeader(key string) error {
+	if !isKnownAgent(key) {
+		return fmt.Errorf("unknown agent %q", key)
+	}
+	p.agentID = key
+	if _, ok := p.out.Agents[key]; !ok {
+		p.out.Agents[key] = AgentOverlay{}
+	}
+	return nil
+}
+
+func (p *overlayParser) agentField(key string, raw string, indent int) error {
+	cur := p.out.Agents[p.agentID]
+	switch key {
+	case "enabled":
+		value, err := parseBool(raw)
+		if err != nil {
+			return fmt.Errorf("agents.%s.enabled: %w", p.agentID, err)
+		}
+		cur.Enabled = &value
+	case "executable":
+		cur.Executable = unquoteYAML(raw)
+	case "routingInstructions":
+		if raw == "|" || raw == ">" {
+			p.blockKey = key
+			p.blockIndent = indent
+			p.block = nil
+			p.out.Agents[p.agentID] = cur
+			return nil
+		}
+		cur.RoutingInstructions = unquoteYAML(raw)
+	default:
+		return fmt.Errorf("unknown overlay key agents.%s.%s", p.agentID, key)
+	}
+	p.out.Agents[p.agentID] = cur
+	return nil
 }
 
 func agentEmpty(agent AgentOverlay) bool {

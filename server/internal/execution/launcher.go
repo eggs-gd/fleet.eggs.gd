@@ -43,7 +43,7 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 	if err != nil {
 		task.FailLaunchGate("command", fmt.Sprintf("launch command is not configured for agent %q", agent))
 		task.ResolveLaunchEvaluation()
-		return task, nil
+		return task, nil //nolint:nilerr // a missing launch command is recorded on the task as a failed gate
 	}
 
 	visibility := executionapi.VisibilityClass(firstNonEmpty(plan.VisibilityClass, string(VisibilityUnknown)))
@@ -84,7 +84,9 @@ func (launcher *AgentLauncher) Decorate(task *Task) (*Task, error) {
 	return task, nil
 }
 
-func (launcher *AgentLauncher) Stop() {}
+func (launcher *AgentLauncher) Stop() {
+	// Nothing to release.
+}
 
 func agentTaskContext(task Task) TaskContext {
 	return TaskContext{

@@ -22,7 +22,7 @@ import (
 func registerDashboardRoutes(mux *http.ServeMux, dashboard DashboardSurface) {
 	mux.HandleFunc("/api/state", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		writeJSON(w, dashboard.State())
@@ -54,12 +54,12 @@ func registerDashboardRoutes(mux *http.ServeMux, dashboard DashboardSurface) {
 			}
 			writeJSON(w, task)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 		}
 	})
 	mux.HandleFunc("/api/sessions/control", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, msgMethodNotAllowed, http.StatusMethodNotAllowed)
 			return
 		}
 		var patch execution.SessionControlPatch

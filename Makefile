@@ -19,7 +19,7 @@ LIVE ?=
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/^v//')
 LDFLAGS := $(if $(VERSION),-X main.version=$(VERSION),)
 
-.PHONY: help setup ui build test vet check serve scan rebuild-index version fmt site clean
+.PHONY: help setup ui build test vet check sonar serve scan rebuild-index version fmt site clean
 
 help:
 	@printf '%s\n' 'Fleet entry points:'
@@ -30,6 +30,7 @@ help:
 	@printf '%s\n' '  make test          Run the Go tests'
 	@printf '%s\n' '  make vet           Run go vet'
 	@printf '%s\n' '  make check         Run vet, the Go tests, and the dashboard tests'
+	@printf '%s\n' '  make sonar         Run the tests with coverage, then the SonarQube analysis and its quality gate (SONAR_GATE=false: send the report only)'
 	@printf '%s\n' '  make scan          Scan PROJECTS_ROOTS and refresh the registry'
 	@printf '%s\n' '  make rebuild-index Rebuild Work/INDEX.md from the task files'
 	@printf '%s\n' '  make site          Typecheck and build the static landing'
@@ -66,6 +67,26 @@ vet:
 
 check: vet test
 	cd "$(VIEW_DIR)" && npm run check && npm run test:ui-state && npm run test:technology-display && npm run format:check
+
+# The scan of this checkout and the quality gate (red: a non-zero exit). Needs sonar-scanner
+# on PATH, and SONAR_HOST_URL and SONAR_TOKEN in the environment or in a git-ignored .env
+# (a worktree uses the main checkout's). scripts/sonar-scope says what this checkout is: the
+# main branch, a branch or a pull request, so a scan from a feature branch never overwrites
+# the main one. SONAR_GATE=false sends the report without waiting for the gate.
+SONAR_GATE ?= true
+
+sonar:
+	@env=./.env; [ -f $$env ] || env="$$(git rev-parse --path-format=absolute --git-common-dir)/../.env"; \
+	set -a; [ ! -f "$$env" ] || . "$$env"; set +a; \
+	test -n "$$SONAR_HOST_URL" && test -n "$$SONAR_TOKEN" || { \
+		printf '%s\n' 'sonar: set SONAR_HOST_URL and SONAR_TOKEN (a SonarQube user token) in the environment or in .env.' >&2; exit 1; }; \
+	scope=$$(scripts/sonar-scope) || exit 1; \
+	echo "sonar: $${scope:-main branch}"; \
+	(cd "$(SERVER_DIR)" && go test -coverpkg=./... -coverprofile=coverage.out ./...) && \
+	(cd "$(SERVER_DIR)" && golangci-lint run --issues-exit-code=0 --output.text.path=stderr \
+		--output.checkstyle.path=$(CURDIR)/$(SERVER_DIR)/golangci-lint.xml ./... 2> /dev/null) && \
+	(cd view && npm run --silent test:coverage >/dev/null && sed 's|^SF:|SF:view/|' coverage/lcov.info > coverage/lcov.sonar.info) && \
+	sonar-scanner -Dsonar.qualitygate.wait=$(SONAR_GATE) $$scope
 
 serve: build
 	$(if $(DATA_ROOT),if [ -f "$(DATA_ROOT)/.env" ]; then set -a; . "$(DATA_ROOT)/.env"; set +a; fi;) \

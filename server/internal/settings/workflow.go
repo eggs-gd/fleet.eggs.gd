@@ -5,13 +5,17 @@ import (
 	"github.com/eggs-gd/fleet.eggs.gd/internal/tasklifecycle"
 )
 
+const finalizeMapping = "host_finalize publish → taskflow.MapExecutionOutcomeToStatus"
+
+const launchPolicySource = "Fleet/LAUNCH_POLICY.md + execution slot hub"
+
 func workflowSnapshot() Workflow {
 	return Workflow{
 		Concurrency: []ConcurrencyScope{
-			{Scope: "repository", Limit: 1, Source: "Fleet/LAUNCH_POLICY.md + execution slot hub"},
-			{Scope: "project", Limit: 1, Source: "Fleet/LAUNCH_POLICY.md + execution slot hub"},
-			{Scope: "assignee", Limit: 1, Source: "Fleet/LAUNCH_POLICY.md + execution slot hub"},
-			{Scope: "assignee_orphan", Limit: 1, Source: "Fleet/LAUNCH_POLICY.md + execution slot hub"},
+			{Scope: "repository", Limit: 1, Source: launchPolicySource},
+			{Scope: "project", Limit: 1, Source: launchPolicySource},
+			{Scope: "assignee", Limit: 1, Source: launchPolicySource},
+			{Scope: "assignee_orphan", Limit: 1, Source: launchPolicySource},
 			{Scope: "task", Limit: 1, Source: "Fleet/LAUNCH_POLICY.md"},
 		},
 		Statuses:            tasklifecycle.TaskStatuses(),
@@ -36,7 +40,7 @@ func workflowSnapshot() Workflow {
 
 func runtimeOutcomeRows() []OutcomeRow {
 	return []OutcomeRow{
-		row("completed", taskflow.ExecutionCompleted, "closed", true, "host_finalize publish → taskflow.MapExecutionOutcomeToStatus"),
+		row("completed", taskflow.ExecutionCompleted, "closed", true, finalizeMapping),
 		{
 			Outcome:      "needs_input / waiting_input",
 			Task:         "doing",
@@ -44,9 +48,9 @@ func runtimeOutcomeRows() []OutcomeRow {
 			ReleasesSlot: false,
 			Source:       "execution/host_pause.go (does not publish ExecutionResult)",
 		},
-		row("needs_rework", taskflow.ExecutionNeedsRework, "closed", true, "host_finalize publish → taskflow.MapExecutionOutcomeToStatus"),
-		row("blocked", taskflow.ExecutionBlocked, "closed", true, "host_finalize publish → taskflow.MapExecutionOutcomeToStatus"),
-		row("failed", taskflow.ExecutionFailed, "failed", true, "host_finalize publish → taskflow.MapExecutionOutcomeToStatus"),
+		row("needs_rework", taskflow.ExecutionNeedsRework, "closed", true, finalizeMapping),
+		row("blocked", taskflow.ExecutionBlocked, "closed", true, finalizeMapping),
+		row("failed", taskflow.ExecutionFailed, "failed", true, finalizeMapping),
 		row("timed_out", taskflow.ExecutionTimedOut, "closed", true, "host_finalize PublishExecutionOutcome"),
 		row("cancelled", taskflow.ExecutionCancelled, "closed", true, "host_finalize PublishExecutionOutcome"),
 		{

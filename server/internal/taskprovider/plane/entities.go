@@ -7,6 +7,8 @@ import (
 	"net/url"
 )
 
+const workItemsPath = "work-items/"
+
 // stateRef is a work item's workflow state. Plane's documented list-issues
 // response nests a full object ({id, name, group}); the create/update
 // response examples show only a bare state UUID. Both are handled so the
@@ -136,7 +138,7 @@ func (c *Client) ListWorkItems(ctx context.Context) ([]workItem, error) {
 			query.Set("cursor", cursor)
 		}
 		var page workItemListResponse
-		if err := c.do(ctx, http.MethodGet, c.projectPath("work-items/"), query, nil, &page, "list_work_items"); err != nil {
+		if err := c.do(ctx, http.MethodGet, c.projectPath(workItemsPath), query, nil, &page, "list_work_items"); err != nil {
 			return nil, err
 		}
 		all = append(all, page.Results...)
@@ -153,7 +155,7 @@ func (c *Client) ListWorkItems(ctx context.Context) ([]workItem, error) {
 func (c *Client) FindWorkItemByExternalID(ctx context.Context, coreRef string) (*workItem, error) {
 	query := url.Values{"external_id": {coreRef}, "external_source": {externalSource}, "per_page": {"1"}}
 	var page workItemListResponse
-	if err := c.do(ctx, http.MethodGet, c.projectPath("work-items/"), query, nil, &page, "find_work_item"); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.projectPath(workItemsPath), query, nil, &page, "find_work_item"); err != nil {
 		return nil, err
 	}
 	if len(page.Results) == 0 {
@@ -164,7 +166,7 @@ func (c *Client) FindWorkItemByExternalID(ctx context.Context, coreRef string) (
 
 func (c *Client) GetWorkItem(ctx context.Context, id string) (*workItem, error) {
 	var item workItem
-	if err := c.do(ctx, http.MethodGet, c.projectPath("work-items/"+url.PathEscape(id)+"/"), nil, nil, &item, "get_work_item"); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.projectPath(workItemsPath+url.PathEscape(id)+"/"), nil, nil, &item, "get_work_item"); err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -172,7 +174,7 @@ func (c *Client) GetWorkItem(ctx context.Context, id string) (*workItem, error) 
 
 func (c *Client) CreateWorkItem(ctx context.Context, payload map[string]any) (*workItem, error) {
 	var item workItem
-	if err := c.do(ctx, http.MethodPost, c.projectPath("work-items/"), nil, payload, &item, "create_work_item"); err != nil {
+	if err := c.do(ctx, http.MethodPost, c.projectPath(workItemsPath), nil, payload, &item, "create_work_item"); err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -180,7 +182,7 @@ func (c *Client) CreateWorkItem(ctx context.Context, payload map[string]any) (*w
 
 func (c *Client) UpdateWorkItem(ctx context.Context, id string, payload map[string]any) (*workItem, error) {
 	var item workItem
-	if err := c.do(ctx, http.MethodPatch, c.projectPath("work-items/"+url.PathEscape(id)+"/"), nil, payload, &item, "update_work_item"); err != nil {
+	if err := c.do(ctx, http.MethodPatch, c.projectPath(workItemsPath+url.PathEscape(id)+"/"), nil, payload, &item, "update_work_item"); err != nil {
 		return nil, err
 	}
 	return &item, nil
@@ -188,12 +190,12 @@ func (c *Client) UpdateWorkItem(ctx context.Context, id string, payload map[stri
 
 func (c *Client) AddComment(ctx context.Context, workItemID string, commentHTML string) error {
 	payload := map[string]any{"comment_html": commentHTML, "external_source": externalSource}
-	return c.do(ctx, http.MethodPost, c.projectPath("work-items/"+url.PathEscape(workItemID)+"/comments/"), nil, payload, nil, "add_comment")
+	return c.do(ctx, http.MethodPost, c.projectPath(workItemsPath+url.PathEscape(workItemID)+"/comments/"), nil, payload, nil, "add_comment")
 }
 
 func (c *Client) ListComments(ctx context.Context, workItemID string) ([]workComment, error) {
 	var page commentListResponse
-	if err := c.do(ctx, http.MethodGet, c.projectPath("work-items/"+url.PathEscape(workItemID)+"/comments/"), url.Values{"per_page": {"100"}}, nil, &page, "list_comments"); err != nil {
+	if err := c.do(ctx, http.MethodGet, c.projectPath(workItemsPath+url.PathEscape(workItemID)+"/comments/"), url.Values{"per_page": {"100"}}, nil, &page, "list_comments"); err != nil {
 		return nil, err
 	}
 	return page.Results, nil

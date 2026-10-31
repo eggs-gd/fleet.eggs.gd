@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -389,37 +390,7 @@ func (s *Service) resolveRepository(repo, project string) (string, *Failure) {
 	if s.Board != nil {
 		view = s.Board.Board()
 	}
-	var matches []string
-	consider := func(candidate string) {
-		candidate = strings.TrimSpace(candidate)
-		if candidate == "" {
-			return
-		}
-		if strings.EqualFold(candidate, repo) || strings.EqualFold(repoBaseName(candidate), repo) || strings.Contains(strings.ToLower(candidate), strings.ToLower(repo)) {
-			matches = append(matches, candidate)
-		}
-	}
-	for _, ws := range view.Workspaces {
-		if project != "" && !strings.EqualFold(ws.ID, project) {
-			continue
-		}
-		for _, path := range ws.Repositories {
-			consider(path)
-		}
-	}
-	for _, p := range view.Projects {
-		if project != "" && !strings.EqualFold(p.WorkspaceID, project) && !strings.EqualFold(p.ID, project) {
-			continue
-		}
-		for _, path := range p.Repositories {
-			consider(path)
-		}
-	}
-	for _, r := range view.Registry.Repositories {
-		consider(r.RelativePath)
-		consider(r.Name)
-	}
-	matches = uniqueFold(matches)
+	matches := uniqueFold(repositoryMatches(view, repo, project))
 	if len(matches) == 1 {
 		return matches[0], nil
 	}
@@ -429,49 +400,82 @@ func (s *Service) resolveRepository(repo, project string) (string, *Failure) {
 	return repo, nil
 }
 
+// repositoryMatches lists the known repository paths and names that match repo,
+// looking only inside project when one is given.
+func repositoryMatches(view BoardView, repo string, project string) []string {
+	var matches []string
+	for _, ws := range view.Workspaces {
+		if project == "" || strings.EqualFold(ws.ID, project) {
+			matches = appendRepositoryMatches(matches, repo, ws.Repositories...)
+		}
+	}
+	for _, p := range view.Projects {
+		if project == "" || strings.EqualFold(p.WorkspaceID, project) || strings.EqualFold(p.ID, project) {
+			matches = appendRepositoryMatches(matches, repo, p.Repositories...)
+		}
+	}
+	for _, r := range view.Registry.Repositories {
+		matches = appendRepositoryMatches(matches, repo, r.RelativePath, r.Name)
+	}
+	return matches
+}
+
+// appendRepositoryMatches adds the candidates that equal repo, have repo as
+// their base name, or contain it.
+func appendRepositoryMatches(matches []string, repo string, candidates ...string) []string {
+	for _, candidate := range candidates {
+		candidate = strings.TrimSpace(candidate)
+		if candidate == "" {
+			continue
+		}
+		if strings.EqualFold(candidate, repo) || strings.EqualFold(repoBaseName(candidate), repo) || strings.Contains(strings.ToLower(candidate), strings.ToLower(repo)) {
+			matches = append(matches, candidate)
+		}
+	}
+	return matches
+}
+
+// intentRequirement is what a non-task intent kind needs: the check on the
+// intent, and the error to give when it fails.
+type intentRequirement struct {
+	met     func(Intent) bool
+	message string
+}
+
+var intentRequirements = map[string]intentRequirement{
+	KindStatusChange:   {func(i Intent) bool { return i.Ref != "" && i.Status != "" }, "status_change requires ref and status"},
+	KindComment:        {func(i Intent) bool { return i.Ref != "" && strings.TrimSpace(i.Comment) != "" }, "comment requires ref and comment"},
+	KindBoardCommand:   {func(i Intent) bool { return i.BoardAction != "" }, "board_command requires board_action"},
+	KindAssigneeChange: {func(i Intent) bool { return i.Ref != "" && i.Assignee != "" }, "assignee_change requires ref and assignee"},
+	KindPriorityChange: {func(i Intent) bool { return i.Ref != "" && i.Priority != nil }, "priority_change requires ref and priority"},
+	KindCancel:         {func(i Intent) bool { return i.Ref != "" }, "cancel requires ref"},
+	KindQuestion:       {func(i Intent) bool { return i.Ref != "" || strings.TrimSpace(i.Query) != "" }, "question requires ref or query"},
+}
+
 // ValidateIntent checks required fields for a structured intent.
 func ValidateIntent(intent Intent) error {
-	switch intent.Kind {
-	case KindTask:
-		if strings.TrimSpace(intent.Project) == "" {
-			return fmt.Errorf("task intent requires project")
-		}
-		if strings.TrimSpace(intent.Title) == "" {
-			return fmt.Errorf("task intent requires title")
-		}
-		if strings.TrimSpace(intent.Description) == "" {
-			return fmt.Errorf("task intent requires description")
-		}
-	case KindStatusChange:
-		if intent.Ref == "" || intent.Status == "" {
-			return fmt.Errorf("status_change requires ref and status")
-		}
-	case KindComment:
-		if intent.Ref == "" || strings.TrimSpace(intent.Comment) == "" {
-			return fmt.Errorf("comment requires ref and comment")
-		}
-	case KindBoardCommand:
-		if intent.BoardAction == "" {
-			return fmt.Errorf("board_command requires board_action")
-		}
-	case KindAssigneeChange:
-		if intent.Ref == "" || intent.Assignee == "" {
-			return fmt.Errorf("assignee_change requires ref and assignee")
-		}
-	case KindPriorityChange:
-		if intent.Ref == "" || intent.Priority == nil {
-			return fmt.Errorf("priority_change requires ref and priority")
-		}
-	case KindCancel:
-		if intent.Ref == "" {
-			return fmt.Errorf("cancel requires ref")
-		}
-	case KindQuestion:
-		if intent.Ref == "" && strings.TrimSpace(intent.Query) == "" {
-			return fmt.Errorf("question requires ref or query")
-		}
-	default:
+	if intent.Kind == KindTask {
+		return validateTaskIntent(intent)
+	}
+	need, ok := intentRequirements[intent.Kind]
+	if !ok {
 		return fmt.Errorf("unknown kind %q", intent.Kind)
+	}
+	if !need.met(intent) {
+		return errors.New(need.message)
+	}
+	return nil
+}
+
+func validateTaskIntent(intent Intent) error {
+	if strings.TrimSpace(intent.Project) == "" {
+		return fmt.Errorf("task intent requires project")
+	}
+	if strings.TrimSpace(intent.Title) == "" {
+		return fmt.Errorf("task intent requires title")
+	}
+	if strings.TrimSpace(intent.Description) == "" {
+		return fmt.Errorf("task intent requires description")
 	}
 	return nil
 }
@@ -481,7 +485,8 @@ func failResponse(fail Failure) Response {
 }
 
 func failureFromErr(err error) Response {
-	if fail, ok := err.(Failure); ok {
+	var fail Failure
+	if errors.As(err, &fail) {
 		return failResponse(fail)
 	}
 	return failResponse(Failure{Code: FailureProviderError, Message: err.Error()})

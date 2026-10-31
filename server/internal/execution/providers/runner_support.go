@@ -165,3 +165,19 @@ func applyWorkerReportedResult(opts RunnerOptions, session *RuntimeSession, task
 	session.Result = result
 	upsertSession(opts, *session)
 }
+
+// settleReportedResult applies a worker-reported result to the execution
+// status: success, or a pause when the worker asked for input. A cancelled or
+// provider-failed session keeps the status it has.
+func settleReportedResult(session *RuntimeSession) {
+	if session.Result == nil || session.ExecutionStatus == "cancelled" || session.ProviderError != nil {
+		return
+	}
+	if tasklifecycle.WorkerResultNeedsInput(session.Result) {
+		session.ExecutionStatus = "waiting_input"
+		session.Status = "waiting_input"
+		session.ExitedAt = ""
+		return
+	}
+	session.ExecutionStatus = "succeeded"
+}

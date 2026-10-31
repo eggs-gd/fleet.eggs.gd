@@ -50,12 +50,12 @@ export function boardSearch(location: BoardLocation): string {
 
 export function writeBoardLocation(location: BoardLocation) {
   const next = boardSearch(location);
-  const current = window.location.search;
+  const current = globalThis.location.search;
   if (next === current) return;
-  window.history.replaceState(
+  globalThis.history.replaceState(
     null,
     '',
-    `${window.location.pathname}${next}${window.location.hash}`
+    `${globalThis.location.pathname}${next}${globalThis.location.hash}`
   );
 }
 

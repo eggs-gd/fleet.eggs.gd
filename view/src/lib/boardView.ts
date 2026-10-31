@@ -58,10 +58,10 @@ export const archivedTasksFor = (visible: Task[]): Task[] =>
   visible.filter((task) => isArchivedStatus(task.status));
 
 /** The quick filters that look beyond the backlog, at every non-archived task. */
-const WHOLE_BOARD_FILTERS = ['blocked', 'review', 'done', 'attention'];
+const WHOLE_BOARD_FILTERS = new Set(['blocked', 'review', 'done', 'attention']);
 
 export const listTasksFor = (quickFilter: string, active: Task[], backlog: Task[]): Task[] =>
-  WHOLE_BOARD_FILTERS.includes(quickFilter) ? active : backlog;
+  WHOLE_BOARD_FILTERS.has(quickFilter) ? active : backlog;
 
 export const matchesQuickFilter = (task: Task, quickFilter: string): boolean => {
   switch (quickFilter) {

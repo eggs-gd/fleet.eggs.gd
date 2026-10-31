@@ -24,7 +24,7 @@ func driveWith(t *testing.T, rec *recorder, fake *fakeCodex, session *RuntimeSes
 		controls = make(chan SessionControlRequest, 4)
 	}
 	client := NewCodexClient(fake, &strings.Builder{})
-	return driveCodexTurn(ctx, cancel, client, fake.messages, controls, session, testTask(), idle, opts)
+	return (&codexTurn{ctx: ctx, cancel: cancel, client: client, messages: fake.messages, controls: controls, session: session, task: testTask(), idleTimeout: idle, opts: opts}).drive()
 }
 
 func TestDriveCodexTurnRunsTheHandshakeAndOneTurn(t *testing.T) {
@@ -205,7 +205,7 @@ func TestDriveCodexTurnAsksForAttentionOnceWhenIdle(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- driveCodexTurn(ctx, cancel, NewCodexClient(fake, &strings.Builder{}), fake.messages, make(chan SessionControlRequest, 1), &session, testTask(), 40*time.Millisecond, opts)
+		done <- (&codexTurn{ctx: ctx, cancel: cancel, client: NewCodexClient(fake, &strings.Builder{}), messages: fake.messages, controls: make(chan SessionControlRequest, 1), session: &session, task: testTask(), idleTimeout: 40 * time.Millisecond, opts: opts}).drive()
 	}()
 	time.Sleep(250 * time.Millisecond) // several idle periods
 	cancel()
