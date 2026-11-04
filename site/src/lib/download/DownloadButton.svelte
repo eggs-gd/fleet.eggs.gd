@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
 
   const REPO = 'eggs-gd/fleet.eggs.gd';
-  const LATEST_PAGE = `https://github.com/${REPO}/releases/latest`;
+  const REPO_PAGE = `https://github.com/${REPO}`;
+  const LATEST_PAGE = `${REPO_PAGE}/releases/latest`;
 
   type Os = 'macos' | 'windows' | 'linux';
   type Arch = 'arm64' | 'amd64';
@@ -97,10 +98,10 @@
   const match = $derived(
     detected ? builds.find((b) => b.os === detected!.os && b.arch === detected!.arch) : undefined
   );
-  const disabled = $derived(status === 'none');
-  const href = $derived(match?.url ?? LATEST_PAGE);
+  // No release yet: the button opens the repository instead of a releases page that 404s.
+  const href = $derived(match?.url ?? (status === 'ready' ? LATEST_PAGE : REPO_PAGE));
   const label = $derived.by(() => {
-    if (status === 'none') return 'Coming soon';
+    if (status === 'none') return 'View on GitHub';
     if (match) return `Download for ${OS_LABEL[match.os]} · ${archLabel(match)}`;
     if (detected && status === 'ready') return `Download for ${OS_LABEL[detected.os]}`;
     return 'Download';
@@ -108,21 +109,15 @@
 </script>
 
 <div class="dl" bind:this={root}>
-  <div class="dl-split" class:disabled>
-    <a
-      class="primary-cta dl-main"
-      {href}
-      aria-disabled={disabled}
-      tabindex={disabled ? -1 : undefined}
-      onclick={(e) => disabled && e.preventDefault()}>{label}</a
-    >
+  <div class="dl-split">
+    <a class="primary-cta dl-main" {href}>{label}</a>
     <button
       type="button"
       class="primary-cta dl-caret"
       aria-label="Other platforms"
       aria-haspopup="true"
       aria-expanded={open}
-      {disabled}
+      disabled={!builds.length}
       onclick={() => (open = !open)}>▾</button
     >
   </div>
@@ -151,6 +146,7 @@
 
   .dl-main {
     border-radius: 4px 0 0 4px;
+    white-space: nowrap;
   }
 
   .dl-caret {
@@ -162,15 +158,8 @@
     font-family: inherit;
   }
 
-  .dl-split.disabled {
+  .dl-caret:disabled {
     opacity: 0.5;
-  }
-
-  .dl-split.disabled .dl-main {
-    cursor: not-allowed;
-  }
-
-  .dl-split.disabled .dl-caret {
     cursor: not-allowed;
   }
 
