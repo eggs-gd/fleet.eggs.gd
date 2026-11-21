@@ -28,6 +28,7 @@ Inbox/Work/Fleet/Archive для оператора лежать у `_docs/` йо
 
 - [Windows](specs/windows.md)
 - [Manager: skills, код і MCP](specs/manager-skills.md)
+- [Pipelines: задача з пайплайном](specs/pipelines.md)
 
 ## Технічні документи
 
